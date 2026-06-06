@@ -9,8 +9,12 @@ import {
   valueAt
 } from "./core.js";
 import {
+  renderExportStage,
+  renderScriptStage,
+  renderVisualStage
+} from "./demo-loop.js";
+import {
   fillMarketForm,
-  renderMarketConfirmation,
   renderMarketProductSummary
 } from "./market.js";
 
@@ -39,6 +43,7 @@ export function renderWorkspace() {
   const brief = project.marketBrief || project;
   el("briefCountry").value = countryNames[brief.targetCountry] || brief.targetCountry || "";
   el("briefAudience").value = brief.audience || "";
+  el("headerExportButton").disabled = project.status !== "export";
 
   renderAssets();
   renderStepper();
@@ -48,24 +53,19 @@ export function renderWorkspace() {
   el("reviewStage").classList.toggle("hidden", project.status !== "review");
   el("marketStage").classList.toggle("hidden", project.status !== "market");
   el("scriptStage").classList.toggle("hidden", project.status !== "script");
-  el("futureStage").classList.toggle(
-    "hidden",
-    !["visual", "export"].includes(project.status)
-  );
+  el("visualStage").classList.toggle("hidden", project.status !== "visual");
+  el("exportStage").classList.toggle("hidden", project.status !== "export");
 
   if (project.status === "review") fillReviewForm(project.visionAnalysis);
   if (project.status === "market") {
     fillMarketForm(project);
     renderMarketProductSummary(project);
   }
-  if (project.status === "script") renderMarketConfirmation(project);
+  if (project.status === "script") renderScriptStage(project);
+  if (project.status === "visual") renderVisualStage(project);
+  if (project.status === "export") renderExportStage(project);
   if (project.reviewConfirmedAt) {
     el("confirmedTime").textContent = `确认时间：${formatTime(project.reviewConfirmedAt)}`;
-  }
-  if (project.status === "visual" || project.status === "export") {
-    el("futureStageTime").textContent = project.updatedAt
-      ? `更新时间：${formatTime(project.updatedAt)}`
-      : "";
   }
 }
 

@@ -1,8 +1,13 @@
 import { el, showToast, state } from "./core.js";
+import { copyBlockText } from "./demo-loop.js";
 import {
   analyze,
   confirmReview,
+  confirmScript,
   createProject,
+  downloadExportPackage,
+  generateScript,
+  generateVisual,
   loadProjects,
   openProject,
   saveMarketBrief,
@@ -28,9 +33,34 @@ function wireEvents() {
     state.project.status = "review";
     renderWorkspace();
   });
-  el("editMarketButton").addEventListener("click", () => {
-    state.project.status = "market";
-    renderWorkspace();
+  el("headerExportButton").addEventListener("click", downloadExportPackage);
+
+  el("workspace").addEventListener("submit", (event) => {
+    if (event.target.id === "scriptForm") confirmScript(event);
+  });
+
+  el("workspace").addEventListener("click", (event) => {
+    const copyButton = event.target.closest("[data-copy-target]");
+    if (copyButton) {
+      copyBlockText(copyButton.dataset.copyTarget)
+        .then(() => showToast("已复制。"))
+        .catch((error) => showToast(error.message));
+      return;
+    }
+
+    const actionButton = event.target.closest("[data-action]");
+    if (!actionButton) return;
+
+    const actions = {
+      "edit-market": () => {
+        state.project.status = "market";
+        renderWorkspace();
+      },
+      "generate-script": () => generateScript(),
+      "generate-visual": () => generateVisual(),
+      "download-export": () => downloadExportPackage()
+    };
+    actions[actionButton.dataset.action]?.();
   });
 
   el("projectList").addEventListener("click", (event) => {

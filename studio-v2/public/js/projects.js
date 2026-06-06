@@ -1,5 +1,10 @@
 import { api, el, setBusy, showToast, state } from "./core.js";
 import {
+  planningPackageFromForm,
+  setWorkflowBusy,
+  validatePlanningPackage
+} from "./demo-loop.js";
+import {
   marketBriefFromForm,
   setMarketSaving,
   validateMarketBrief
@@ -148,4 +153,74 @@ export async function saveMarketBrief(event) {
   } finally {
     setMarketSaving(false);
   }
+}
+
+export async function generateScript() {
+  setWorkflowBusy(true, "generateScriptButton", "正在生成脚本...", "生成演示脚本");
+  try {
+    const data = await api(`/api/projects/${encodeURIComponent(state.project.id)}/script/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({})
+    });
+    state.project = data.project;
+    renderWorkspace();
+    await loadProjects();
+    showToast("演示脚本已生成。");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    setWorkflowBusy(false, "generateScriptButton", "正在生成脚本...", "生成演示脚本");
+  }
+}
+
+export async function confirmScript(event) {
+  event.preventDefault();
+  const planningPackage = planningPackageFromForm();
+  const validationMessage = validatePlanningPackage(planningPackage);
+  if (validationMessage) {
+    el("scriptHint").textContent = validationMessage;
+    showToast(validationMessage);
+    return;
+  }
+
+  setWorkflowBusy(true, "confirmScriptButton", "正在确认脚本...", "确认脚本");
+  try {
+    const data = await api(`/api/projects/${encodeURIComponent(state.project.id)}/script/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ planningPackage })
+    });
+    state.project = data.project;
+    renderWorkspace();
+    await loadProjects();
+    showToast("广告脚本已确认。");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    setWorkflowBusy(false, "confirmScriptButton", "正在确认脚本...", "确认脚本");
+  }
+}
+
+export async function generateVisual() {
+  setWorkflowBusy(true, "generateVisualButton", "正在生成视觉提示词...", "生成视觉提示词");
+  try {
+    const data = await api(`/api/projects/${encodeURIComponent(state.project.id)}/visual/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({})
+    });
+    state.project = data.project;
+    renderWorkspace();
+    await loadProjects();
+    showToast("视觉提示词已生成。");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    setWorkflowBusy(false, "generateVisualButton", "正在生成视觉提示词...", "生成视觉提示词");
+  }
+}
+
+export function downloadExportPackage() {
+  window.location.href = `/api/projects/${encodeURIComponent(state.project.id)}/export`;
 }

@@ -437,6 +437,100 @@ input[readonly], textarea[readonly] { color: #5c625a; background: #f4f4ef; }
   margin-left: auto;
 }
 
+.ghost-button.small {
+  min-height: 32px;
+  padding: 0 11px;
+  font-size: 11px;
+}
+
+.button-row, .export-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.workflow-panel {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+  padding: 18px;
+  background: #f7f7f1;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.workflow-panel h3 { margin: 0; font-size: 15px; }
+.workflow-panel p:last-child { max-width: 430px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+
+.segment-card {
+  margin-top: 18px;
+  padding: 18px;
+  background: #fcfcf8;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.segment-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.segment-heading h3 { margin: 0; font-size: 17px; }
+.shot-list { display: grid; gap: 14px; margin-top: 16px; }
+.shot-card { padding: 16px; background: #f5f6ed; border: 1px solid #dfe3cf; border-radius: 9px; }
+.shot-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 13px; color: var(--muted); font-size: 11px; }
+.shot-meta strong { color: var(--green); font-size: 12px; }
+
+.package-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.copy-block {
+  overflow: hidden;
+  background: #f7f7f1;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.copy-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.copy-header strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copy-block pre {
+  max-height: 300px;
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  color: #30352d;
+  font: 11px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  background: #fff;
+}
+
+.export-actions {
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
 dialog {
   width: min(480px, calc(100vw - 40px));
   padding: 0;
@@ -475,4 +569,6 @@ dialog::backdrop { background: rgba(14, 16, 13, 0.66); backdrop-filter: blur(5px
   .context-panel .section-index, .context-rule, .context-panel h3, .context-panel ul { display: none; }
   .context-panel label + label { margin-top: 0; }
   .market-summary dl { grid-template-columns: repeat(3, 1fr); }
+  .tone-grid { grid-template-columns: repeat(2, 1fr); }
+  .workflow-panel { display: grid; }
 }

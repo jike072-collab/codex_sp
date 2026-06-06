@@ -57,7 +57,7 @@
           </div>
           <div class="header-actions">
             <span class="save-state" id="saveState">已保存到本机</span>
-            <button class="ghost-button" type="button" disabled>导出项目</button>
+            <button class="ghost-button" id="headerExportButton" type="button" disabled>导出项目</button>
           </div>
         </header>
 
@@ -268,34 +268,15 @@
             </div>
 
             <div class="stage-view hidden" id="scriptStage">
-              <div class="future-content">
-                <p class="section-index">STEP 04</p>
-                <h2>市场创意已确认</h2>
-                <p>目标市场、受众和创意方向已经保存。下一步可以基于这份 brief 生成广告脚本。</p>
-                <div class="confirmed-card">
-                  <span>✓</span>
-                  <div>
-                    <strong id="confirmedMarketTitle">市场 brief 已保存</strong>
-                    <small id="marketConfirmedTime"></small>
-                  </div>
-                </div>
-                <button class="ghost-button" id="editMarketButton" type="button">返回编辑市场创意</button>
-              </div>
+              <div id="scriptStageContent"></div>
             </div>
 
-            <div class="stage-view hidden" id="futureStage">
-              <div class="future-content">
-                <p class="section-index">NEXT STAGE</p>
-                <h2>后续阶段正在准备</h2>
-                <p>市场创意已保存。脚本、视觉资产和交付导出会在后续阶段继续接入。</p>
-                <div class="confirmed-card">
-                  <span>✓</span>
-                  <div>
-                    <strong>项目已经保存到本机</strong>
-                    <small id="futureStageTime"></small>
-                  </div>
-                </div>
-              </div>
+            <div class="stage-view hidden" id="visualStage">
+              <div id="visualStageContent"></div>
+            </div>
+
+            <div class="stage-view hidden" id="exportStage">
+              <div id="exportStageContent"></div>
             </div>
           </section>
 
