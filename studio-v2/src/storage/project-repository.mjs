@@ -1,6 +1,14 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import {
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  unlink,
+  writeFile
+} from "node:fs/promises";
+import { join, relative, resolve } from "node:path";
 
 import { projectsRoot, uploadsRoot } from "../config.mjs";
 import { cleanString } from "../workflow-domain/value-normalizers.mjs";
@@ -17,6 +25,17 @@ function projectPath(projectId) {
   return join(projectsRoot, `${projectId}.json`);
 }
 
+function safeProjectUploadPath(projectId) {
+  if (!/^[a-z0-9-]+$/i.test(projectId)) throw new Error("无效的项目编号。");
+  const root = resolve(uploadsRoot);
+  const target = resolve(root, projectId);
+  const pathFromRoot = relative(root, target);
+  if (!pathFromRoot || pathFromRoot.startsWith("..") || pathFromRoot.includes(":")) {
+    throw new Error("项目上传目录超出允许范围。");
+  }
+  return target;
+}
+
 export async function readProject(projectId) {
   try {
     return JSON.parse(await readFile(projectPath(projectId), "utf8"));
@@ -30,6 +49,32 @@ export async function saveProject(project) {
   project.updatedAt = new Date().toISOString();
   await writeFile(projectPath(project.id), JSON.stringify(project, null, 2), "utf8");
   return project;
+}
+
+export async function deleteProject(projectId) {
+  const sourcePath = projectPath(projectId);
+  const tombstonePath = `${sourcePath}.${randomUUID()}.deleting`;
+  const uploadPath = safeProjectUploadPath(projectId);
+
+  try {
+    await rename(sourcePath, tombstonePath);
+  } catch (error) {
+    if (error.code === "ENOENT") return false;
+    throw error;
+  }
+
+  try {
+    await rm(uploadPath, { recursive: true, force: true });
+    await unlink(tombstonePath);
+    return true;
+  } catch (error) {
+    try {
+      await rename(tombstonePath, sourcePath);
+    } catch {
+      // Preserve the original failure; the tombstone remains recoverable.
+    }
+    throw error;
+  }
 }
 
 export async function listProjects() {
