@@ -5,10 +5,12 @@ import { fileURLToPath } from "node:url";
 export const studioRoot = fileURLToPath(new URL("../", import.meta.url));
 export const projectRoot = resolve(studioRoot, "..");
 export const publicRoot = join(studioRoot, "public");
-export const dataRoot = join(studioRoot, "data");
+const runtimeEnv = typeof process === "undefined" ? {} : process.env;
+export const dataRoot = runtimeEnv.STUDIO_DATA_ROOT
+  ? resolve(runtimeEnv.STUDIO_DATA_ROOT)
+  : join(studioRoot, "data");
 export const projectsRoot = join(dataRoot, "projects");
 export const uploadsRoot = join(dataRoot, "uploads");
-const runtimeEnv = typeof process === "undefined" ? {} : process.env;
 export const port = Number(runtimeEnv.PORT || 8810);
 
 export async function loadEnv() {

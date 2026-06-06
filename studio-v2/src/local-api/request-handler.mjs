@@ -2,6 +2,7 @@ import { handleApi } from "./api-routes.mjs";
 import { publicRoot, uploadsRoot } from "../config.mjs";
 import { sendJson } from "./http-helpers.mjs";
 import { serveFile } from "./static-files.mjs";
+import { isExpectedError } from "../workflow-domain/domain-error.mjs";
 
 export function createRequestHandler() {
   return async function requestHandler(request, response) {
@@ -18,8 +19,13 @@ export function createRequestHandler() {
       const relativePath = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
       return serveFile(response, publicRoot, relativePath);
     } catch (error) {
-      console.error(error);
-      if (!response.headersSent) sendJson(response, 500, { error: error.message || "服务器错误。" });
+      if (!isExpectedError(error)) console.error(error);
+      if (!response.headersSent) {
+        sendJson(response, error.statusCode || 500, {
+          error: error.message || "服务器错误。",
+          code: error.code || "INTERNAL_ERROR"
+        });
+      }
       else response.end();
     }
   };

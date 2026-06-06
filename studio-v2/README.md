@@ -9,6 +9,10 @@
 3. 使用已配置的视觉模型识别，或在没有 API Key 时使用演示结果
 4. 人工编辑产品锁定信息
 5. 确认并保存审核结果
+6. 保存市场创意
+7. 生成并编辑 20 秒演示脚本
+8. 生成四条视觉提示词和两个 Flow Omni 包
+9. 下载不包含本地路径的 JSON 交付包
 
 ## 启动
 
@@ -43,3 +47,15 @@ VISION_MODEL_API_KEY=your_key
 - `src/storage/`：项目和图片持久化
 
 并行任务和文件所有权见 `../docs/TASKS.md`。
+
+## 测试
+
+安装 Node.js LTS 后，在项目根目录运行：
+
+```powershell
+node --test .\studio-v2\tests\*.test.mjs
+```
+
+测试使用系统临时目录，不会修改 `studio-v2/data/` 中的个人项目。
+
+没有配置 API Key 时，识图、脚本和视觉提示词都使用明确标记的本地演示模式，仍可跑完整闭环。

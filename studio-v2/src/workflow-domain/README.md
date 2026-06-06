@@ -18,3 +18,14 @@ Current contract work:
 docs/contracts/market-creative-api.md
 ```
 
+Current modules:
+
+- `domain-error.mjs`: expected domain errors and HTTP-safe status metadata
+- `project-workflow.mjs`: stages and legal transitions
+- `product-review.mjs`: product-lock confirmation gate
+- `market-brief.mjs`: market brief validation and confirmation
+- `demo-script.mjs`: deterministic no-key planning package generation
+- `script-review.mjs`: editable script validation and confirmation
+- `visual-package.mjs`: deterministic visual prompts and Flow Omni packages
+- `export-package.mjs`: safe delivery JSON without local filesystem details
+- `value-normalizers.mjs`: shared deterministic value normalization

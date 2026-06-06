@@ -97,7 +97,8 @@ The current local API returns:
 
 ```json
 {
-  "error": "Human-readable message"
+  "error": "Human-readable message",
+  "code": "INVALID_MARKET_BRIEF"
 }
 ```
 
@@ -109,4 +110,4 @@ Expected statuses:
 - `500`: unexpected local or provider error
 
 The frontend should display `error` through the existing toast and must not infer success from a non-2xx response.
-
+`code` is intended for diagnostics and future targeted UI handling; the frontend does not need to translate it in the current task.
