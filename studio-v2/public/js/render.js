@@ -8,6 +8,11 @@ import {
   statusLabel,
   valueAt
 } from "./core.js";
+import {
+  fillMarketForm,
+  renderMarketConfirmation,
+  renderMarketProductSummary
+} from "./market.js";
 
 export function renderProjectList() {
   const container = el("projectList");
@@ -31,22 +36,36 @@ export function renderWorkspace() {
   el("projectTitle").textContent = project.name;
   el("projectState").textContent = statusLabel(project.status);
   el("briefName").value = project.name;
-  el("briefCountry").value = countryNames[project.targetCountry] || project.targetCountry;
-  el("briefAudience").value = project.audience;
+  const brief = project.marketBrief || project;
+  el("briefCountry").value = countryNames[brief.targetCountry] || brief.targetCountry || "";
+  el("briefAudience").value = brief.audience || "";
 
   renderAssets();
   renderStepper();
+  renderCompletionList(project.status);
 
   el("assetsStage").classList.toggle("hidden", !["assets", "analyzing"].includes(project.status));
   el("reviewStage").classList.toggle("hidden", project.status !== "review");
+  el("marketStage").classList.toggle("hidden", project.status !== "market");
+  el("scriptStage").classList.toggle("hidden", project.status !== "script");
   el("futureStage").classList.toggle(
     "hidden",
-    !["market", "script", "visual", "export"].includes(project.status)
+    !["visual", "export"].includes(project.status)
   );
 
   if (project.status === "review") fillReviewForm(project.visionAnalysis);
+  if (project.status === "market") {
+    fillMarketForm(project);
+    renderMarketProductSummary(project);
+  }
+  if (project.status === "script") renderMarketConfirmation(project);
   if (project.reviewConfirmedAt) {
     el("confirmedTime").textContent = `确认时间：${formatTime(project.reviewConfirmedAt)}`;
+  }
+  if (project.status === "visual" || project.status === "export") {
+    el("futureStageTime").textContent = project.updatedAt
+      ? `更新时间：${formatTime(project.updatedAt)}`
+      : "";
   }
 }
 
@@ -71,6 +90,20 @@ export function renderAssets() {
     ? `已上传 ${assets.length} 张图片。确认都属于同一款鞋后开始识别。`
     : "至少上传一张图片后才能开始识别。";
   el("analyzeButton").disabled = state.busy || !assets.length;
+}
+
+function renderCompletionList(status) {
+  const itemsByStatus = {
+    assets: ["图片属于同一款鞋", "关键角度足够清晰", "产品外观可以稳定锁定"],
+    analyzing: ["等待识别完成", "保留原始素材", "准备进入人工审核"],
+    review: ["产品概况已检查", "外观身份已修正", "必须保持和禁止修改项已确认"],
+    market: ["目标国家已选择", "目标人群已确认", "创意主题、核心信息和语气已填写"],
+    script: ["市场 brief 已保存", "脚本阶段可以读取创意方向", "如需修改可返回市场创意"],
+    visual: ["脚本已确认", "故事板方向清晰", "关键帧要求准备完成"],
+    export: ["视觉资产已确认", "交付文件已整理", "Flow Omni 包可导出"]
+  };
+  const items = itemsByStatus[status] || itemsByStatus.assets;
+  el("completionList").innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
 }
 
 function listText(value) {
@@ -141,4 +174,3 @@ export function analysisFromForm() {
     }
   };
 }
-

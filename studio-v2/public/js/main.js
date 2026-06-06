@@ -5,6 +5,7 @@ import {
   createProject,
   loadProjects,
   openProject,
+  saveMarketBrief,
   uploadFiles
 } from "./projects.js";
 import { renderWorkspace } from "./render.js";
@@ -16,6 +17,7 @@ function wireEvents() {
   el("closeDialogButton").addEventListener("click", () => el("newProjectDialog").close());
   el("newProjectForm").addEventListener("submit", createProject);
   el("reviewForm").addEventListener("submit", confirmReview);
+  el("marketForm").addEventListener("submit", saveMarketBrief);
   el("analyzeButton").addEventListener("click", analyze);
 
   el("backToAssetsButton").addEventListener("click", () => {
@@ -24,6 +26,10 @@ function wireEvents() {
   });
   el("editReviewButton").addEventListener("click", () => {
     state.project.status = "review";
+    renderWorkspace();
+  });
+  el("editMarketButton").addEventListener("click", () => {
+    state.project.status = "market";
     renderWorkspace();
   });
 
@@ -65,4 +71,3 @@ async function boot() {
 }
 
 boot();
-

@@ -151,19 +151,150 @@
               </form>
             </div>
 
-            <div class="stage-view hidden" id="futureStage">
+            <div class="stage-view hidden" id="marketStage">
+              <div class="section-heading">
+                <div>
+                  <p class="section-index">STEP 03</p>
+                  <h2>确定市场创意</h2>
+                  <p>把已经确认的产品身份转成面向目标市场的创意 brief。保存后将进入广告脚本阶段。</p>
+                </div>
+                <span class="requirement">5 项必填</span>
+              </div>
+
+              <div class="confirmed-card compact">
+                <span>✓</span>
+                <div>
+                  <strong>产品锁定已通过人工审核</strong>
+                  <small id="confirmedTime"></small>
+                </div>
+              </div>
+
+              <div class="market-summary" id="marketProductSummary"></div>
+
+              <form id="marketForm" novalidate>
+                <div class="form-section">
+                  <h3>目标设定</h3>
+                  <div class="form-grid two">
+                    <label>
+                      <span>目标国家</span>
+                      <select name="targetCountry" required>
+                        <option value="Thailand">泰国</option>
+                        <option value="Indonesia">印度尼西亚</option>
+                        <option value="Vietnam">越南</option>
+                        <option value="Philippines">菲律宾</option>
+                        <option value="Malaysia">马来西亚</option>
+                        <option value="Singapore">新加坡</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>目标人群</span>
+                      <textarea name="audience" required></textarea>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="form-section">
+                  <h3>创意主题</h3>
+                  <div class="choice-grid">
+                    <label class="choice-card">
+                      <input type="radio" name="creativeTheme" value="city-motion" required>
+                      <span>
+                        <strong>城市动线</strong>
+                        <small>日常出行、街区移动、轻快节奏</small>
+                      </span>
+                    </label>
+                    <label class="choice-card">
+                      <input type="radio" name="creativeTheme" value="daily-comfort" required>
+                      <span>
+                        <strong>全天舒适</strong>
+                        <small>长时间穿着、通勤、稳定陪伴</small>
+                      </span>
+                    </label>
+                    <label class="choice-card">
+                      <input type="radio" name="creativeTheme" value="performance-detail" required>
+                      <span>
+                        <strong>性能细节</strong>
+                        <small>结构特征、支撑感、鞋底表现</small>
+                      </span>
+                    </label>
+                    <label class="choice-card">
+                      <input type="radio" name="creativeTheme" value="street-style" required>
+                      <span>
+                        <strong>街头风格</strong>
+                        <small>造型表达、色彩识别、搭配感</small>
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="form-section">
+                  <h3>核心信息</h3>
+                  <label>
+                    <span>一句话主张</span>
+                    <textarea class="message-box" name="coreMessage" required></textarea>
+                  </label>
+                </div>
+
+                <div class="form-section">
+                  <h3>语气</h3>
+                  <div class="tone-grid">
+                    <label class="choice-card inline">
+                      <input type="radio" name="tone" value="energetic" required>
+                      <span><strong>有活力</strong><small>energetic</small></span>
+                    </label>
+                    <label class="choice-card inline">
+                      <input type="radio" name="tone" value="clean" required>
+                      <span><strong>干净</strong><small>clean</small></span>
+                    </label>
+                    <label class="choice-card inline">
+                      <input type="radio" name="tone" value="warm" required>
+                      <span><strong>温暖</strong><small>warm</small></span>
+                    </label>
+                    <label class="choice-card inline">
+                      <input type="radio" name="tone" value="bold" required>
+                      <span><strong>大胆</strong><small>bold</small></span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="stage-actions">
+                  <button class="text-button" id="editReviewButton" type="button">重新检查产品锁定</button>
+                  <div class="action-cluster">
+                    <p id="marketHint">保存后进入广告脚本阶段。</p>
+                    <button class="primary-button" id="saveMarketButton" type="submit">保存市场创意</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <div class="stage-view hidden" id="scriptStage">
               <div class="future-content">
-                <p class="section-index">NEXT STAGE</p>
-                <h2>产品身份已经确认</h2>
-                <p>下一阶段将在这里加入目标市场、受众与创意方向。当前项目已经安全保存，可以随时回来继续。</p>
+                <p class="section-index">STEP 04</p>
+                <h2>市场创意已确认</h2>
+                <p>目标市场、受众和创意方向已经保存。下一步可以基于这份 brief 生成广告脚本。</p>
                 <div class="confirmed-card">
                   <span>✓</span>
                   <div>
-                    <strong>产品锁定已通过人工审核</strong>
-                    <small id="confirmedTime"></small>
+                    <strong id="confirmedMarketTitle">市场 brief 已保存</strong>
+                    <small id="marketConfirmedTime"></small>
                   </div>
                 </div>
-                <button class="ghost-button" id="editReviewButton" type="button">重新检查产品锁定</button>
+                <button class="ghost-button" id="editMarketButton" type="button">返回编辑市场创意</button>
+              </div>
+            </div>
+
+            <div class="stage-view hidden" id="futureStage">
+              <div class="future-content">
+                <p class="section-index">NEXT STAGE</p>
+                <h2>后续阶段正在准备</h2>
+                <p>市场创意已保存。脚本、视觉资产和交付导出会在后续阶段继续接入。</p>
+                <div class="confirmed-card">
+                  <span>✓</span>
+                  <div>
+                    <strong>项目已经保存到本机</strong>
+                    <small id="futureStageTime"></small>
+                  </div>
+                </div>
               </div>
             </div>
           </section>

@@ -1,5 +1,10 @@
 import { api, el, setBusy, showToast, state } from "./core.js";
 import {
+  marketBriefFromForm,
+  setMarketSaving,
+  validateMarketBrief
+} from "./market.js";
+import {
   analysisFromForm,
   renderProjectList,
   renderWorkspace
@@ -117,3 +122,30 @@ export async function confirmReview(event) {
   }
 }
 
+export async function saveMarketBrief(event) {
+  event.preventDefault();
+  const marketBrief = marketBriefFromForm();
+  const validationMessage = validateMarketBrief(marketBrief);
+  if (validationMessage) {
+    el("marketHint").textContent = validationMessage;
+    showToast(validationMessage);
+    return;
+  }
+
+  setMarketSaving(true);
+  try {
+    const data = await api(`/api/projects/${encodeURIComponent(state.project.id)}/market`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ marketBrief })
+    });
+    state.project = data.project;
+    renderWorkspace();
+    await loadProjects();
+    showToast("市场创意已保存。");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    setMarketSaving(false);
+  }
+}
