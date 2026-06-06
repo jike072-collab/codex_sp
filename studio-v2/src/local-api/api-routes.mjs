@@ -2,11 +2,16 @@ import { randomUUID } from "node:crypto";
 
 import { readJsonBody, sendJson, sendJsonDownload } from "./http-helpers.mjs";
 import {
+  deleteProject,
   listProjects,
   readProject,
   saveProject,
   storeProjectAssets
 } from "../storage/project-repository.mjs";
+import {
+  readProviderSettings,
+  updateProviderSettings
+} from "../storage/provider-settings.mjs";
 import { cleanString } from "../workflow-domain/value-normalizers.mjs";
 import { analyzeProject, sanitizeAnalysis } from "../ai-providers/vision-provider.mjs";
 import { DomainError } from "../workflow-domain/domain-error.mjs";
@@ -22,6 +27,17 @@ import { generateProjectVisuals } from "../ai-providers/image-provider.mjs";
 import { buildExportPackage } from "../workflow-domain/export-package.mjs";
 
 export async function handleApi(request, response, url) {
+  if (url.pathname === "/api/settings/providers") {
+    if (request.method === "GET") {
+      return sendJson(response, 200, await readProviderSettings());
+    }
+    if (request.method === "PUT") {
+      const body = await readJsonBody(request, 64 * 1024);
+      return sendJson(response, 200, await updateProviderSettings(body));
+    }
+    return sendJson(response, 405, { error: "不支持的操作。" });
+  }
+
   if (request.method === "GET" && url.pathname === "/api/projects") {
     return sendJson(response, 200, { projects: await listProjects() });
   }
@@ -62,6 +78,11 @@ export async function handleApi(request, response, url) {
 
   if (request.method === "GET" && !action) {
     return sendJson(response, 200, { project });
+  }
+
+  if (request.method === "DELETE" && !action) {
+    await deleteProject(projectId);
+    return sendJson(response, 200, { deletedProjectId: projectId });
   }
 
   if (request.method === "POST" && action === "assets") {

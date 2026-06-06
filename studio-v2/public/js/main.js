@@ -15,14 +15,22 @@ import {
   uploadFiles
 } from "./projects.js";
 import { canViewStep, renderWorkspace } from "./render.js";
+import {
+  clearProviderSettingsInputs,
+  closeProviderSettings,
+  openProviderSettings,
+  saveProviderSettings
+} from "./settings.js";
 
 function wireEvents() {
   const openDialog = () => el("newProjectDialog").showModal();
   el("newProjectButton").addEventListener("click", openDialog);
   el("emptyCreateButton").addEventListener("click", openDialog);
   el("closeDialogButton").addEventListener("click", () => el("newProjectDialog").close());
-  el("apiSettingsButton").addEventListener("click", () => el("apiSettingsDialog").showModal());
-  el("closeApiSettingsButton").addEventListener("click", () => el("apiSettingsDialog").close());
+  el("apiSettingsButton").addEventListener("click", openProviderSettings);
+  el("closeApiSettingsButton").addEventListener("click", closeProviderSettings);
+  el("apiSettingsDialog").addEventListener("close", clearProviderSettingsInputs);
+  el("apiSettingsForm").addEventListener("submit", saveProviderSettings);
   el("newProjectForm").addEventListener("submit", createProject);
   el("reviewForm").addEventListener("submit", confirmReview);
   el("marketForm").addEventListener("submit", saveMarketBrief);
