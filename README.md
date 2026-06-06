@@ -33,6 +33,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\studio-v2\start.ps1
 
 ## 并行开发
 
+当前负责人和另一个 Codex 的唯一任务入口：
+
+- `CURRENT_ASSIGNMENTS.md`
+- `tasks/codex-frontend-market-step.md`
+
 协作规则见：
 
 - `docs/ARCHITECTURE.md`

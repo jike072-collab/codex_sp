@@ -1,5 +1,7 @@
 # Parallel Task Board
 
+This is the future task pool. For work that is active now, `CURRENT_ASSIGNMENTS.md` takes precedence.
+
 Remote repository: `https://github.com/jike072-collab/codex_sp`
 
 Each task uses its own `codex/<task>` branch and owns only the listed paths.
@@ -93,4 +95,3 @@ Task:
 3. Local API
 4. Frontend
 5. Tests and release verification
-
