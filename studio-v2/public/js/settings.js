@@ -59,6 +59,10 @@ export function closeProviderSettings() {
   el("apiSettingsDialog").close();
 }
 
+export function clearProviderSettingsInputs() {
+  resetSensitiveFields();
+}
+
 export async function saveProviderSettings(event) {
   event.preventDefault();
   const form = event.currentTarget;

@@ -16,6 +16,7 @@ import {
 } from "./projects.js";
 import { canViewStep, renderWorkspace } from "./render.js";
 import {
+  clearProviderSettingsInputs,
   closeProviderSettings,
   openProviderSettings,
   saveProviderSettings
@@ -28,6 +29,7 @@ function wireEvents() {
   el("closeDialogButton").addEventListener("click", () => el("newProjectDialog").close());
   el("apiSettingsButton").addEventListener("click", openProviderSettings);
   el("closeApiSettingsButton").addEventListener("click", closeProviderSettings);
+  el("apiSettingsDialog").addEventListener("close", clearProviderSettingsInputs);
   el("apiSettingsForm").addEventListener("submit", saveProviderSettings);
   el("newProjectForm").addEventListener("submit", createProject);
   el("reviewForm").addEventListener("submit", confirmReview);
