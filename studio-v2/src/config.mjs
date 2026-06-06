@@ -13,10 +13,16 @@ export const projectsRoot = join(dataRoot, "projects");
 export const uploadsRoot = join(dataRoot, "uploads");
 export const port = Number(runtimeEnv.PORT || 8810);
 
+export function localEnvPath() {
+  return runtimeEnv.STUDIO_ENV_PATH
+    ? resolve(runtimeEnv.STUDIO_ENV_PATH)
+    : join(projectRoot, ".env");
+}
+
 export async function loadEnv() {
   const values = {};
   try {
-    const text = await readFile(join(projectRoot, ".env"), "utf8");
+    const text = await readFile(localEnvPath(), "utf8");
     for (const rawLine of text.split(/\r?\n/)) {
       const line = rawLine.trim();
       if (!line || line.startsWith("#")) continue;
