@@ -26,6 +26,7 @@
       <nav class="project-list" id="projectList"></nav>
 
       <div class="local-note">
+        <button class="api-corner-button" id="apiSettingsButton" type="button" aria-label="API 设置">API</button>
         <span class="status-dot"></span>
         <div>
           <strong>本地模式</strong>
@@ -111,9 +112,31 @@
                 <div class="form-section">
                   <h3>产品概况</h3>
                   <div class="form-grid three">
-                    <label><span>鞋款类型</span><input name="shoe_type"></label>
+                    <label><span>鞋款类型</span><input name="shoe_type" required></label>
                     <label><span>可能用途</span><input name="likely_usage"></label>
                     <label><span>整体风格</span><input name="overall_style"></label>
+                  </div>
+                </div>
+
+                <div class="form-section">
+                  <h3>输出尺寸</h3>
+                  <div class="aspect-grid">
+                    <label class="choice-card inline">
+                      <input type="radio" name="output_aspect_ratio" value="9:16" checked>
+                      <span><strong>9:16</strong><small>竖屏短视频</small></span>
+                    </label>
+                    <label class="choice-card inline">
+                      <input type="radio" name="output_aspect_ratio" value="1:1">
+                      <span><strong>1:1</strong><small>方图素材</small></span>
+                    </label>
+                    <label class="choice-card inline">
+                      <input type="radio" name="output_aspect_ratio" value="4:5">
+                      <span><strong>4:5</strong><small>信息流竖图</small></span>
+                    </label>
+                    <label class="choice-card inline">
+                      <input type="radio" name="output_aspect_ratio" value="16:9">
+                      <span><strong>16:9</strong><small>横版故事板</small></span>
+                    </label>
                   </div>
                 </div>
 
@@ -121,23 +144,28 @@
                   <h3>外观身份</h3>
                   <div class="form-grid two">
                     <label><span>主色（逗号分隔）</span><input name="main_colors"></label>
-                    <label><span>辅色（逗号分隔）</span><input name="supporting_colors"></label>
                     <label><span>鞋面可见材质与纹理</span><textarea name="upper_material_visible"></textarea></label>
-                    <label><span>鞋头与鞋带结构</span><textarea name="toe_and_lace"></textarea></label>
                     <label><span>中底与外底</span><textarea name="sole_structure"></textarea></label>
-                    <label><span>侧面图案与后跟</span><textarea name="side_and_heel"></textarea></label>
                   </div>
+                  <details class="optional-review-details">
+                    <summary>更多识别细节</summary>
+                    <div class="form-grid two">
+                      <label><span>辅色（逗号分隔）</span><input name="supporting_colors"></label>
+                      <label><span>鞋头与鞋带结构</span><textarea name="toe_and_lace"></textarea></label>
+                      <label><span>侧面图案与后跟</span><textarea name="side_and_heel"></textarea></label>
+                    </div>
+                  </details>
                 </div>
 
                 <div class="form-section critical">
                   <div class="form-grid two">
                     <label>
                       <span>必须保持 <em>每行一项</em></span>
-                      <textarea class="tall" name="must_keep"></textarea>
+                      <textarea class="tall" name="must_keep" required></textarea>
                     </label>
                     <label>
                       <span>禁止修改 <em>每行一项</em></span>
-                      <textarea class="tall" name="must_not_change"></textarea>
+                      <textarea class="tall" name="must_not_change" required></textarea>
                     </label>
                   </div>
                 </div>
@@ -179,7 +207,6 @@
                       <span>目标国家</span>
                       <select name="targetCountry" required>
                         <option value="Thailand">泰国</option>
-                        <option value="Indonesia">印度尼西亚</option>
                         <option value="Vietnam">越南</option>
                         <option value="Philippines">菲律宾</option>
                         <option value="Malaysia">马来西亚</option>
@@ -294,6 +321,10 @@
               <span>目标人群</span>
               <textarea id="briefAudience" readonly></textarea>
             </label>
+            <label>
+              <span>视频尺寸</span>
+              <input id="briefAspect" readonly>
+            </label>
             <div class="context-rule"></div>
             <h3>这一阶段的完成标准</h3>
             <ul id="completionList">
@@ -312,21 +343,33 @@
       <button class="dialog-close" id="closeDialogButton" type="button" aria-label="关闭">×</button>
       <p class="kicker">NEW LOCAL PROJECT</p>
       <h2>创建广告项目</h2>
-      <p>先记录最少的信息。创意细节会在产品识别完成后继续填写。</p>
-      <label><span>项目名称</span><input name="name" placeholder="例如：蓝白跑鞋 · 泰国首发" required autofocus></label>
-      <label>
-        <span>首发市场</span>
-        <select name="targetCountry">
-          <option value="Thailand">泰国</option>
-          <option value="Indonesia">印度尼西亚</option>
-          <option value="Vietnam">越南</option>
-          <option value="Philippines">菲律宾</option>
-          <option value="Malaysia">马来西亚</option>
-          <option value="Singapore">新加坡</option>
-        </select>
-      </label>
-      <label><span>目标人群</span><input name="audience" value="日常运动与通勤人群"></label>
+      <p>先建立项目，进入第一步上传商品素材。</p>
+      <label><span>项目名称</span><input name="name" placeholder="例如：蓝白跑鞋广告" required autofocus></label>
       <button class="primary-button large" type="submit">创建并上传素材</button>
+    </form>
+  </dialog>
+
+  <dialog id="apiSettingsDialog">
+    <form class="dialog-card api-dialog-card">
+      <button class="dialog-close" id="closeApiSettingsButton" type="button" aria-label="关闭">×</button>
+      <p class="kicker">API PROVIDERS</p>
+      <h2>API 接口</h2>
+      <p>模型 Key 只从根目录 .env 或系统环境变量读取；前端不会保存密钥。</p>
+      <div class="provider-list">
+        <div class="provider-row">
+          <strong>识图</strong>
+          <small>VISION_MODEL_API_KEY · Right Code</small>
+        </div>
+        <div class="provider-row">
+          <strong>脚本</strong>
+          <small>TEXT_MODEL_API_KEY · DeepSeek</small>
+        </div>
+        <div class="provider-row">
+          <strong>图片</strong>
+          <small>IMAGE_MODEL_API_KEY · Right Code</small>
+        </div>
+      </div>
+      <p class="api-note">更换 Key 后重启本地服务，已有项目可以继续从当前步骤使用。</p>
     </form>
   </dialog>
 

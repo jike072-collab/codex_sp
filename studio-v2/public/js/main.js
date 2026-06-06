@@ -5,6 +5,7 @@ import {
   confirmReview,
   confirmScript,
   createProject,
+  deleteProject,
   downloadExportPackage,
   generateScript,
   generateVisual,
@@ -20,6 +21,8 @@ function wireEvents() {
   el("newProjectButton").addEventListener("click", openDialog);
   el("emptyCreateButton").addEventListener("click", openDialog);
   el("closeDialogButton").addEventListener("click", () => el("newProjectDialog").close());
+  el("apiSettingsButton").addEventListener("click", () => el("apiSettingsDialog").showModal());
+  el("closeApiSettingsButton").addEventListener("click", () => el("apiSettingsDialog").close());
   el("newProjectForm").addEventListener("submit", createProject);
   el("reviewForm").addEventListener("submit", confirmReview);
   el("marketForm").addEventListener("submit", saveMarketBrief);
@@ -84,6 +87,12 @@ function wireEvents() {
   });
 
   el("projectList").addEventListener("click", (event) => {
+    const deleteButton = event.target.closest("[data-delete-project-id]");
+    if (deleteButton) {
+      deleteProject(deleteButton.dataset.deleteProjectId);
+      return;
+    }
+
     const button = event.target.closest("[data-project-id]");
     if (button) {
       openProject(button.dataset.projectId).catch((error) => showToast(error.message));

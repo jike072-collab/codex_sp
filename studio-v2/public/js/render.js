@@ -19,6 +19,35 @@ import {
 } from "./market.js";
 
 const STAGE_ORDER = ["assets", "review", "market", "script", "visual", "export"];
+const ASPECT_RATIOS = new Set(["9:16", "1:1", "4:5", "16:9"]);
+
+function preferenceKey(projectId) {
+  return `shoe-ad-studio:${projectId}:preferences`;
+}
+
+function readProjectPreferences(project = state.project) {
+  if (!project?.id) return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(preferenceKey(project.id)) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveProjectPreferences(project = state.project, updates = {}) {
+  if (!project?.id) return;
+  const next = { ...readProjectPreferences(project), ...updates };
+  try {
+    window.localStorage.setItem(preferenceKey(project.id), JSON.stringify(next));
+  } catch {
+    // Local preference storage is optional; the workflow should keep running.
+  }
+}
+
+function preferredAspectRatio(project = state.project) {
+  const saved = readProjectPreferences(project).outputAspectRatio;
+  return ASPECT_RATIOS.has(saved) ? saved : "9:16";
+}
 
 function viewStatus() {
   if (!state.project) return "assets";
@@ -41,11 +70,15 @@ export function renderProjectList() {
     return;
   }
   container.innerHTML = state.projects.map((project) => `
-    <button class="project-link ${project.id === state.project?.id ? "active" : ""}"
-      data-project-id="${escapeHtml(project.id)}" type="button">
-      <strong>${escapeHtml(project.name)}</strong>
-      <small>${statusLabel(project.status)} · ${formatTime(project.updatedAt)}</small>
-    </button>
+    <div class="project-item ${project.id === state.project?.id ? "active" : ""}">
+      <button class="project-link"
+        data-project-id="${escapeHtml(project.id)}" type="button">
+        <strong>${escapeHtml(project.name)}</strong>
+        <small>${statusLabel(project.status)} · ${formatTime(project.updatedAt)}</small>
+      </button>
+      <button class="project-delete" data-delete-project-id="${escapeHtml(project.id)}"
+        type="button" aria-label="删除 ${escapeHtml(project.name)}">×</button>
+    </div>
   `).join("");
 }
 
@@ -63,6 +96,7 @@ export function renderWorkspace() {
   const brief = project.marketBrief || project;
   el("briefCountry").value = countryNames[brief.targetCountry] || brief.targetCountry || "";
   el("briefAudience").value = brief.audience || "";
+  el("briefAspect").value = preferredAspectRatio(project);
   el("headerExportButton").disabled = project.status !== "export";
 
   renderAssets();
@@ -192,6 +226,9 @@ export function fillReviewForm(analysis) {
   ].filter(Boolean).join("\n");
   form.elements.must_keep.value = listText(lock.must_keep);
   form.elements.must_not_change.value = listText(lock.must_not_change);
+  if (form.elements.output_aspect_ratio) {
+    form.elements.output_aspect_ratio.value = preferredAspectRatio(state.project);
+  }
   el("analysisMode").textContent = analysis?.mode === "api"
     ? "AI 识别 · 待审核"
     : "演示识别 · 请修改";
@@ -204,9 +241,12 @@ export function fillReviewForm(analysis) {
 export function analysisFromForm() {
   const form = el("reviewForm");
   const previous = state.project.visionAnalysis || {};
+  const outputAspectRatio = form.elements.output_aspect_ratio?.value || "9:16";
   const toeAndLace = lines(form.elements.toe_and_lace.value);
   const sole = lines(form.elements.sole_structure.value);
   const sideAndHeel = lines(form.elements.side_and_heel.value);
+  saveProjectPreferences(state.project, { outputAspectRatio });
+  el("briefAspect").value = outputAspectRatio;
 
   return {
     ...previous,

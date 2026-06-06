@@ -31,6 +31,32 @@ export async function openProject(projectId) {
   renderProjectList();
 }
 
+export async function deleteProject(projectId) {
+  const project = state.projects.find((item) => item.id === projectId);
+  const label = project?.name || "这个项目";
+  if (!window.confirm(`删除“${label}”？`)) return;
+
+  try {
+    await api(`/api/projects/${encodeURIComponent(projectId)}`, { method: "DELETE" });
+    const wasCurrentProject = state.project?.id === projectId;
+    await loadProjects();
+    if (wasCurrentProject) {
+      if (state.projects.length) {
+        await openProject(state.projects[0].id);
+      } else {
+        state.project = null;
+        state.viewStatus = null;
+        el("workspace").classList.add("hidden");
+        el("emptyScreen").classList.remove("hidden");
+        renderProjectList();
+      }
+    }
+    showToast("项目已删除。");
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
