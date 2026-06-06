@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jike072-collab/codex_sp/schemas/studio-project.schema.json",
+  "title": "Shoe Ad Studio Project",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "targetCountry",
+    "audience",
+    "status",
+    "createdAt",
+    "updatedAt",
+    "assets"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9-]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "targetCountry": {
+      "type": "string",
+      "minLength": 1
+    },
+    "audience": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "assets",
+        "analyzing",
+        "review",
+        "market",
+        "script",
+        "visual",
+        "export"
+      ]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "storedName", "mimeType", "hash", "size", "url"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string", "minLength": 1 },
+          "storedName": { "type": "string", "minLength": 1 },
+          "mimeType": { "enum": ["image/jpeg", "image/png", "image/webp"] },
+          "hash": { "type": "string", "minLength": 1 },
+          "size": { "type": "integer", "minimum": 1 },
+          "url": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": true
+      }
+    },
+    "visionAnalysis": {
+      "type": ["object", "null"]
+    },
+    "reviewConfirmedAt": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "marketBrief": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/marketBrief" }
+      ]
+    },
+    "marketConfirmedAt": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    }
+  },
+  "$defs": {
+    "marketBrief": {
+      "type": "object",
+      "required": [
+        "targetCountry",
+        "audience",
+        "creativeTheme",
+        "coreMessage",
+        "tone"
+      ],
+      "properties": {
+        "targetCountry": { "type": "string", "minLength": 1 },
+        "audience": { "type": "string", "minLength": 1 },
+        "creativeTheme": {
+          "enum": [
+            "city-motion",
+            "daily-comfort",
+            "performance-detail",
+            "street-style"
+          ]
+        },
+        "coreMessage": { "type": "string", "minLength": 1 },
+        "tone": {
+          "enum": ["energetic", "clean", "warm", "bold"]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}
+

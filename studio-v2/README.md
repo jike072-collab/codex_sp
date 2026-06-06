@@ -43,3 +43,13 @@ VISION_MODEL_API_KEY=your_key
 - `src/storage/`：项目和图片持久化
 
 并行任务和文件所有权见 `../docs/TASKS.md`。
+
+## 测试
+
+安装 Node.js LTS 后，在项目根目录运行：
+
+```powershell
+node --test .\studio-v2\tests\*.test.mjs
+```
+
+测试使用系统临时目录，不会修改 `studio-v2/data/` 中的个人项目。

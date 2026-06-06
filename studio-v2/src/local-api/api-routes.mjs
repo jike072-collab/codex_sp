@@ -9,6 +9,13 @@ import {
 } from "../storage/project-repository.mjs";
 import { cleanString } from "../workflow-domain/value-normalizers.mjs";
 import { analyzeProject, sanitizeAnalysis } from "../ai-providers/vision-provider.mjs";
+import { DomainError } from "../workflow-domain/domain-error.mjs";
+import { confirmMarketBrief } from "../workflow-domain/market-brief.mjs";
+import { confirmProductReview } from "../workflow-domain/product-review.mjs";
+import {
+  assertProjectStage,
+  transitionProject
+} from "../workflow-domain/project-workflow.mjs";
 
 export async function handleApi(request, response, url) {
   if (request.method === "GET" && url.pathname === "/api/projects") {
@@ -28,13 +35,17 @@ export async function handleApi(request, response, url) {
       updatedAt: now,
       assets: [],
       visionAnalysis: null,
-      reviewConfirmedAt: null
+      reviewConfirmedAt: null,
+      marketBrief: null,
+      marketConfirmedAt: null
     };
     await saveProject(project);
     return sendJson(response, 201, { project });
   }
 
-  const match = url.pathname.match(/^\/api\/projects\/([a-z0-9-]+)(?:\/(assets|analyze|review))?$/i);
+  const match = url.pathname.match(
+    /^\/api\/projects\/([a-z0-9-]+)(?:\/(assets|analyze|review|market))?$/i
+  );
   if (!match) return false;
 
   const [, projectId, action] = match;
@@ -46,26 +57,35 @@ export async function handleApi(request, response, url) {
   }
 
   if (request.method === "POST" && action === "assets") {
+    assertProjectStage(project, "assets", "添加商品素材");
     const body = await readJsonBody(request);
     const files = Array.isArray(body.files) ? body.files : [];
-    if (!files.length) throw new Error("请选择至少一张鞋子图片。");
+    if (!files.length) {
+      throw new DomainError("请选择至少一张鞋子图片。", {
+        code: "ASSET_REQUIRED"
+      });
+    }
     await storeProjectAssets(project, files);
-    project.status = project.assets.length ? "assets" : project.status;
     await saveProject(project);
     return sendJson(response, 200, { project });
   }
 
   if (request.method === "POST" && action === "analyze") {
-    if (!project.assets.length) throw new Error("请先上传鞋子图片。");
-    project.status = "analyzing";
+    assertProjectStage(project, "assets", "识别商品");
+    if (!project.assets.length) {
+      throw new DomainError("请先上传鞋子图片。", {
+        code: "ASSET_REQUIRED"
+      });
+    }
+    transitionProject(project, "analyzing");
     await saveProject(project);
     try {
       project.visionAnalysis = sanitizeAnalysis(await analyzeProject(project));
-      project.status = "review";
+      transitionProject(project, "review");
       await saveProject(project);
       return sendJson(response, 200, { project });
     } catch (error) {
-      project.status = "assets";
+      transitionProject(project, "assets");
       await saveProject(project);
       throw error;
     }
@@ -73,9 +93,15 @@ export async function handleApi(request, response, url) {
 
   if (request.method === "POST" && action === "review") {
     const body = await readJsonBody(request);
-    project.visionAnalysis = sanitizeAnalysis(body.visionAnalysis || {});
-    project.status = "market";
-    project.reviewConfirmedAt = new Date().toISOString();
+    const visionAnalysis = sanitizeAnalysis(body.visionAnalysis || {});
+    confirmProductReview(project, visionAnalysis);
+    await saveProject(project);
+    return sendJson(response, 200, { project });
+  }
+
+  if (request.method === "POST" && action === "market") {
+    const body = await readJsonBody(request);
+    confirmMarketBrief(project, body.marketBrief);
     await saveProject(project);
     return sendJson(response, 200, { project });
   }

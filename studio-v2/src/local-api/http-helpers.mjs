@@ -1,3 +1,5 @@
+import { DomainError } from "../workflow-domain/domain-error.mjs";
+
 export function sendJson(response, status, value) {
   const body = JSON.stringify(value);
   response.writeHead(status, {
@@ -20,9 +22,20 @@ export async function readJsonBody(request, maxBytes = 30 * 1024 * 1024) {
   let size = 0;
   for await (const chunk of request) {
     size += chunk.length;
-    if (size > maxBytes) throw new Error("请求内容过大，请减少图片数量或压缩图片。");
+    if (size > maxBytes) {
+      throw new DomainError("请求内容过大，请减少图片数量或压缩图片。", {
+        code: "REQUEST_TOO_LARGE",
+        statusCode: 413
+      });
+    }
     chunks.push(chunk);
   }
   if (!chunks.length) return {};
-  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  } catch {
+    throw new DomainError("请求 JSON 格式无效。", {
+      code: "INVALID_JSON"
+    });
+  }
 }
