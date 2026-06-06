@@ -8,7 +8,7 @@ existing project workflow routes. Provider selection is entirely server-side.
 - Workflow route: `POST /api/projects/:projectId/analyze`
 - Provider: Right Code OpenAI-compatible draw endpoint
 - Default endpoint: `https://www.right.codes/draw/v1/chat/completions`
-- Default model: `gpt-5.4-mini`
+- Default model: `gemini-2.5-flash`
 - Authentication: `Authorization: Bearer <VISION_MODEL_API_KEY>`
 - No usable key: deterministic demo analysis
 - Failure code: `VISION_PROVIDER_ERROR`

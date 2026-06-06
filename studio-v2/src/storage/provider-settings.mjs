@@ -71,7 +71,7 @@ export async function readProviderSettings() {
     providers: {
       vision: {
         provider: "Right Code",
-        model: env.VISION_MODEL || "gpt-5.4-mini",
+        model: env.VISION_MODEL || "gemini-2.5-flash",
         apiUrl: env.VISION_API_URL
           || "https://www.right.codes/draw/v1/chat/completions",
         configured: hasUsableApiKey(env.VISION_MODEL_API_KEY)
