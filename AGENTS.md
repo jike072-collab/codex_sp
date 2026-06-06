@@ -2,6 +2,7 @@
 
 Read these files before editing:
 
+- `CODEX_RUNBOOK.md`
 - `CURRENT_ASSIGNMENTS.md`
 - `docs/ARCHITECTURE.md`
 - `docs/PARALLEL-WORK.md`
