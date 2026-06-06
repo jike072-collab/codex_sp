@@ -40,8 +40,10 @@ Owns:
 ```text
 docs/contracts/**
 schemas/**
+prompts/**
 studio-v2/src/workflow-domain/**
 studio-v2/src/local-api/**
+studio-v2/src/ai-providers/**
 studio-v2/src/storage/**
 studio-v2/tests/**
 studio-v2/server.mjs
@@ -54,6 +56,7 @@ Responsibilities:
 - Freeze shared contracts before frontend depends on them.
 - Implement project status transitions and validation.
 - Implement local API endpoints.
+- Implement vision, text, and image provider adapters after their contracts are frozen.
 - Maintain storage safety and persisted project shape.
 - Run backend, domain, API, and final integration tests.
 - Integrate Codex B's frontend branch into `main`.

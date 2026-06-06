@@ -14,6 +14,10 @@ main
 
 - `studio-v2/src/workflow-domain/**`
 - `studio-v2/src/local-api/**`
+- `studio-v2/src/ai-providers/**`
+- `studio-v2/src/storage/**`
+- `studio-v2/tests/**`
+- `prompts/**`
 - `schemas/**`
 - 跨模块接口契约
 - 合并、回归测试与 GitHub 主分支
@@ -25,7 +29,8 @@ main
 3. [完成] 定义合法项目状态转换。
 4. [完成] 冻结脚本、视觉与导出接口契约。
 5. [完成] 实现无 Key 的后端演示闭环。
-6. [进行中] 检查并集成 Codex B 的前端分支。
+6. [完成] 检查并集成 Codex B 的前端分支。
+7. [完成] 接入 Right Code GPT-5.4 mini 识图、DeepSeek V4 Pro 脚本和 Right Code gpt-image-2 图片生成。
 
 ## Codex B：完整闭环前端（另一个 Codex）
 
@@ -64,4 +69,4 @@ docs/contracts/demo-loop-api.md
 
 ## 尚未启动
 
-真实文本模型、真实图片模型、Storage 增强和批量任务暂不分配。
+Storage 增强和批量任务暂不分配。

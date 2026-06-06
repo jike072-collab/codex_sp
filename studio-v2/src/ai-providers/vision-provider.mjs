@@ -3,6 +3,13 @@ import { join } from "node:path";
 
 import { loadEnv, projectRoot, uploadsRoot } from "../config.mjs";
 import { cleanString, normalizeList } from "../workflow-domain/value-normalizers.mjs";
+import {
+  extractJsonObject,
+  hasUsableApiKey,
+  positiveInteger,
+  postProviderJson,
+  ProviderError
+} from "./provider-utils.mjs";
 
 function demoAnalysis(project) {
   return {
@@ -47,25 +54,14 @@ function demoAnalysis(project) {
   };
 }
 
-function extractJson(text) {
-  const trimmed = text.trim().replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    const start = trimmed.indexOf("{");
-    const end = trimmed.lastIndexOf("}");
-    if (start >= 0 && end > start) return JSON.parse(trimmed.slice(start, end + 1));
-    throw new Error("视觉模型没有返回有效 JSON。");
-  }
-}
-
-export async function analyzeProject(project) {
+export async function analyzeProject(project, { fetchImpl = fetch } = {}) {
   const env = await loadEnv();
   const key = env.VISION_MODEL_API_KEY;
-  const apiUrl = env.VISION_API_URL || "https://api.openai.com/v1/chat/completions";
+  const apiUrl = env.VISION_API_URL
+    || "https://www.right.codes/draw/v1/chat/completions";
   const model = env.VISION_MODEL || "gpt-5.4-mini";
 
-  if (!key || key === "replace_me") return demoAnalysis(project);
+  if (!hasUsableApiKey(key)) return demoAnalysis(project);
 
   const systemPrompt = await readFile(
     join(projectRoot, "prompts", "00_vision_analysis.system.md"),
@@ -79,15 +75,17 @@ export async function analyzeProject(project) {
     };
   }));
 
-  const apiResponse = await fetch(apiUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`
-    },
-    body: JSON.stringify({
+  const payload = await postProviderJson({
+    url: apiUrl,
+    apiKey: key,
+    timeoutMs: positiveInteger(env.VISION_TIMEOUT_MS, 120000),
+    providerLabel: "Right Code 识图模型",
+    errorCode: "VISION_PROVIDER_ERROR",
+    fetchImpl,
+    body: {
       model,
       temperature: 0.1,
+      stream: false,
       messages: [
         { role: "system", content: systemPrompt },
         {
@@ -101,18 +99,16 @@ export async function analyzeProject(project) {
           ]
         }
       ]
-    })
+    }
   });
 
-  if (!apiResponse.ok) {
-    const message = await apiResponse.text();
-    throw new Error(`视觉模型调用失败（${apiResponse.status}）：${message.slice(0, 300)}`);
-  }
-
-  const payload = await apiResponse.json();
   const content = payload?.choices?.[0]?.message?.content;
-  if (!content) throw new Error("视觉模型响应中没有可用内容。");
-  return { mode: "api", ...extractJson(content) };
+  if (!content) {
+    throw new ProviderError("Right Code 识图模型响应中没有可用内容。", {
+      code: "VISION_PROVIDER_ERROR"
+    });
+  }
+  return { mode: "api", ...extractJsonObject(content, "Right Code 识图模型") };
 }
 
 export function sanitizeAnalysis(input) {

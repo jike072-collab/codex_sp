@@ -36,6 +36,8 @@ before(async () => {
   dataRoot = await mkdtemp(join(tmpdir(), "shoe-ad-studio-loop-"));
   process.env.STUDIO_DATA_ROOT = dataRoot;
   process.env.VISION_MODEL_API_KEY = "replace_me";
+  process.env.TEXT_MODEL_API_KEY = "replace_me";
+  process.env.IMAGE_MODEL_API_KEY = "replace_me";
 
   const repository = await import("../src/storage/project-repository.mjs");
   const { createRequestHandler } = await import("../src/local-api/request-handler.mjs");

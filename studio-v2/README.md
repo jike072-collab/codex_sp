@@ -10,8 +10,8 @@
 4. 人工编辑产品锁定信息
 5. 确认并保存审核结果
 6. 保存市场创意
-7. 生成并编辑 20 秒演示脚本
-8. 生成四条视觉提示词和两个 Flow Omni 包
+7. 使用 DeepSeek 或演示模式生成并编辑 20 秒脚本
+8. 生成四条视觉提示词，并可调用 gpt-image-2 生成图片
 9. 下载不包含本地路径的 JSON 交付包
 
 ## 启动
@@ -32,11 +32,21 @@ http://127.0.0.1:8810
 
 ```env
 VISION_MODEL=gpt-5.4-mini
-VISION_API_URL=https://api.openai.com/v1/chat/completions
-VISION_MODEL_API_KEY=your_key
+VISION_API_URL=https://www.right.codes/draw/v1/chat/completions
+VISION_MODEL_API_KEY=your_right_code_key
+
+TEXT_MODEL=deepseek-v4-pro
+TEXT_API_URL=https://api.deepseek.com/chat/completions
+TEXT_MODEL_API_KEY=your_deepseek_key
+
+IMAGE_MODEL=gpt-image-2
+IMAGE_API_URL=https://www.right.codes/draw/v1/images/generations
+IMAGE_MODEL_API_KEY=your_right_code_key
 ```
 
-如果没有配置可用 Key，点击识别会返回明确标记为演示数据的结果，方便先验证工作流。
+Right Code 的识图和图片生成可以使用同一个 Key。没有配置某类可用 Key
+时，该阶段会使用明确标记的演示模式；已经配置 Key 但供应商调用失败时，
+服务会返回错误，不会伪装成真实生成成功。
 
 ## 模块边界
 

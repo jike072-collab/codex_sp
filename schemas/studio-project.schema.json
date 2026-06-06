@@ -235,7 +235,18 @@
         "aspect_ratio": { "enum": ["16:9", "9:16"] },
         "prompt": { "type": "string", "minLength": 1 },
         "negative_prompt": { "type": "string", "minLength": 1 },
-        "reference_policy": { "type": "string", "minLength": 1 }
+        "reference_policy": { "type": "string", "minLength": 1 },
+        "generated_image": {
+          "type": "object",
+          "required": ["provider", "model", "url", "size"],
+          "properties": {
+            "provider": { "type": "string", "minLength": 1 },
+            "model": { "type": "string", "minLength": 1 },
+            "url": { "type": "string", "minLength": 1 },
+            "size": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        }
       }
     },
     "imagePackage": {
