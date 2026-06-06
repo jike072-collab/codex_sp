@@ -1,0 +1,44 @@
+name: Feature request
+description: Propose a focused improvement to the local production workflow.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the user problem before proposing an implementation.
+      placeholder: When producing an ad package, I need to...
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What observable result would make this request complete?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and module impact
+      description: Identify likely module owners and any interfaces that may change.
+      placeholder: workflow-domain contract change consumed by frontend and local-api
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Note current workarounds or simpler options.
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints
+      options:
+        - label: The proposal preserves local-first operation.
+          required: true
+        - label: The proposal does not require committing secrets, uploads, or generated output.
+          required: true
+

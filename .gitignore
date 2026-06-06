@@ -1,0 +1,28 @@
+# Local secrets. Keep checked-in templates and examples.
+.env
+.env.*
+!.env.example
+!.env.*.example
+!*.env.example
+!*.example
+
+# Local application state and generated artifacts.
+/studio-v2/data/
+outputs/
+input_files/
+reference_examples/
+web-preview.png
+
+# Logs and process state.
+logs/
+*.log
+*.pid
+.*.pid
+.web-server.url
+
+# Common local/editor noise.
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+node_modules/

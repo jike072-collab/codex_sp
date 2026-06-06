@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a reproducible defect in the studio or workflow.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to provide a focused bug report.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong, and what did you expect instead?
+      placeholder: A short description of the defect and expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the smallest reliable sequence that triggers the problem.
+      placeholder: |
+        1. Start the local studio...
+        2. Create a project...
+        3. Observe...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, runtime version, browser, and relevant configuration with secrets removed.
+      placeholder: Windows 11, Node.js 22, Edge 138, mock provider mode
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs or screenshots
+      description: Attach useful evidence. Remove API keys, uploaded customer assets, and other sensitive data.
+  - type: textarea
+    id: scope
+    attributes:
+      label: Suspected module
+      description: If known, name the affected module from docs/ARCHITECTURE.md.
+      placeholder: frontend, local-api, workflow-domain, ai-providers, storage, or tests
+

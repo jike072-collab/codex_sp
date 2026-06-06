@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Shoe Ad Studio</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">S</span>
+        <div>
+          <strong>Shoe Ad Studio</strong>
+          <small>本地创意工作台</small>
+        </div>
+      </div>
+
+      <button class="new-project-button" id="newProjectButton" type="button">
+        <span>+</span> 新建广告项目
+      </button>
+
+      <div class="sidebar-label">最近项目</div>
+      <nav class="project-list" id="projectList"></nav>
+
+      <div class="local-note">
+        <span class="status-dot"></span>
+        <div>
+          <strong>本地模式</strong>
+          <small>图片与项目数据保存在这台电脑</small>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="empty-screen" id="emptyScreen">
+        <div class="empty-visual">
+          <span class="shoe-line">01</span>
+          <div class="visual-orbit"></div>
+        </div>
+        <p class="kicker">PERSONAL CREATIVE WORKFLOW</p>
+        <h1>从一双鞋开始，<br>完成一条可控的广告生产链。</h1>
+        <p class="empty-copy">先识别并锁定产品，再进入市场策略、脚本和视觉生成。每一步都可以检查和修改。</p>
+        <button class="primary-button large" id="emptyCreateButton" type="button">创建第一个项目</button>
+      </section>
+
+      <section class="workspace hidden" id="workspace">
+        <header class="workspace-header">
+          <div>
+            <p class="kicker">LOCAL PROJECT</p>
+            <div class="title-row">
+              <h1 id="projectTitle">未命名项目</h1>
+              <span class="project-state" id="projectState">素材准备</span>
+            </div>
+          </div>
+          <div class="header-actions">
+            <span class="save-state" id="saveState">已保存到本机</span>
+            <button class="ghost-button" type="button" disabled>导出项目</button>
+          </div>
+        </header>
+
+        <ol class="stepper" id="stepper">
+          <li data-step="assets"><b>01</b><span>商品素材</span></li>
+          <li data-step="review"><b>02</b><span>产品锁定</span></li>
+          <li data-step="market"><b>03</b><span>市场创意</span></li>
+          <li data-step="script"><b>04</b><span>广告脚本</span></li>
+          <li data-step="visual"><b>05</b><span>视觉资产</span></li>
+          <li data-step="export"><b>06</b><span>交付导出</span></li>
+        </ol>
+
+        <div class="stage-layout">
+          <section class="stage-card">
+            <div class="stage-view" id="assetsStage">
+              <div class="section-heading">
+                <div>
+                  <p class="section-index">STEP 01</p>
+                  <h2>整理商品素材</h2>
+                  <p>上传同一款鞋的多个视角。清晰、完整的参考图会直接影响后续一致性。</p>
+                </div>
+                <span class="requirement">建议 4-8 张</span>
+              </div>
+
+              <button class="drop-zone" id="dropZone" type="button">
+                <span class="upload-icon">↥</span>
+                <strong>拖入鞋子图片，或点击选择</strong>
+                <small>支持 JPG、PNG、WebP；建议包含侧面、正面、后跟、鞋底</small>
+              </button>
+              <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
+
+              <div class="asset-grid" id="assetGrid"></div>
+
+              <div class="stage-actions">
+                <p id="assetHint">至少上传一张图片后才能开始识别。</p>
+                <button class="primary-button" id="analyzeButton" type="button" disabled>识别并锁定产品</button>
+              </div>
+            </div>
+
+            <div class="stage-view hidden" id="reviewStage">
+              <div class="section-heading">
+                <div>
+                  <p class="section-index">STEP 02</p>
+                  <h2>确认产品锁定</h2>
+                  <p>这些信息会约束后续脚本、故事板和关键帧。请把不准确的识别结果直接改掉。</p>
+                </div>
+                <span class="requirement" id="analysisMode">待审核</span>
+              </div>
+
+              <form id="reviewForm">
+                <div class="form-section">
+                  <h3>产品概况</h3>
+                  <div class="form-grid three">
+                    <label><span>鞋款类型</span><input name="shoe_type"></label>
+                    <label><span>可能用途</span><input name="likely_usage"></label>
+                    <label><span>整体风格</span><input name="overall_style"></label>
+                  </div>
+                </div>
+
+                <div class="form-section">
+                  <h3>外观身份</h3>
+                  <div class="form-grid two">
+                    <label><span>主色（逗号分隔）</span><input name="main_colors"></label>
+                    <label><span>辅色（逗号分隔）</span><input name="supporting_colors"></label>
+                    <label><span>鞋面可见材质与纹理</span><textarea name="upper_material_visible"></textarea></label>
+                    <label><span>鞋头与鞋带结构</span><textarea name="toe_and_lace"></textarea></label>
+                    <label><span>中底与外底</span><textarea name="sole_structure"></textarea></label>
+                    <label><span>侧面图案与后跟</span><textarea name="side_and_heel"></textarea></label>
+                  </div>
+                </div>
+
+                <div class="form-section critical">
+                  <div class="form-grid two">
+                    <label>
+                      <span>必须保持 <em>每行一项</em></span>
+                      <textarea class="tall" name="must_keep"></textarea>
+                    </label>
+                    <label>
+                      <span>禁止修改 <em>每行一项</em></span>
+                      <textarea class="tall" name="must_not_change"></textarea>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="quality-note" id="qualityNote"></div>
+
+                <div class="stage-actions">
+                  <button class="text-button" id="backToAssetsButton" type="button">返回素材</button>
+                  <button class="primary-button" type="submit">确认产品锁定</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="stage-view hidden" id="futureStage">
+              <div class="future-content">
+                <p class="section-index">NEXT STAGE</p>
+                <h2>产品身份已经确认</h2>
+                <p>下一阶段将在这里加入目标市场、受众与创意方向。当前项目已经安全保存，可以随时回来继续。</p>
+                <div class="confirmed-card">
+                  <span>✓</span>
+                  <div>
+                    <strong>产品锁定已通过人工审核</strong>
+                    <small id="confirmedTime"></small>
+                  </div>
+                </div>
+                <button class="ghost-button" id="editReviewButton" type="button">重新检查产品锁定</button>
+              </div>
+            </div>
+          </section>
+
+          <aside class="context-panel">
+            <p class="section-index">PROJECT BRIEF</p>
+            <label>
+              <span>项目名称</span>
+              <input id="briefName" readonly>
+            </label>
+            <label>
+              <span>首发市场</span>
+              <input id="briefCountry" readonly>
+            </label>
+            <label>
+              <span>目标人群</span>
+              <textarea id="briefAudience" readonly></textarea>
+            </label>
+            <div class="context-rule"></div>
+            <h3>这一阶段的完成标准</h3>
+            <ul id="completionList">
+              <li>图片属于同一款鞋</li>
+              <li>关键角度足够清晰</li>
+              <li>产品外观可以稳定锁定</li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="newProjectDialog">
+    <form class="dialog-card" id="newProjectForm">
+      <button class="dialog-close" id="closeDialogButton" type="button" aria-label="关闭">×</button>
+      <p class="kicker">NEW LOCAL PROJECT</p>
+      <h2>创建广告项目</h2>
+      <p>先记录最少的信息。创意细节会在产品识别完成后继续填写。</p>
+      <label><span>项目名称</span><input name="name" placeholder="例如：蓝白跑鞋 · 泰国首发" required autofocus></label>
+      <label>
+        <span>首发市场</span>
+        <select name="targetCountry">
+          <option value="Thailand">泰国</option>
+          <option value="Indonesia">印度尼西亚</option>
+          <option value="Vietnam">越南</option>
+          <option value="Philippines">菲律宾</option>
+          <option value="Malaysia">马来西亚</option>
+          <option value="Singapore">新加坡</option>
+        </select>
+      </label>
+      <label><span>目标人群</span><input name="audience" value="日常运动与通勤人群"></label>
+      <button class="primary-button large" type="submit">创建并上传素材</button>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast"></div>
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>

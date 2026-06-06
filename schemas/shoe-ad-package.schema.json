@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Shoe Ad Image Workflow Package",
+  "type": "object",
+  "required": ["locale_profile", "product_lock_manifest", "script_20s"],
+  "properties": {
+    "locale_profile": {
+      "type": "object",
+      "required": ["target_country", "language"],
+      "properties": {
+        "target_country": { "type": "string" },
+        "language": { "type": "string" },
+        "subtitle_style": { "type": "string" },
+        "voiceover_style": { "type": "string" },
+        "cta_style": { "type": "string" }
+      }
+    },
+    "product_lock_manifest": {
+      "type": "object",
+      "required": ["must_keep", "must_not_change"],
+      "properties": {
+        "shoe_type": { "type": "string" },
+        "main_colors": { "type": "array", "items": { "type": "string" } },
+        "supporting_colors": { "type": "array", "items": { "type": "string" } },
+        "must_keep": { "type": "array", "items": { "type": "string" } },
+        "must_not_change": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "script_20s": {
+      "type": "object",
+      "required": ["total_duration_sec", "segment_a_0_10s", "segment_b_10_20s"],
+      "properties": {
+        "total_duration_sec": { "const": 20 },
+        "segment_a_0_10s": { "$ref": "#/$defs/segment" },
+        "segment_b_10_20s": { "$ref": "#/$defs/segment" }
+      }
+    }
+  },
+  "$defs": {
+    "segment": {
+      "type": "object",
+      "required": ["segment_id", "duration_sec", "shots"],
+      "properties": {
+        "segment_id": { "type": "string" },
+        "theme": { "type": "string" },
+        "duration_sec": { "const": 10 },
+        "shots": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["start_sec", "end_sec", "visual", "localized_caption_or_vo"],
+            "properties": {
+              "start_sec": { "type": "number" },
+              "end_sec": { "type": "number" },
+              "visual": { "type": "string" },
+              "action": { "type": "string" },
+              "camera": { "type": "string" },
+              "selling_point": { "type": "string" },
+              "localized_caption_or_vo": { "type": "string" },
+              "sound": { "type": "string" },
+              "transition": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
