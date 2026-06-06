@@ -262,6 +262,9 @@ button { cursor: pointer; }
 .stepper span { font-size: 12px; font-weight: 750; }
 .stepper li.active { color: var(--ink); border-bottom-color: var(--accent-dark); }
 .stepper li.complete { color: var(--green); }
+.stepper li.available { cursor: pointer; }
+.stepper li.available:hover { color: var(--ink); }
+.stepper li.unavailable { cursor: not-allowed; opacity: 0.58; }
 
 .stage-layout {
   display: grid;
@@ -356,6 +359,9 @@ input, select { height: 42px; padding: 0 11px; }
 textarea { min-height: 84px; padding: 10px 11px; resize: vertical; line-height: 1.5; }
 input:focus, textarea:focus, select:focus { border-color: #7b850f; box-shadow: 0 0 0 3px rgba(221, 255, 63, 0.22); }
 input[readonly], textarea[readonly] { color: #5c625a; background: #f4f4ef; }
+.readonly-stage { position: relative; }
+.readonly-stage button, .readonly-stage select { cursor: not-allowed; }
+.readonly-stage select { color: #5c625a; background: #f4f4ef; }
 
 .context-rule { height: 1px; margin: 24px 0; background: var(--line); }
 .context-panel h3, .form-section h3 { margin: 0 0 14px; font-size: 13px; }

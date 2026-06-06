@@ -18,6 +18,22 @@ import {
   renderMarketProductSummary
 } from "./market.js";
 
+const STAGE_ORDER = ["assets", "review", "market", "script", "visual", "export"];
+
+function viewStatus() {
+  if (!state.project) return "assets";
+  if (!state.viewStatus) state.viewStatus = state.project.status;
+  return state.viewStatus;
+}
+
+function isStageReached(step) {
+  if (!state.project) return false;
+  const currentStatus = state.project.status === "analyzing" ? "assets" : state.project.status;
+  const current = STAGE_ORDER.indexOf(currentStatus);
+  const target = STAGE_ORDER.indexOf(step);
+  return target >= 0 && target <= current;
+}
+
 export function renderProjectList() {
   const container = el("projectList");
   if (!state.projects.length) {
@@ -36,9 +52,13 @@ export function renderProjectList() {
 export function renderWorkspace() {
   const project = state.project;
   if (!project) return;
+  const activeStatus = viewStatus();
+  const isReviewingPast = activeStatus !== project.status;
 
   el("projectTitle").textContent = project.name;
-  el("projectState").textContent = statusLabel(project.status);
+  el("projectState").textContent = isReviewingPast
+    ? `${statusLabel(project.status)} · 回看${statusLabel(activeStatus)}`
+    : statusLabel(project.status);
   el("briefName").value = project.name;
   const brief = project.marketBrief || project;
   el("briefCountry").value = countryNames[brief.targetCountry] || brief.targetCountry || "";
@@ -46,35 +66,46 @@ export function renderWorkspace() {
   el("headerExportButton").disabled = project.status !== "export";
 
   renderAssets();
-  renderStepper();
-  renderCompletionList(project.status);
+  renderStepper(activeStatus);
+  renderCompletionList(activeStatus);
 
-  el("assetsStage").classList.toggle("hidden", !["assets", "analyzing"].includes(project.status));
-  el("reviewStage").classList.toggle("hidden", project.status !== "review");
-  el("marketStage").classList.toggle("hidden", project.status !== "market");
-  el("scriptStage").classList.toggle("hidden", project.status !== "script");
-  el("visualStage").classList.toggle("hidden", project.status !== "visual");
-  el("exportStage").classList.toggle("hidden", project.status !== "export");
+  el("assetsStage").classList.toggle("hidden", !["assets", "analyzing"].includes(activeStatus));
+  el("reviewStage").classList.toggle("hidden", activeStatus !== "review");
+  el("marketStage").classList.toggle("hidden", activeStatus !== "market");
+  el("scriptStage").classList.toggle("hidden", activeStatus !== "script");
+  el("visualStage").classList.toggle("hidden", activeStatus !== "visual");
+  el("exportStage").classList.toggle("hidden", activeStatus !== "export");
 
-  if (project.status === "review") fillReviewForm(project.visionAnalysis);
-  if (project.status === "market") {
+  if (activeStatus === "review") fillReviewForm(project.visionAnalysis);
+  if (activeStatus === "market") {
     fillMarketForm(project);
     renderMarketProductSummary(project);
   }
-  if (project.status === "script") renderScriptStage(project);
-  if (project.status === "visual") renderVisualStage(project);
-  if (project.status === "export") renderExportStage(project);
+  if (activeStatus === "script") renderScriptStage(project);
+  if (activeStatus === "visual") renderVisualStage(project);
+  if (activeStatus === "export") renderExportStage(project);
   if (project.reviewConfirmedAt) {
     el("confirmedTime").textContent = `确认时间：${formatTime(project.reviewConfirmedAt)}`;
   }
+
+  lockStageForReview(isReviewingPast);
+  el("saveState").textContent = isReviewingPast
+    ? `正在回看：${statusLabel(activeStatus)}`
+    : "已保存到本机";
 }
 
-export function renderStepper() {
-  const order = ["assets", "review", "market", "script", "visual", "export"];
-  const current = Math.max(0, order.indexOf(state.project.status));
+export function renderStepper(activeStatus = viewStatus()) {
+  const current = Math.max(0, STAGE_ORDER.indexOf(state.project.status));
+  const active = Math.max(0, STAGE_ORDER.indexOf(activeStatus));
   document.querySelectorAll("#stepper li").forEach((item, index) => {
-    item.classList.toggle("active", index === current);
+    const reached = index <= current;
+    item.classList.toggle("active", index === active);
     item.classList.toggle("complete", index < current);
+    item.classList.toggle("available", reached);
+    item.classList.toggle("unavailable", !reached);
+    item.setAttribute("role", "button");
+    item.setAttribute("tabindex", reached ? "0" : "-1");
+    item.setAttribute("aria-disabled", reached ? "false" : "true");
   });
 }
 
@@ -90,6 +121,36 @@ export function renderAssets() {
     ? `已上传 ${assets.length} 张图片。确认都属于同一款鞋后开始识别。`
     : "至少上传一张图片后才能开始识别。";
   el("analyzeButton").disabled = state.busy || !assets.length;
+}
+
+export function canViewStep(step) {
+  return isStageReached(step);
+}
+
+function lockStageForReview(value) {
+  document.querySelectorAll(".stage-view.readonly-stage").forEach((stage) => {
+    stage.classList.remove("readonly-stage");
+  });
+  document.querySelectorAll("[data-review-locked='true']").forEach((control) => {
+    if ("disabled" in control) control.disabled = control.dataset.wasDisabled === "true";
+    if ("readOnly" in control) control.readOnly = control.dataset.wasReadonly === "true";
+    delete control.dataset.reviewLocked;
+    delete control.dataset.wasDisabled;
+    delete control.dataset.wasReadonly;
+  });
+
+  if (!value) return;
+  const visibleStage = document.querySelector(".stage-card .stage-view:not(.hidden)");
+  if (!visibleStage) return;
+
+  visibleStage.classList.add("readonly-stage");
+  visibleStage.querySelectorAll("button, input, textarea, select").forEach((control) => {
+    control.dataset.reviewLocked = "true";
+    control.dataset.wasDisabled = String(control.disabled);
+    control.dataset.wasReadonly = String(control.readOnly);
+    if ("disabled" in control) control.disabled = true;
+    if ("readOnly" in control) control.readOnly = true;
+  });
 }
 
 function renderCompletionList(status) {

@@ -13,7 +13,7 @@ import {
   saveMarketBrief,
   uploadFiles
 } from "./projects.js";
-import { renderWorkspace } from "./render.js";
+import { canViewStep, renderWorkspace } from "./render.js";
 
 function wireEvents() {
   const openDialog = () => el("newProjectDialog").showModal();
@@ -26,14 +26,34 @@ function wireEvents() {
   el("analyzeButton").addEventListener("click", analyze);
 
   el("backToAssetsButton").addEventListener("click", () => {
-    state.project.status = "assets";
+    state.viewStatus = "assets";
     renderWorkspace();
   });
   el("editReviewButton").addEventListener("click", () => {
-    state.project.status = "review";
+    state.viewStatus = "review";
     renderWorkspace();
   });
   el("headerExportButton").addEventListener("click", downloadExportPackage);
+
+  el("stepper").addEventListener("click", (event) => {
+    const item = event.target.closest("[data-step]");
+    if (!item) return;
+    const step = item.dataset.step;
+    if (!canViewStep(step)) {
+      showToast("这一步还没有生成内容。");
+      return;
+    }
+    state.viewStatus = step;
+    renderWorkspace();
+  });
+
+  el("stepper").addEventListener("keydown", (event) => {
+    if (!["Enter", " "].includes(event.key)) return;
+    const item = event.target.closest("[data-step]");
+    if (!item) return;
+    event.preventDefault();
+    item.click();
+  });
 
   el("workspace").addEventListener("submit", (event) => {
     if (event.target.id === "scriptForm") confirmScript(event);
@@ -53,7 +73,7 @@ function wireEvents() {
 
     const actions = {
       "edit-market": () => {
-        state.project.status = "market";
+        state.viewStatus = "market";
         renderWorkspace();
       },
       "generate-script": () => generateScript(),

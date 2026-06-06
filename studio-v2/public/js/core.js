@@ -1,6 +1,7 @@
 export const state = {
   projects: [],
   project: null,
+  viewStatus: null,
   busy: false
 };
 
@@ -75,4 +76,3 @@ export function valueAt(object, path, fallback = "") {
 export function lines(value) {
   return String(value || "").split(/\r?\n|,/).map((item) => item.trim()).filter(Boolean);
 }
-

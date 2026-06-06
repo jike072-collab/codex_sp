@@ -24,6 +24,7 @@ export async function loadProjects() {
 export async function openProject(projectId) {
   const data = await api(`/api/projects/${encodeURIComponent(projectId)}`);
   state.project = data.project;
+  state.viewStatus = data.project.status;
   el("emptyScreen").classList.add("hidden");
   el("workspace").classList.remove("hidden");
   renderWorkspace();
@@ -62,6 +63,7 @@ export async function uploadFiles(fileList) {
       body: JSON.stringify(payload)
     });
     state.project = data.project;
+    state.viewStatus = data.project.status;
     renderWorkspace();
     await loadProjects();
     showToast(`已保存 ${files.length} 张图片。`);
@@ -77,6 +79,7 @@ export async function analyze() {
   try {
     const data = await api(`/api/projects/${state.project.id}/analyze`, { method: "POST" });
     state.project = data.project;
+    state.viewStatus = data.project.status;
     renderWorkspace();
     await loadProjects();
     showToast(data.project.visionAnalysis?.mode === "api"
@@ -117,6 +120,7 @@ export async function confirmReview(event) {
       body: JSON.stringify({ visionAnalysis: analysisFromForm() })
     });
     state.project = data.project;
+    state.viewStatus = data.project.status;
     renderWorkspace();
     await loadProjects();
     showToast("产品锁定已确认。");
@@ -145,6 +149,7 @@ export async function saveMarketBrief(event) {
       body: JSON.stringify({ marketBrief })
     });
     state.project = data.project;
+    state.viewStatus = data.project.status;
     renderWorkspace();
     await loadProjects();
     showToast("市场创意已保存。");
@@ -164,6 +169,7 @@ export async function generateScript() {
       body: JSON.stringify({})
     });
     state.project = data.project;
+    state.viewStatus = data.project.status;
     renderWorkspace();
     await loadProjects();
     showToast("演示脚本已生成。");
@@ -192,6 +198,7 @@ export async function confirmScript(event) {
       body: JSON.stringify({ planningPackage })
     });
     state.project = data.project;
+    state.viewStatus = data.project.status;
     renderWorkspace();
     await loadProjects();
     showToast("广告脚本已确认。");
@@ -211,6 +218,7 @@ export async function generateVisual() {
       body: JSON.stringify({})
     });
     state.project = data.project;
+    state.viewStatus = data.project.status;
     renderWorkspace();
     await loadProjects();
     showToast("视觉提示词已生成。");
