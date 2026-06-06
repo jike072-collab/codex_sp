@@ -32,7 +32,7 @@ main
 6. [完成] 检查并集成 Codex B 的前端分支。
 7. [完成] 接入 Right Code Gemini 2.5 Flash 识图、DeepSeek V4 Pro 脚本和 Right Code gpt-image-2 图片生成。
 8. [完成] 实现项目删除与本地 API Key 设置接口，并集成前端入口。
-9. [进行中] 拆分识图与生图 API Key 配置，保持三个 provider 独立。
+9. [完成] 拆分识图与生图 API Key 配置，保持三个 provider 独立。
 
 ## Codex B：完整闭环前端（另一个 Codex）
 
