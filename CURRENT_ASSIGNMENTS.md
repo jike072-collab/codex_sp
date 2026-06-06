@@ -25,7 +25,7 @@ main
 3. [完成] 定义合法项目状态转换。
 4. [进行中] 集成 Codex B 的前端分支。
 
-## Codex B：市场创意前端（另一个 Codex）
+## Codex B：完整闭环前端（另一个 Codex）
 
 分支：
 
@@ -53,6 +53,13 @@ tasks/codex-frontend-market-step.md
 
 完成后提交到自己的分支，不直接合并 `main`。
 
+当前任务包括市场创意、脚本编辑、视觉提示词展示和 JSON 导出。完整接口见：
+
+```text
+docs/contracts/market-creative-api.md
+docs/contracts/demo-loop-api.md
+```
+
 ## 尚未启动
 
-AI Provider、Storage 和 Tests 任务暂不分配。等市场创意步骤合并后再开启，避免第一轮并行范围过大。
+真实文本模型、真实图片模型、Storage 增强和批量任务暂不分配。
