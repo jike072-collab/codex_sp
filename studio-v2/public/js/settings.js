@@ -43,7 +43,7 @@ export async function refreshProviderSettings() {
 export async function openProviderSettings() {
   resetSensitiveFields();
   renderLoadingState();
-  el("apiSettingsNote").textContent = "留空不会覆盖当前配置；勾选清除会删除对应的本地 Key。";
+  el("apiSettingsNote").textContent = "留空不会覆盖当前配置；识图和图片当前同属 Right Code，本地会同步保存。";
   el("apiSettingsDialog").showModal();
 
   try {

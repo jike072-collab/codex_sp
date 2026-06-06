@@ -236,6 +236,62 @@ export async function confirmScript(event) {
   }
 }
 
+export async function confirmScriptAndGenerateVisual() {
+  const planningPackage = planningPackageFromForm();
+  const validationMessage = validatePlanningPackage(planningPackage);
+  if (validationMessage) {
+    el("scriptHint").textContent = validationMessage;
+    showToast(validationMessage);
+    return;
+  }
+
+  setWorkflowBusy(
+    true,
+    "confirmAndGenerateButton",
+    "正在生成故事版图片...",
+    "确认脚本并生成故事版图片"
+  );
+  let scriptConfirmed = false;
+  try {
+    const confirmed = await api(`/api/projects/${encodeURIComponent(state.project.id)}/script/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ planningPackage })
+    });
+    state.project = confirmed.project;
+    state.viewStatus = "visual";
+    scriptConfirmed = true;
+    renderWorkspace();
+    await loadProjects();
+
+    const visual = await api(`/api/projects/${encodeURIComponent(state.project.id)}/visual/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({})
+    });
+    state.project = visual.project;
+    state.viewStatus = "visual";
+    renderWorkspace();
+    await loadProjects();
+    showToast("故事版图片已生成。");
+  } catch (error) {
+    if (scriptConfirmed) {
+      state.viewStatus = "visual";
+      renderWorkspace();
+      showToast(`脚本已确认，图片生成失败：${error.message}`);
+    } else {
+      showToast(error.message);
+    }
+  } finally {
+    setWorkflowBusy(
+      false,
+      "confirmAndGenerateButton",
+      "正在生成故事版图片...",
+      "确认脚本并生成故事版图片"
+    );
+  }
+}
+
 export async function generateVisual() {
   setWorkflowBusy(true, "generateVisualButton", "正在生成故事版图片...", "生成故事版图片");
   try {
@@ -245,7 +301,7 @@ export async function generateVisual() {
       body: JSON.stringify({})
     });
     state.project = data.project;
-    state.viewStatus = data.project.status;
+    state.viewStatus = "visual";
     renderWorkspace();
     await loadProjects();
     showToast("故事版图片已生成。");

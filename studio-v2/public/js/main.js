@@ -4,6 +4,7 @@ import {
   analyze,
   confirmReview,
   confirmScript,
+  confirmScriptAndGenerateVisual,
   createProject,
   deleteProject,
   downloadExportPackage,
@@ -87,6 +88,7 @@ function wireEvents() {
         state.viewStatus = "market";
         renderWorkspace();
       },
+      "confirm-and-generate-visual": () => confirmScriptAndGenerateVisual(),
       "generate-script": () => generateScript(),
       "generate-visual": () => generateVisual(),
       "download-export": () => downloadExportPackage()

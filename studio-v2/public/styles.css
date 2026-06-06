@@ -321,7 +321,7 @@ button { cursor: pointer; }
 }
 
 .stage-card { min-height: 610px; padding: 30px; }
-.context-panel { padding: 25px; }
+.context-panel { padding: 22px; }
 
 .section-heading {
   display: flex;
@@ -694,14 +694,57 @@ input[readonly], textarea[readonly] { color: #5c625a; background: #f4f4ef; }
 .compact-shot { padding: 12px; }
 .shot-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 13px; color: var(--muted); font-size: 11px; }
 .shot-meta strong { color: var(--green); font-size: 12px; }
-.script-field-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-}
-.script-field-grid textarea {
-  min-height: 58px;
+.shot-summary-box {
+  min-height: 150px;
   font-size: 12px;
+}
+
+.storage-settings {
+  margin-bottom: 14px;
+  padding: 16px;
+  background: #f7f7f1;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.generated-image-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.generated-image-card {
+  overflow: hidden;
+  background: #f7f7f1;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.generated-image-preview {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  color: var(--muted);
+  font-weight: 800;
+  background: #ebede5;
+}
+
+.generated-image-preview img {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+}
+
+.generated-image-card pre {
+  max-height: 190px;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  color: #30352d;
+  font: 11px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  background: #fff;
 }
 
 .package-grid {
@@ -836,8 +879,7 @@ dialog::backdrop { background: rgba(14, 16, 13, 0.66); backdrop-filter: blur(5px
 
 @media (max-width: 1200px) {
   .stage-layout { grid-template-columns: 1fr; }
-  .context-panel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-  .context-panel .section-index, .context-rule, .context-panel h3, .context-panel ul { display: none; }
+  .context-panel { display: block; }
   .context-panel label + label { margin-top: 0; }
   .market-summary dl { grid-template-columns: repeat(3, 1fr); }
   .tone-grid { grid-template-columns: repeat(2, 1fr); }
@@ -845,6 +887,6 @@ dialog::backdrop { background: rgba(14, 16, 13, 0.66); backdrop-filter: blur(5px
   .setup-grid, .creative-setup, .lock-summary { grid-template-columns: 1fr; }
   .choice-grid.compact, .tone-grid.compact { grid-template-columns: repeat(2, 1fr); }
   .market-brief-strip { grid-template-columns: repeat(3, 1fr); }
-  .script-field-grid { grid-template-columns: repeat(2, 1fr); }
+  .generated-image-grid { grid-template-columns: 1fr; }
   .workflow-panel { display: grid; }
 }

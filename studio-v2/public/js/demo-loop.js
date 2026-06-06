@@ -36,6 +36,24 @@ function prettyJson(value) {
   return JSON.stringify(value || {}, null, 2);
 }
 
+function shotSummaryText(shot) {
+  return SHOT_FIELDS.map(([field, label]) => `${label}：${shot[field] || ""}`).join("\n");
+}
+
+function parseShotSummary(value, previousShot) {
+  const nextShot = { ...previousShot };
+  const lines = String(value || "").split(/\r?\n/);
+  for (const [field, label] of SHOT_FIELDS) {
+    const prefix = `${label}：`;
+    const line = lines.find((item) => item.trim().startsWith(prefix));
+    if (line) nextShot[field] = clean(line.slice(prefix.length));
+  }
+  if (!lines.some((line) => line.includes("："))) {
+    nextShot.visual = clean(value) || nextShot.visual;
+  }
+  return nextShot;
+}
+
 function marketTitle(project) {
   const brief = project.marketBrief || {};
   const country = countryNames[brief.targetCountry] || brief.targetCountry || "目标市场";
@@ -50,16 +68,9 @@ function renderShotEditor(segmentKey, shot, shotIndex) {
         <strong>${escapeHtml(shot.start_sec)}-${escapeHtml(shot.end_sec)}s</strong>
         <span>镜头 ${shotIndex + 1}</span>
       </div>
-      <div class="script-field-grid">
-        ${SHOT_FIELDS.map(([field, label]) => `
-          <label>
-            <span>${escapeHtml(label)}</span>
-            <textarea data-segment="${escapeHtml(segmentKey)}"
-              data-shot-index="${shotIndex}"
-              data-field="${escapeHtml(field)}">${escapeHtml(shot[field] || "")}</textarea>
-          </label>
-        `).join("")}
-      </div>
+      <textarea class="shot-summary-box" data-segment="${escapeHtml(segmentKey)}"
+        data-shot-index="${shotIndex}"
+        data-shot-summary="true">${escapeHtml(shotSummaryText(shot))}</textarea>
     </article>
   `;
 }
@@ -133,8 +144,9 @@ function renderScriptEditor(project) {
       <div class="stage-actions">
         <button class="text-button" type="button" data-action="edit-market">返回市场创意</button>
         <div class="action-cluster">
-          <p id="scriptHint">确认后进入视觉资产阶段。</p>
-          <button class="primary-button" id="confirmScriptButton" type="submit">确认脚本</button>
+          <p id="scriptHint">确认后直接生成故事版图片。</p>
+          <button class="primary-button" id="confirmAndGenerateButton" type="button"
+            data-action="confirm-and-generate-visual">确认脚本并生成故事版图片</button>
         </div>
       </div>
     </form>
@@ -158,14 +170,10 @@ export function planningPackageFromForm(project = state.project) {
     const themeInput = document.querySelector(`[data-segment="${segmentKey}"][data-field="theme"]`);
     segment.theme = clean(themeInput?.value);
     segment.shots = segment.shots.map((shot, shotIndex) => {
-      const nextShot = { ...shot };
-      for (const [field] of SHOT_FIELDS) {
-        const fieldInput = document.querySelector(
-          `[data-segment="${segmentKey}"][data-shot-index="${shotIndex}"][data-field="${field}"]`
-        );
-        nextShot[field] = clean(fieldInput?.value);
-      }
-      return nextShot;
+      const summaryInput = document.querySelector(
+        `[data-segment="${segmentKey}"][data-shot-index="${shotIndex}"][data-shot-summary="true"]`
+      );
+      return parseShotSummary(summaryInput?.value, shot);
     });
   }
   return planning;
@@ -190,11 +198,16 @@ export function validatePlanningPackage(planning) {
 export function renderVisualStage(project = state.project) {
   const container = el("visualStageContent");
   if (!container || !project) return;
+  const imageItems = project.imagePackage?.image_generation || [];
+  if (imageItems.length) {
+    container.innerHTML = renderGeneratedVisuals(project, imageItems);
+    return;
+  }
   container.innerHTML = `
     <div class="future-content">
       <p class="section-index">STEP 05</p>
-      <h2>生成故事版图片</h2>
-      <p>脚本已经确认，可以生成对应的故事版图、关键帧提示词和两段 Flow Omni 手动包。</p>
+      <h2>等待故事版图片</h2>
+      <p>脚本已经确认。也可以在这里补生成故事版图、关键帧提示词和两段 Flow Omni 手动包。</p>
       <div class="confirmed-card">
         <span>✓</span>
         <div>
@@ -203,6 +216,51 @@ export function renderVisualStage(project = state.project) {
         </div>
       </div>
       <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">生成故事版图片</button>
+    </div>
+  `;
+}
+
+function renderGeneratedVisuals(project, imageItems) {
+  return `
+    <div class="section-heading">
+      <div>
+        <p class="section-index">STEP 05</p>
+        <h2>故事版图片</h2>
+        <p>这里查看已经生成的故事版图、关键帧和对应提示词。</p>
+      </div>
+      <span class="requirement">${escapeHtml(imageItems.length)} 张/组</span>
+    </div>
+    <section class="form-section storage-settings">
+      <h3>图片储存设置</h3>
+      <div class="form-grid two">
+        <label>
+          <span>保存位置</span>
+          <select>
+            <option>本地项目目录</option>
+            <option>稍后手动保存</option>
+          </select>
+        </label>
+        <label>
+          <span>文件命名</span>
+          <input value="${escapeHtml(project.name)} · 分镜图片" readonly>
+        </label>
+      </div>
+    </section>
+    <div class="generated-image-grid">
+      ${imageItems.map((item, index) => `
+        <article class="generated-image-card">
+          <div class="generated-image-preview">
+            ${item.generated_image?.url
+              ? `<img src="${escapeHtml(item.generated_image.url)}" alt="${escapeHtml(item.asset_id)}">`
+              : `<span>${escapeHtml(item.aspect_ratio || "")}</span>`}
+          </div>
+          <div class="copy-header">
+            <strong>${escapeHtml(item.asset_id)}</strong>
+            <button class="ghost-button small" type="button" data-copy-target="visualPrompt${index}">复制提示词</button>
+          </div>
+          <pre id="visualPrompt${index}">${escapeHtml(prettyJson(item))}</pre>
+        </article>
+      `).join("")}
     </div>
   `;
 }

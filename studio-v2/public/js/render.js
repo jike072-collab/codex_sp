@@ -70,9 +70,12 @@ export function renderWorkspace() {
     ? `${statusLabel(project.status)} · 回看${statusLabel(activeStatus)}`
     : statusLabel(project.status);
   const setup = projectSetup(project);
-  el("briefCountry").value = countryNames[setup.targetCountry] || setup.targetCountry || "";
-  el("briefAudience").value = setup.audience || "";
-  el("briefAspect").value = setup.outputAspectRatio;
+  const briefCountry = el("briefCountry");
+  const briefAudience = el("briefAudience");
+  const briefAspect = el("briefAspect");
+  if (briefCountry) briefCountry.value = countryNames[setup.targetCountry] || setup.targetCountry || "";
+  if (briefAudience) briefAudience.value = setup.audience || "";
+  if (briefAspect) briefAspect.value = setup.outputAspectRatio;
   el("headerExportButton").disabled = project.status !== "export";
 
   renderAssets();
@@ -293,9 +296,12 @@ export function analysisFromForm() {
     creativeTheme,
     tone
   });
-  el("briefCountry").value = countryNames[targetCountry] || targetCountry;
-  el("briefAudience").value = audience;
-  el("briefAspect").value = outputAspectRatio;
+  const briefCountry = el("briefCountry");
+  const briefAudience = el("briefAudience");
+  const briefAspect = el("briefAspect");
+  if (briefCountry) briefCountry.value = countryNames[targetCountry] || targetCountry;
+  if (briefAudience) briefAudience.value = audience;
+  if (briefAspect) briefAspect.value = outputAspectRatio;
 
   return {
     ...previous,
