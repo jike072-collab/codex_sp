@@ -1,11 +1,17 @@
 import {
+  aspectRatioOptions,
+  creativeThemeOptions,
   countryNames,
   el,
   escapeHtml,
   formatTime,
   lines,
+  marketCountryOptions,
+  projectSetup,
+  saveProjectPreferences,
   state,
   statusLabel,
+  toneOptions,
   valueAt
 } from "./core.js";
 import {
@@ -19,35 +25,6 @@ import {
 } from "./market.js";
 
 const STAGE_ORDER = ["assets", "review", "market", "script", "visual", "export"];
-const ASPECT_RATIOS = new Set(["9:16", "1:1", "4:5", "16:9"]);
-
-function preferenceKey(projectId) {
-  return `shoe-ad-studio:${projectId}:preferences`;
-}
-
-function readProjectPreferences(project = state.project) {
-  if (!project?.id) return {};
-  try {
-    return JSON.parse(window.localStorage.getItem(preferenceKey(project.id)) || "{}");
-  } catch {
-    return {};
-  }
-}
-
-function saveProjectPreferences(project = state.project, updates = {}) {
-  if (!project?.id) return;
-  const next = { ...readProjectPreferences(project), ...updates };
-  try {
-    window.localStorage.setItem(preferenceKey(project.id), JSON.stringify(next));
-  } catch {
-    // Local preference storage is optional; the workflow should keep running.
-  }
-}
-
-function preferredAspectRatio(project = state.project) {
-  const saved = readProjectPreferences(project).outputAspectRatio;
-  return ASPECT_RATIOS.has(saved) ? saved : "9:16";
-}
 
 function viewStatus() {
   if (!state.project) return "assets";
@@ -92,11 +69,10 @@ export function renderWorkspace() {
   el("projectState").textContent = isReviewingPast
     ? `${statusLabel(project.status)} · 回看${statusLabel(activeStatus)}`
     : statusLabel(project.status);
-  el("briefName").value = project.name;
-  const brief = project.marketBrief || project;
-  el("briefCountry").value = countryNames[brief.targetCountry] || brief.targetCountry || "";
-  el("briefAudience").value = brief.audience || "";
-  el("briefAspect").value = preferredAspectRatio(project);
+  const setup = projectSetup(project);
+  el("briefCountry").value = countryNames[setup.targetCountry] || setup.targetCountry || "";
+  el("briefAudience").value = setup.audience || "";
+  el("briefAspect").value = setup.outputAspectRatio;
   el("headerExportButton").disabled = project.status !== "export";
 
   renderAssets();
@@ -205,9 +181,62 @@ function listText(value) {
   return Array.isArray(value) ? value.join("\n") : "";
 }
 
+function displayValue(value) {
+  if (Array.isArray(value)) return value.length ? value.join("、") : "未识别";
+  return value || "未识别";
+}
+
+function optionLabels(options, selectedValue) {
+  return options.map(([value, label, description]) => `
+    <label class="choice-card compact-choice">
+      <input type="radio" name="${options === creativeThemeOptions ? "creativeTheme" : "tone"}"
+        value="${escapeHtml(value)}" ${value === selectedValue ? "checked" : ""}>
+      <span>
+        <strong>${escapeHtml(label)}</strong>
+        ${description ? `<small>${escapeHtml(description)}</small>` : ""}
+      </span>
+    </label>
+  `).join("");
+}
+
+function aspectLabels(selectedValue) {
+  return aspectRatioOptions.map(([value, label]) => `
+    <label class="aspect-option" title="${escapeHtml(label)}">
+      <input type="radio" name="output_aspect_ratio"
+        value="${escapeHtml(value)}" ${value === selectedValue ? "checked" : ""}>
+      <span class="aspect-icon" style="--ratio:${escapeHtml(value.replace(":", " / "))}"></span>
+      <b>${escapeHtml(value)}</b>
+      <small>${escapeHtml(label)}</small>
+    </label>
+  `).join("");
+}
+
+function renderAutoAnalysisSummary(analysis) {
+  const lock = analysis?.product_lock_manifest || {};
+  const rows = [
+    ["鞋款", valueAt(analysis, "product_summary.shoe_type")],
+    ["用途", valueAt(analysis, "product_summary.likely_usage.value")],
+    ["风格", valueAt(analysis, "product_summary.overall_style")],
+    ["颜色", displayValue(lock.main_colors)],
+    ["材质", lock.upper_material_visible],
+    ["鞋底", [lock.midsole_shape, lock.outsole_color, lock.outsole_pattern].filter(Boolean).join("；")]
+  ];
+  return `
+    <div class="auto-analysis-grid">
+      ${rows.map(([label, value]) => `
+        <div>
+          <dt>${escapeHtml(label)}</dt>
+          <dd>${escapeHtml(displayValue(value))}</dd>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
 export function fillReviewForm(analysis) {
   const form = el("reviewForm");
   const lock = analysis?.product_lock_manifest || {};
+  const setup = projectSetup(state.project);
   form.elements.shoe_type.value = valueAt(analysis, "product_summary.shoe_type");
   form.elements.likely_usage.value = valueAt(analysis, "product_summary.likely_usage.value");
   form.elements.overall_style.value = valueAt(analysis, "product_summary.overall_style");
@@ -226,9 +255,17 @@ export function fillReviewForm(analysis) {
   ].filter(Boolean).join("\n");
   form.elements.must_keep.value = listText(lock.must_keep);
   form.elements.must_not_change.value = listText(lock.must_not_change);
-  if (form.elements.output_aspect_ratio) {
-    form.elements.output_aspect_ratio.value = preferredAspectRatio(state.project);
-  }
+  el("countryOptions").innerHTML = marketCountryOptions.map(([value, label]) => `
+    <option value="${escapeHtml(value)}">${escapeHtml(label)}</option>
+  `).join("");
+  form.elements.targetCountry.value = setup.targetCountry;
+  form.elements.audience.value = setup.audience;
+  el("aspectOptions").innerHTML = aspectLabels(setup.outputAspectRatio);
+  el("creativeThemeOptions").innerHTML = optionLabels(creativeThemeOptions, setup.creativeTheme);
+  el("toneOptions").innerHTML = optionLabels(toneOptions, setup.tone);
+  el("autoAnalysisSummary").innerHTML = renderAutoAnalysisSummary(analysis);
+  el("mustKeepPreview").textContent = displayValue(lock.must_keep);
+  el("mustNotChangePreview").textContent = displayValue(lock.must_not_change);
   el("analysisMode").textContent = analysis?.mode === "api"
     ? "AI 识别 · 待审核"
     : "演示识别 · 请修改";
@@ -241,11 +278,23 @@ export function fillReviewForm(analysis) {
 export function analysisFromForm() {
   const form = el("reviewForm");
   const previous = state.project.visionAnalysis || {};
+  const targetCountry = form.elements.targetCountry?.value || "Thailand";
+  const audience = form.elements.audience?.value || "日常运动与通勤人群";
   const outputAspectRatio = form.elements.output_aspect_ratio?.value || "9:16";
+  const creativeTheme = form.elements.creativeTheme?.value || "city-motion";
+  const tone = form.elements.tone?.value || "energetic";
   const toeAndLace = lines(form.elements.toe_and_lace.value);
   const sole = lines(form.elements.sole_structure.value);
   const sideAndHeel = lines(form.elements.side_and_heel.value);
-  saveProjectPreferences(state.project, { outputAspectRatio });
+  saveProjectPreferences(state.project, {
+    targetCountry,
+    audience,
+    outputAspectRatio,
+    creativeTheme,
+    tone
+  });
+  el("briefCountry").value = countryNames[targetCountry] || targetCountry;
+  el("briefAudience").value = audience;
   el("briefAspect").value = outputAspectRatio;
 
   return {

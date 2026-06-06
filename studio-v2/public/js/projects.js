@@ -237,7 +237,7 @@ export async function confirmScript(event) {
 }
 
 export async function generateVisual() {
-  setWorkflowBusy(true, "generateVisualButton", "正在生成视觉提示词...", "生成视觉提示词");
+  setWorkflowBusy(true, "generateVisualButton", "正在生成故事版图片...", "生成故事版图片");
   try {
     const data = await api(`/api/projects/${encodeURIComponent(state.project.id)}/visual/generate`, {
       method: "POST",
@@ -248,11 +248,11 @@ export async function generateVisual() {
     state.viewStatus = data.project.status;
     renderWorkspace();
     await loadProjects();
-    showToast("视觉提示词已生成。");
+    showToast("故事版图片已生成。");
   } catch (error) {
     showToast(error.message);
   } finally {
-    setWorkflowBusy(false, "generateVisualButton", "正在生成视觉提示词...", "生成视觉提示词");
+    setWorkflowBusy(false, "generateVisualButton", "正在生成故事版图片...", "生成故事版图片");
   }
 }
 
