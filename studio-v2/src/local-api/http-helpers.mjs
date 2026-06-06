@@ -9,6 +9,16 @@ export function sendJson(response, status, value) {
   response.end(body);
 }
 
+export function sendJsonDownload(response, value, filename) {
+  const body = JSON.stringify(value, null, 2);
+  response.writeHead(200, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Content-Disposition": `attachment; filename="${filename}"`,
+    "Content-Length": Buffer.byteLength(body)
+  });
+  response.end(body);
+}
+
 export function sendText(response, status, text, contentType = "text/plain; charset=utf-8") {
   response.writeHead(status, {
     "Content-Type": contentType,

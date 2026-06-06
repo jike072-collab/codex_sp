@@ -9,6 +9,8 @@ import {
   assertProjectStage,
   transitionProject
 } from "../src/workflow-domain/project-workflow.mjs";
+import { generateDemoPlanningPackage } from "../src/workflow-domain/demo-script.mjs";
+import { normalizeConfirmedPlanningPackage } from "../src/workflow-domain/script-review.mjs";
 
 const validBrief = {
   targetCountry: " Thailand ",
@@ -77,3 +79,28 @@ test("confirmMarketBrief requires a confirmed product review", () => {
   );
 });
 
+test("script confirmation cannot drop confirmed product lock rules", () => {
+  const project = {
+    status: "script",
+    reviewConfirmedAt: "2026-06-06T00:00:00.000Z",
+    marketConfirmedAt: "2026-06-06T00:30:00.000Z",
+    marketBrief: validBrief,
+    visionAnalysis: {
+      product_lock_manifest: {
+        must_keep: ["exact silhouette"],
+        must_not_change: ["do not change color"]
+      },
+      visible_selling_point_candidates: []
+    }
+  };
+  const planning = generateDemoPlanningPackage(project);
+  planning.product_lock_manifest.must_keep = [];
+
+  assert.throws(
+    () => normalizeConfirmedPlanningPackage(
+      planning,
+      project.visionAnalysis.product_lock_manifest
+    ),
+    (error) => error.code === "INVALID_SCRIPT"
+  );
+});

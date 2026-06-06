@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { readJsonBody, sendJson } from "./http-helpers.mjs";
+import { readJsonBody, sendJson, sendJsonDownload } from "./http-helpers.mjs";
 import {
   listProjects,
   readProject,
@@ -16,6 +16,10 @@ import {
   assertProjectStage,
   transitionProject
 } from "../workflow-domain/project-workflow.mjs";
+import { generateProjectDemoScript } from "../workflow-domain/demo-script.mjs";
+import { confirmPlanningPackage } from "../workflow-domain/script-review.mjs";
+import { generateVisualPackage } from "../workflow-domain/visual-package.mjs";
+import { buildExportPackage } from "../workflow-domain/export-package.mjs";
 
 export async function handleApi(request, response, url) {
   if (request.method === "GET" && url.pathname === "/api/projects") {
@@ -37,15 +41,19 @@ export async function handleApi(request, response, url) {
       visionAnalysis: null,
       reviewConfirmedAt: null,
       marketBrief: null,
-      marketConfirmedAt: null
+      marketConfirmedAt: null,
+      planningPackage: null,
+      scriptGeneratedAt: null,
+      scriptConfirmedAt: null,
+      imagePackage: null,
+      manualOmniPackages: [],
+      visualGeneratedAt: null
     };
     await saveProject(project);
     return sendJson(response, 201, { project });
   }
 
-  const match = url.pathname.match(
-    /^\/api\/projects\/([a-z0-9-]+)(?:\/(assets|analyze|review|market))?$/i
-  );
+  const match = url.pathname.match(/^\/api\/projects\/([a-z0-9-]+)(?:\/(.+))?$/i);
   if (!match) return false;
 
   const [, projectId, action] = match;
@@ -104,6 +112,30 @@ export async function handleApi(request, response, url) {
     confirmMarketBrief(project, body.marketBrief);
     await saveProject(project);
     return sendJson(response, 200, { project });
+  }
+
+  if (request.method === "POST" && action === "script/generate") {
+    generateProjectDemoScript(project);
+    await saveProject(project);
+    return sendJson(response, 200, { project });
+  }
+
+  if (request.method === "POST" && action === "script/confirm") {
+    const body = await readJsonBody(request);
+    confirmPlanningPackage(project, body.planningPackage);
+    await saveProject(project);
+    return sendJson(response, 200, { project });
+  }
+
+  if (request.method === "POST" && action === "visual/generate") {
+    generateVisualPackage(project);
+    await saveProject(project);
+    return sendJson(response, 200, { project });
+  }
+
+  if (request.method === "GET" && action === "export") {
+    const exportPackage = buildExportPackage(project);
+    return sendJsonDownload(response, exportPackage, `shoe-ad-${project.id}.json`);
   }
 
   return sendJson(response, 405, { error: "不支持的操作。" });

@@ -39,9 +39,18 @@ export async function listProjects() {
   );
   return projects
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-    .map(({ visionAnalysis, ...project }) => ({
+    .map(({
+      visionAnalysis,
+      planningPackage,
+      imagePackage,
+      manualOmniPackages,
+      ...project
+    }) => ({
       ...project,
-      hasAnalysis: Boolean(visionAnalysis)
+      hasAnalysis: Boolean(visionAnalysis),
+      hasPlanningPackage: Boolean(planningPackage),
+      hasImagePackage: Boolean(imagePackage),
+      omniPackageCount: Array.isArray(manualOmniPackages) ? manualOmniPackages.length : 0
     }));
 }
 

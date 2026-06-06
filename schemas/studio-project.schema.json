@@ -82,6 +82,35 @@
     "marketConfirmedAt": {
       "type": ["string", "null"],
       "format": "date-time"
+    },
+    "planningPackage": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/planningPackage" }
+      ]
+    },
+    "scriptGeneratedAt": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "scriptConfirmedAt": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "imagePackage": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/imagePackage" }
+      ]
+    },
+    "manualOmniPackages": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/manualOmniPackage" },
+      "maxItems": 2
+    },
+    "visualGeneratedAt": {
+      "type": ["string", "null"],
+      "format": "date-time"
     }
   },
   "$defs": {
@@ -111,8 +140,147 @@
         }
       },
       "additionalProperties": false
+    },
+    "shot": {
+      "type": "object",
+      "required": [
+        "start_sec",
+        "end_sec",
+        "visual",
+        "action",
+        "camera",
+        "selling_point",
+        "localized_caption_or_vo",
+        "sound",
+        "transition"
+      ],
+      "properties": {
+        "start_sec": { "type": "number" },
+        "end_sec": { "type": "number" },
+        "visual": { "type": "string", "minLength": 1 },
+        "action": { "type": "string", "minLength": 1 },
+        "camera": { "type": "string", "minLength": 1 },
+        "selling_point": { "type": "string", "minLength": 1 },
+        "localized_caption_or_vo": { "type": "string", "minLength": 1 },
+        "sound": { "type": "string", "minLength": 1 },
+        "transition": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "scriptSegment": {
+      "type": "object",
+      "required": ["segment_id", "theme", "duration_sec", "shots"],
+      "properties": {
+        "segment_id": { "enum": ["0-10s", "10-20s"] },
+        "theme": { "type": "string", "minLength": 1 },
+        "duration_sec": { "const": 10 },
+        "shots": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/shot" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "planningPackage": {
+      "type": "object",
+      "required": [
+        "mode",
+        "locale_profile",
+        "product_lock_manifest",
+        "selling_points",
+        "creative_direction",
+        "script_20s",
+        "localized_copy",
+        "confirmation_summary"
+      ],
+      "properties": {
+        "mode": { "type": "string" },
+        "locale_profile": { "type": "object" },
+        "product_lock_manifest": { "type": "object" },
+        "selling_points": { "type": "array" },
+        "creative_direction": { "type": "object" },
+        "script_20s": {
+          "type": "object",
+          "required": [
+            "total_duration_sec",
+            "segment_a_0_10s",
+            "segment_b_10_20s"
+          ],
+          "properties": {
+            "total_duration_sec": { "const": 20 },
+            "segment_a_0_10s": { "$ref": "#/$defs/scriptSegment" },
+            "segment_b_10_20s": { "$ref": "#/$defs/scriptSegment" }
+          }
+        },
+        "localized_copy": { "type": "object" },
+        "confirmation_summary": { "type": "object" }
+      }
+    },
+    "imageGenerationItem": {
+      "type": "object",
+      "required": [
+        "asset_id",
+        "segment_id",
+        "type",
+        "aspect_ratio",
+        "prompt",
+        "negative_prompt",
+        "reference_policy"
+      ],
+      "properties": {
+        "asset_id": { "type": "string", "minLength": 1 },
+        "segment_id": { "enum": ["0-10s", "10-20s"] },
+        "type": { "enum": ["storyboard_board", "video_keyframe"] },
+        "aspect_ratio": { "enum": ["16:9", "9:16"] },
+        "prompt": { "type": "string", "minLength": 1 },
+        "negative_prompt": { "type": "string", "minLength": 1 },
+        "reference_policy": { "type": "string", "minLength": 1 }
+      }
+    },
+    "imagePackage": {
+      "type": "object",
+      "required": [
+        "mode",
+        "storyboard_plan",
+        "image_generation",
+        "qc_checklist"
+      ],
+      "properties": {
+        "mode": { "type": "string" },
+        "storyboard_plan": { "type": "object" },
+        "image_generation": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": { "$ref": "#/$defs/imageGenerationItem" }
+        },
+        "qc_checklist": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "manualOmniPackage": {
+      "type": "object",
+      "required": [
+        "segment_id",
+        "upload_references",
+        "script",
+        "flow_omni_prompt",
+        "caption_note"
+      ],
+      "properties": {
+        "segment_id": { "enum": ["0-10s", "10-20s"] },
+        "upload_references": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "script": { "$ref": "#/$defs/scriptSegment" },
+        "flow_omni_prompt": { "type": "string", "minLength": 1 },
+        "caption_note": { "type": "string", "minLength": 1 }
+      }
     }
   },
   "additionalProperties": true
 }
-
