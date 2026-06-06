@@ -1,9 +1,12 @@
 import {
   countryNames,
+  creativeThemeOptions,
   el,
   escapeHtml,
   formatTime,
+  projectSetup,
   state,
+  toneOptions,
   valueAt
 } from "./core.js";
 
@@ -35,12 +38,14 @@ function clean(value) {
 
 function marketDefaults(project) {
   const saved = project.marketBrief || {};
+  const setup = projectSetup(project);
   return {
-    targetCountry: clean(saved.targetCountry) || project.targetCountry || "Thailand",
-    audience: clean(saved.audience) || project.audience || "日常运动与通勤人群",
-    creativeTheme: clean(saved.creativeTheme) || "city-motion",
+    targetCountry: clean(saved.targetCountry) || setup.targetCountry,
+    audience: clean(saved.audience) || setup.audience,
+    creativeTheme: clean(saved.creativeTheme) || setup.creativeTheme,
     coreMessage: clean(saved.coreMessage),
-    tone: clean(saved.tone) || "energetic"
+    tone: clean(saved.tone) || setup.tone,
+    outputAspectRatio: setup.outputAspectRatio
   };
 }
 
@@ -49,10 +54,8 @@ function listValue(value) {
   return "未填写";
 }
 
-function setRadioValue(form, name, value) {
-  const control = form.elements[name];
-  control.value = value;
-  if (!control.value) control.value = name === "tone" ? "energetic" : "city-motion";
+function labelFor(options, value) {
+  return options.find(([itemValue]) => itemValue === value)?.[1] || value;
 }
 
 export function fillMarketForm(project = state.project) {
@@ -60,22 +63,26 @@ export function fillMarketForm(project = state.project) {
   if (!form || !project) return;
 
   const brief = marketDefaults(project);
-  form.elements.targetCountry.value = brief.targetCountry;
-  form.elements.audience.value = brief.audience;
   form.elements.coreMessage.value = brief.coreMessage;
-  setRadioValue(form, "creativeTheme", brief.creativeTheme);
-  setRadioValue(form, "tone", brief.tone);
+  el("marketSetupSummary").innerHTML = `
+    <div><span>国家</span><strong>${escapeHtml(countryNames[brief.targetCountry] || brief.targetCountry)}</strong></div>
+    <div><span>人群</span><strong>${escapeHtml(brief.audience)}</strong></div>
+    <div><span>尺寸</span><strong>${escapeHtml(brief.outputAspectRatio)}</strong></div>
+    <div><span>主题</span><strong>${escapeHtml(labelFor(creativeThemeOptions, brief.creativeTheme))}</strong></div>
+    <div><span>语气</span><strong>${escapeHtml(labelFor(toneOptions, brief.tone))}</strong></div>
+  `;
   el("marketHint").textContent = "保存后进入广告脚本阶段。";
 }
 
 export function marketBriefFromForm() {
   const form = el("marketForm");
+  const setup = projectSetup(state.project);
   return {
-    targetCountry: clean(form.elements.targetCountry.value),
-    audience: clean(form.elements.audience.value),
-    creativeTheme: clean(form.elements.creativeTheme.value),
+    targetCountry: clean(setup.targetCountry),
+    audience: clean(setup.audience),
+    creativeTheme: clean(setup.creativeTheme),
     coreMessage: clean(form.elements.coreMessage.value),
-    tone: clean(form.elements.tone.value)
+    tone: clean(setup.tone)
   };
 }
 

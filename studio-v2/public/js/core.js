@@ -16,6 +16,82 @@ export const countryNames = {
   Singapore: "新加坡"
 };
 
+export const marketCountryOptions = [
+  ["Thailand", "泰国"],
+  ["Vietnam", "越南"],
+  ["Philippines", "菲律宾"],
+  ["Malaysia", "马来西亚"],
+  ["Singapore", "新加坡"]
+];
+
+export const aspectRatioOptions = [
+  ["9:16", "竖屏短视频"],
+  ["16:9", "横版视频"],
+  ["1:1", "方形视频"],
+  ["4:5", "信息流竖图"],
+  ["3:4", "竖版素材"],
+  ["2:3", "商品竖图"]
+];
+
+export const creativeThemeOptions = [
+  ["city-motion", "城市动线", "日常出行、街区移动"],
+  ["daily-comfort", "全天舒适", "通勤、长穿、稳定陪伴"],
+  ["performance-detail", "性能细节", "结构、支撑、鞋底表现"],
+  ["street-style", "街头风格", "造型、色彩、搭配感"]
+];
+
+export const toneOptions = [
+  ["energetic", "有活力"],
+  ["clean", "干净"],
+  ["warm", "温暖"],
+  ["bold", "大胆"]
+];
+
+function preferenceKey(projectId) {
+  return `shoe-ad-studio:${projectId}:preferences`;
+}
+
+export function readProjectPreferences(project = state.project) {
+  if (!project?.id) return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(preferenceKey(project.id)) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+export function saveProjectPreferences(project = state.project, updates = {}) {
+  if (!project?.id) return;
+  const next = { ...readProjectPreferences(project), ...updates };
+  try {
+    window.localStorage.setItem(preferenceKey(project.id), JSON.stringify(next));
+  } catch {
+    // Local preference storage is optional; the workflow should keep running.
+  }
+}
+
+export function projectSetup(project = state.project) {
+  const saved = project?.marketBrief || {};
+  const preferences = readProjectPreferences(project);
+  const targetCountry = saved.targetCountry || preferences.targetCountry || project?.targetCountry || "Thailand";
+  const outputAspectRatio = preferences.outputAspectRatio || "9:16";
+  const creativeTheme = saved.creativeTheme || preferences.creativeTheme || "city-motion";
+  const tone = saved.tone || preferences.tone || "energetic";
+  return {
+    targetCountry: marketCountryOptions.some(([value]) => value === targetCountry)
+      ? targetCountry
+      : "Thailand",
+    audience: saved.audience || preferences.audience || project?.audience || "日常运动与通勤人群",
+    outputAspectRatio: aspectRatioOptions.some(([value]) => value === outputAspectRatio)
+      ? outputAspectRatio
+      : "9:16",
+    creativeTheme: creativeThemeOptions.some(([value]) => value === creativeTheme)
+      ? creativeTheme
+      : "city-motion",
+    tone: toneOptions.some(([value]) => value === tone) ? tone : "energetic"
+  };
+}
+
 export async function api(url, options = {}) {
   const response = await fetch(url, options);
   const payload = await response.json().catch(() => ({}));

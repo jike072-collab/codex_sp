@@ -45,12 +45,12 @@ function marketTitle(project) {
 
 function renderShotEditor(segmentKey, shot, shotIndex) {
   return `
-    <article class="shot-card">
+    <article class="shot-card compact-shot">
       <div class="shot-meta">
         <strong>${escapeHtml(shot.start_sec)}-${escapeHtml(shot.end_sec)}s</strong>
         <span>镜头 ${shotIndex + 1}</span>
       </div>
-      <div class="form-grid two">
+      <div class="script-field-grid">
         ${SHOT_FIELDS.map(([field, label]) => `
           <label>
             <span>${escapeHtml(label)}</span>
@@ -67,7 +67,7 @@ function renderShotEditor(segmentKey, shot, shotIndex) {
 function renderSegmentEditor(segmentKey, segment) {
   const shots = Array.isArray(segment?.shots) ? segment.shots : [];
   return `
-    <section class="segment-card">
+    <section class="segment-card compact-segment">
       <div class="segment-heading">
         <div>
           <p class="section-index">${escapeHtml(segment.segment_id || "")}</p>
@@ -117,7 +117,7 @@ function renderScriptEditor(project) {
       <div>
         <p class="section-index">STEP 04</p>
         <h2>编辑广告脚本</h2>
-        <p>检查 20 秒脚本的每个镜头文本。确认后将进入视觉提示词阶段。</p>
+        <p>快速扫一遍 20 秒脚本。确认后进入故事版图片阶段。</p>
       </div>
       <span class="requirement">20 秒</span>
     </div>
@@ -193,8 +193,8 @@ export function renderVisualStage(project = state.project) {
   container.innerHTML = `
     <div class="future-content">
       <p class="section-index">STEP 05</p>
-      <h2>生成视觉提示词</h2>
-      <p>脚本已经确认，可以生成四条图片提示词和两段 Flow Omni 手动包。</p>
+      <h2>生成故事版图片</h2>
+      <p>脚本已经确认，可以生成对应的故事版图、关键帧提示词和两段 Flow Omni 手动包。</p>
       <div class="confirmed-card">
         <span>✓</span>
         <div>
@@ -202,7 +202,7 @@ export function renderVisualStage(project = state.project) {
           <small>${project.scriptConfirmedAt ? `确认时间：${formatTime(project.scriptConfirmedAt)}` : "脚本已保存。"}</small>
         </div>
       </div>
-      <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">生成视觉提示词</button>
+      <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">生成故事版图片</button>
     </div>
   `;
 }
@@ -230,7 +230,7 @@ export function renderExportStage(project = state.project) {
       <div>
         <p class="section-index">STEP 06</p>
         <h2>交付导出</h2>
-        <p>视觉提示词和 Flow Omni 手动包已经生成，可以复制使用或下载完整 JSON 包。</p>
+        <p>故事版图、关键帧提示词和 Flow Omni 手动包已经生成，可以复制使用或下载完整 JSON 包。</p>
       </div>
       <span class="requirement">${escapeHtml(imageItems.length)} 条提示词</span>
     </div>
@@ -238,7 +238,7 @@ export function renderExportStage(project = state.project) {
       <button class="primary-button" type="button" data-action="download-export">下载 JSON 交付包</button>
     </div>
     <section class="form-section">
-      <h3>视觉提示词</h3>
+      <h3>故事版与关键帧包</h3>
       <div class="package-grid">
         ${imageItems.map((item, index) => copyBlock(
           `promptBlock${index}`,

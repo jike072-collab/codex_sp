@@ -110,64 +110,64 @@
 
               <form id="reviewForm">
                 <div class="form-section">
-                  <h3>产品概况</h3>
-                  <div class="form-grid three">
-                    <label><span>鞋款类型</span><input name="shoe_type" required></label>
-                    <label><span>可能用途</span><input name="likely_usage"></label>
-                    <label><span>整体风格</span><input name="overall_style"></label>
-                  </div>
-                </div>
-
-                <div class="form-section">
-                  <h3>输出尺寸</h3>
-                  <div class="aspect-grid">
-                    <label class="choice-card inline">
-                      <input type="radio" name="output_aspect_ratio" value="9:16" checked>
-                      <span><strong>9:16</strong><small>竖屏短视频</small></span>
+                  <h3>投放设置</h3>
+                  <div class="setup-grid">
+                    <label>
+                      <span>目标国家</span>
+                      <select name="targetCountry" id="countryOptions" required></select>
                     </label>
-                    <label class="choice-card inline">
-                      <input type="radio" name="output_aspect_ratio" value="1:1">
-                      <span><strong>1:1</strong><small>方图素材</small></span>
+                    <label>
+                      <span>目标人群</span>
+                      <input name="audience" required>
                     </label>
-                    <label class="choice-card inline">
-                      <input type="radio" name="output_aspect_ratio" value="4:5">
-                      <span><strong>4:5</strong><small>信息流竖图</small></span>
-                    </label>
-                    <label class="choice-card inline">
-                      <input type="radio" name="output_aspect_ratio" value="16:9">
-                      <span><strong>16:9</strong><small>横版故事板</small></span>
-                    </label>
-                  </div>
-                </div>
-
-                <div class="form-section">
-                  <h3>外观身份</h3>
-                  <div class="form-grid two">
-                    <label><span>主色（逗号分隔）</span><input name="main_colors"></label>
-                    <label><span>鞋面可见材质与纹理</span><textarea name="upper_material_visible"></textarea></label>
-                    <label><span>中底与外底</span><textarea name="sole_structure"></textarea></label>
-                  </div>
-                  <details class="optional-review-details">
-                    <summary>更多识别细节</summary>
-                    <div class="form-grid two">
-                      <label><span>辅色（逗号分隔）</span><input name="supporting_colors"></label>
-                      <label><span>鞋头与鞋带结构</span><textarea name="toe_and_lace"></textarea></label>
-                      <label><span>侧面图案与后跟</span><textarea name="side_and_heel"></textarea></label>
+                    <div>
+                      <span class="field-label">视频尺寸</span>
+                      <div class="aspect-picker" id="aspectOptions"></div>
                     </div>
-                  </details>
+                  </div>
                 </div>
 
-                <div class="form-section critical">
-                  <div class="form-grid two">
-                    <label>
-                      <span>必须保持 <em>每行一项</em></span>
-                      <textarea class="tall" name="must_keep" required></textarea>
-                    </label>
-                    <label>
-                      <span>禁止修改 <em>每行一项</em></span>
-                      <textarea class="tall" name="must_not_change" required></textarea>
-                    </label>
+                <div class="form-section">
+                  <h3>创意方向</h3>
+                  <div class="creative-setup">
+                    <div>
+                      <span class="field-label">创意主题</span>
+                      <div class="choice-grid compact" id="creativeThemeOptions"></div>
+                    </div>
+                    <div>
+                      <span class="field-label">语气</span>
+                      <div class="tone-grid compact" id="toneOptions"></div>
+                    </div>
                   </div>
+                </div>
+
+                <div class="form-section">
+                  <h3>识别结果</h3>
+                  <div class="auto-analysis-panel" id="autoAnalysisSummary"></div>
+                  <div class="lock-summary">
+                    <div>
+                      <span class="field-label">必须保持</span>
+                      <p id="mustKeepPreview"></p>
+                    </div>
+                    <div>
+                      <span class="field-label">禁止修改</span>
+                      <p id="mustNotChangePreview"></p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="hidden" aria-hidden="true">
+                  <input name="shoe_type">
+                  <input name="likely_usage">
+                  <input name="overall_style">
+                  <input name="main_colors">
+                  <input name="supporting_colors">
+                  <textarea name="upper_material_visible"></textarea>
+                  <textarea name="toe_and_lace"></textarea>
+                  <textarea name="sole_structure"></textarea>
+                  <textarea name="side_and_heel"></textarea>
+                  <textarea name="must_keep"></textarea>
+                  <textarea name="must_not_change"></textarea>
                 </div>
 
                 <div class="quality-note" id="qualityNote"></div>
@@ -186,7 +186,7 @@
                   <h2>确定市场创意</h2>
                   <p>把已经确认的产品身份转成面向目标市场的创意 brief。保存后将进入广告脚本阶段。</p>
                 </div>
-                <span class="requirement">5 项必填</span>
+                <span class="requirement">第二步已带入</span>
               </div>
 
               <div class="confirmed-card compact">
@@ -200,59 +200,7 @@
               <div class="market-summary" id="marketProductSummary"></div>
 
               <form id="marketForm" novalidate>
-                <div class="form-section">
-                  <h3>目标设定</h3>
-                  <div class="form-grid two">
-                    <label>
-                      <span>目标国家</span>
-                      <select name="targetCountry" required>
-                        <option value="Thailand">泰国</option>
-                        <option value="Vietnam">越南</option>
-                        <option value="Philippines">菲律宾</option>
-                        <option value="Malaysia">马来西亚</option>
-                        <option value="Singapore">新加坡</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>目标人群</span>
-                      <textarea name="audience" required></textarea>
-                    </label>
-                  </div>
-                </div>
-
-                <div class="form-section">
-                  <h3>创意主题</h3>
-                  <div class="choice-grid">
-                    <label class="choice-card">
-                      <input type="radio" name="creativeTheme" value="city-motion" required>
-                      <span>
-                        <strong>城市动线</strong>
-                        <small>日常出行、街区移动、轻快节奏</small>
-                      </span>
-                    </label>
-                    <label class="choice-card">
-                      <input type="radio" name="creativeTheme" value="daily-comfort" required>
-                      <span>
-                        <strong>全天舒适</strong>
-                        <small>长时间穿着、通勤、稳定陪伴</small>
-                      </span>
-                    </label>
-                    <label class="choice-card">
-                      <input type="radio" name="creativeTheme" value="performance-detail" required>
-                      <span>
-                        <strong>性能细节</strong>
-                        <small>结构特征、支撑感、鞋底表现</small>
-                      </span>
-                    </label>
-                    <label class="choice-card">
-                      <input type="radio" name="creativeTheme" value="street-style" required>
-                      <span>
-                        <strong>街头风格</strong>
-                        <small>造型表达、色彩识别、搭配感</small>
-                      </span>
-                    </label>
-                  </div>
-                </div>
+                <div class="market-brief-strip" id="marketSetupSummary"></div>
 
                 <div class="form-section">
                   <h3>核心信息</h3>
@@ -262,30 +210,8 @@
                   </label>
                 </div>
 
-                <div class="form-section">
-                  <h3>语气</h3>
-                  <div class="tone-grid">
-                    <label class="choice-card inline">
-                      <input type="radio" name="tone" value="energetic" required>
-                      <span><strong>有活力</strong><small>energetic</small></span>
-                    </label>
-                    <label class="choice-card inline">
-                      <input type="radio" name="tone" value="clean" required>
-                      <span><strong>干净</strong><small>clean</small></span>
-                    </label>
-                    <label class="choice-card inline">
-                      <input type="radio" name="tone" value="warm" required>
-                      <span><strong>温暖</strong><small>warm</small></span>
-                    </label>
-                    <label class="choice-card inline">
-                      <input type="radio" name="tone" value="bold" required>
-                      <span><strong>大胆</strong><small>bold</small></span>
-                    </label>
-                  </div>
-                </div>
-
                 <div class="stage-actions">
-                  <button class="text-button" id="editReviewButton" type="button">重新检查产品锁定</button>
+                  <button class="text-button" id="editReviewButton" type="button">返回第二步调整设置</button>
                   <div class="action-cluster">
                     <p id="marketHint">保存后进入广告脚本阶段。</p>
                     <button class="primary-button" id="saveMarketButton" type="submit">保存市场创意</button>
@@ -309,10 +235,6 @@
 
           <aside class="context-panel">
             <p class="section-index">PROJECT BRIEF</p>
-            <label>
-              <span>项目名称</span>
-              <input id="briefName" readonly>
-            </label>
             <label>
               <span>首发市场</span>
               <input id="briefCountry" readonly>
