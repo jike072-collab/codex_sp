@@ -350,26 +350,61 @@
   </dialog>
 
   <dialog id="apiSettingsDialog">
-    <form class="dialog-card api-dialog-card">
+    <form class="dialog-card api-dialog-card" id="apiSettingsForm">
       <button class="dialog-close" id="closeApiSettingsButton" type="button" aria-label="关闭">×</button>
       <p class="kicker">API PROVIDERS</p>
-      <h2>API 接口</h2>
-      <p>模型 Key 只从根目录 .env 或系统环境变量读取；前端不会保存密钥。</p>
+      <h2>API 接口设置</h2>
+      <p>密钥只提交给这台电脑上的本地服务。页面不会读取或保存已有密钥。</p>
       <div class="provider-list">
         <div class="provider-row">
-          <strong>识图</strong>
-          <small>VISION_MODEL_API_KEY · Right Code</small>
+          <div>
+            <strong>识图</strong>
+            <small id="visionProviderDetails">正在读取...</small>
+          </div>
+          <span class="provider-state loading" id="visionProviderState">读取中</span>
         </div>
         <div class="provider-row">
-          <strong>脚本</strong>
-          <small>TEXT_MODEL_API_KEY · DeepSeek</small>
+          <div>
+            <strong>脚本</strong>
+            <small id="textProviderDetails">正在读取...</small>
+          </div>
+          <span class="provider-state loading" id="textProviderState">读取中</span>
         </div>
         <div class="provider-row">
-          <strong>图片</strong>
-          <small>IMAGE_MODEL_API_KEY · Right Code</small>
+          <div>
+            <strong>图片</strong>
+            <small id="imageProviderDetails">正在读取...</small>
+          </div>
+          <span class="provider-state loading" id="imageProviderState">读取中</span>
         </div>
       </div>
-      <p class="api-note">更换 Key 后重启本地服务，已有项目可以继续从当前步骤使用。</p>
+
+      <div class="api-key-fields">
+        <label class="api-key-field">
+          <span>Right Code API Key</span>
+          <input name="rightCodesApiKey" type="password" autocomplete="new-password"
+            placeholder="留空表示不修改">
+          <small>同时用于识图和图片生成。</small>
+        </label>
+        <label class="clear-provider-control">
+          <input name="clearRightCodesApiKey" type="checkbox">
+          <span>清除已保存的 Right Code Key</span>
+        </label>
+
+        <label class="api-key-field">
+          <span>DeepSeek API Key</span>
+          <input name="deepSeekApiKey" type="password" autocomplete="new-password"
+            placeholder="留空表示不修改">
+          <small>用于广告脚本生成。</small>
+        </label>
+        <label class="clear-provider-control">
+          <input name="clearDeepSeekApiKey" type="checkbox">
+          <span>清除已保存的 DeepSeek Key</span>
+        </label>
+      </div>
+
+      <p class="api-note" id="apiSettingsNote">留空不会覆盖当前配置；勾选清除会删除对应的本地 Key。</p>
+      <button class="primary-button large" id="saveApiSettingsButton" type="submit">保存 API 设置</button>
     </form>
   </dialog>
 
