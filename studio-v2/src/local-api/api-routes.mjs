@@ -16,9 +16,9 @@ import {
   assertProjectStage,
   transitionProject
 } from "../workflow-domain/project-workflow.mjs";
-import { generateProjectDemoScript } from "../workflow-domain/demo-script.mjs";
+import { generateProjectScript } from "../ai-providers/text-provider.mjs";
 import { confirmPlanningPackage } from "../workflow-domain/script-review.mjs";
-import { generateVisualPackage } from "../workflow-domain/visual-package.mjs";
+import { generateProjectVisuals } from "../ai-providers/image-provider.mjs";
 import { buildExportPackage } from "../workflow-domain/export-package.mjs";
 
 export async function handleApi(request, response, url) {
@@ -115,7 +115,7 @@ export async function handleApi(request, response, url) {
   }
 
   if (request.method === "POST" && action === "script/generate") {
-    generateProjectDemoScript(project);
+    await generateProjectScript(project);
     await saveProject(project);
     return sendJson(response, 200, { project });
   }
@@ -128,7 +128,7 @@ export async function handleApi(request, response, url) {
   }
 
   if (request.method === "POST" && action === "visual/generate") {
-    generateVisualPackage(project);
+    await generateProjectVisuals(project);
     await saveProject(project);
     return sendJson(response, 200, { project });
   }

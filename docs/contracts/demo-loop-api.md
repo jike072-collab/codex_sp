@@ -48,8 +48,11 @@ Requirements:
 
 Behavior:
 
-- Generate a deterministic local planning package without calling an external model.
-- Repeated calls replace the unconfirmed planning package with the same deterministic result.
+- When `TEXT_MODEL_API_KEY` is configured, generate the planning package through
+  the configured DeepSeek-compatible text provider.
+- Without a usable text key, generate the deterministic local planning package.
+- Repeated demo calls replace the unconfirmed planning package with the same
+  deterministic result. API mode may return different creative wording.
 - Project status remains `script`.
 - Set `scriptGeneratedAt`.
 - Clear `scriptConfirmedAt` when replacing an unconfirmed package.
@@ -173,7 +176,10 @@ Requirements:
 
 Behavior:
 
-- Generate a deterministic local visual package without calling an image model.
+- Always generate the deterministic visual prompt and Flow Omni package first.
+- When `IMAGE_MODEL_API_KEY` is configured and the provider is not `manual`,
+  call the configured image provider once for each of the four prompt entries.
+- Without a usable image key, keep prompt-only demo behavior.
 - Create exactly four `image_generation` entries:
   - `0-10s_storyboard_board`, `16:9`
   - `0-10s_video_keyframe`, `9:16`
@@ -203,6 +209,19 @@ Persisted fields:
       "caption_note": ""
     }
   ]
+}
+```
+
+In API image mode, each `image_generation` item also includes:
+
+```json
+{
+  "generated_image": {
+    "provider": "right_codes",
+    "model": "gpt-image-2",
+    "url": "https://provider.example/generated.png",
+    "size": "1024x1536"
+  }
 }
 ```
 
@@ -265,4 +284,3 @@ Local filesystem paths, stored filenames, hashes, and API credentials must not a
 - `script` with `planningPackage`: show editable script.
 - `visual`: show Generate Visual Prompts.
 - `export`: show prompts, Omni packages, copy actions, and JSON download.
-

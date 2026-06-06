@@ -249,7 +249,15 @@ export function generateDemoPlanningPackage(project) {
 }
 
 export function generateProjectDemoScript(project, generatedAt = new Date().toISOString()) {
-  project.planningPackage = generateDemoPlanningPackage(project);
+  return applyGeneratedPlanningPackage(
+    project,
+    generateDemoPlanningPackage(project),
+    generatedAt
+  );
+}
+
+export function applyGeneratedPlanningPackage(project, planningPackage, generatedAt) {
+  project.planningPackage = planningPackage;
   project.scriptGeneratedAt = generatedAt;
   project.scriptConfirmedAt = null;
   project.imagePackage = null;
