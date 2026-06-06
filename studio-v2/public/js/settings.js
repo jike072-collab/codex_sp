@@ -67,20 +67,20 @@ export async function saveProviderSettings(event) {
   event.preventDefault();
   const form = event.currentTarget;
   const payload = {};
-  const rightCodesApiKey = form.elements.rightCodesApiKey.value.trim();
-  const deepSeekApiKey = form.elements.deepSeekApiKey.value.trim();
+  const providerKeys = [
+    ["visionApiKey", "clearVisionApiKey"],
+    ["deepSeekApiKey", "clearDeepSeekApiKey"],
+    ["imageApiKey", "clearImageApiKey"]
+  ];
 
-  if (form.elements.clearRightCodesApiKey.checked) {
-    payload.rightCodesApiKey = null;
-  } else if (rightCodesApiKey) {
-    payload.rightCodesApiKey = rightCodesApiKey;
-  }
-
-  if (form.elements.clearDeepSeekApiKey.checked) {
-    payload.deepSeekApiKey = null;
-  } else if (deepSeekApiKey) {
-    payload.deepSeekApiKey = deepSeekApiKey;
-  }
+  providerKeys.forEach(([keyName, clearName]) => {
+    const value = form.elements[keyName].value.trim();
+    if (form.elements[clearName].checked) {
+      payload[keyName] = null;
+    } else if (value) {
+      payload[keyName] = value;
+    }
+  });
 
   setFormBusy(true);
   try {

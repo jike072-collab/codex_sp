@@ -9,7 +9,6 @@ export const el = (id) => document.getElementById(id);
 
 export const countryNames = {
   Thailand: "泰国",
-  Indonesia: "印度尼西亚",
   Vietnam: "越南",
   Philippines: "菲律宾",
   Malaysia: "马来西亚",
