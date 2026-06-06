@@ -91,7 +91,8 @@ export async function analyze() {
 
 export async function createProject(event) {
   event.preventDefault();
-  const form = new FormData(event.currentTarget);
+  const formElement = event.currentTarget;
+  const form = new FormData(formElement);
   try {
     const data = await api("/api/projects", {
       method: "POST",
@@ -99,7 +100,7 @@ export async function createProject(event) {
       body: JSON.stringify(Object.fromEntries(form))
     });
     el("newProjectDialog").close();
-    event.currentTarget.reset();
+    formElement.reset();
     await loadProjects();
     await openProject(data.project.id);
   } catch (error) {
