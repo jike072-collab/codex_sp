@@ -30,8 +30,8 @@ main
 4. [完成] 冻结脚本、视觉与导出接口契约。
 5. [完成] 实现无 Key 的后端演示闭环。
 6. [完成] 检查并集成 Codex B 的前端分支。
-7. [完成] 接入 Right Code GPT-5.4 mini 识图、DeepSeek V4 Pro 脚本和 Right Code gpt-image-2 图片生成。
-8. [进行中] 实现项目删除与本地 API Key 设置接口，并集成前端入口。
+7. [完成] 接入 Right Code Gemini 2.5 Flash 识图、DeepSeek V4 Pro 脚本和 Right Code gpt-image-2 图片生成。
+8. [完成] 实现项目删除与本地 API Key 设置接口，并集成前端入口。
 
 ## Codex B：完整闭环前端（另一个 Codex）
 

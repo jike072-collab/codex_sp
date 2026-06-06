@@ -59,7 +59,7 @@ export async function analyzeProject(project, { fetchImpl = fetch } = {}) {
   const key = env.VISION_MODEL_API_KEY;
   const apiUrl = env.VISION_API_URL
     || "https://www.right.codes/draw/v1/chat/completions";
-  const model = env.VISION_MODEL || "gpt-5.4-mini";
+  const model = env.VISION_MODEL || "gemini-2.5-flash";
 
   if (!hasUsableApiKey(key)) return demoAnalysis(project);
 

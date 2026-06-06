@@ -31,7 +31,7 @@ http://127.0.0.1:8810
 数据保存在 `studio-v2/data/`。API 配置继续读取项目根目录的 `.env`：
 
 ```env
-VISION_MODEL=gpt-5.4-mini
+VISION_MODEL=gemini-2.5-flash
 VISION_API_URL=https://www.right.codes/draw/v1/chat/completions
 VISION_MODEL_API_KEY=your_right_code_key
 

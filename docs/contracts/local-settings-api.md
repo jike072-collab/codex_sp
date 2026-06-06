@@ -36,7 +36,7 @@ Response:
   "providers": {
     "vision": {
       "provider": "Right Code",
-      "model": "gpt-5.4-mini",
+      "model": "gemini-2.5-flash",
       "apiUrl": "https://www.right.codes/draw/v1/chat/completions",
       "configured": false
     },

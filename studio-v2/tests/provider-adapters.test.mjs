@@ -86,7 +86,7 @@ test("Right Code vision adapter sends an OpenAI-compatible multimodal request", 
   await withProviderEnv({
     VISION_MODEL_API_KEY: "test-right-code-key",
     VISION_API_URL: "https://example.test/draw/v1/chat/completions",
-    VISION_MODEL: "gpt-5.4-mini"
+    VISION_MODEL: "gemini-2.5-flash"
   }, async () => {
     let requestBody;
     const analysis = await analyzeProject(
@@ -106,7 +106,7 @@ test("Right Code vision adapter sends an OpenAI-compatible multimodal request", 
       }
     );
 
-    assert.equal(requestBody.model, "gpt-5.4-mini");
+    assert.equal(requestBody.model, "gemini-2.5-flash");
     assert.equal(requestBody.stream, false);
     assert.equal(requestBody.messages[1].content[0].type, "text");
     assert.equal(analysis.mode, "api");
