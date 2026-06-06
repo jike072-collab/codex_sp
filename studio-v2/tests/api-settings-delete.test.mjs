@@ -69,31 +69,52 @@ test("provider settings persist locally without returning API keys", async () =>
   const updated = await request("/api/settings/providers", {
     method: "PUT",
     body: JSON.stringify({
-      rightCodesApiKey: "right-code-secret",
+      visionApiKey: "vision-secret",
       deepSeekApiKey: "deepseek-secret"
     })
   });
   assert.equal(updated.response.status, 200);
   assert.equal(updated.body.providers.vision.configured, true);
   assert.equal(updated.body.providers.text.configured, true);
-  assert.equal(updated.body.providers.image.configured, true);
+  assert.equal(updated.body.providers.image.configured, false);
   assert.equal(JSON.stringify(updated.body).includes("secret"), false);
 
-  const stored = await readFile(envPath, "utf8");
-  assert.match(stored, /VISION_MODEL_API_KEY=right-code-secret/);
-  assert.match(stored, /IMAGE_MODEL_API_KEY=right-code-secret/);
+  let stored = await readFile(envPath, "utf8");
+  assert.match(stored, /VISION_MODEL_API_KEY=vision-secret/);
+  assert.doesNotMatch(stored, /IMAGE_MODEL_API_KEY=/);
   assert.match(stored, /TEXT_MODEL_API_KEY=deepseek-secret/);
+
+  const imageUpdated = await request("/api/settings/providers", {
+    method: "PUT",
+    body: JSON.stringify({ imageApiKey: "image-secret" })
+  });
+  assert.equal(imageUpdated.body.providers.vision.configured, true);
+  assert.equal(imageUpdated.body.providers.text.configured, true);
+  assert.equal(imageUpdated.body.providers.image.configured, true);
+  stored = await readFile(envPath, "utf8");
+  assert.match(stored, /VISION_MODEL_API_KEY=vision-secret/);
+  assert.match(stored, /IMAGE_MODEL_API_KEY=image-secret/);
 
   const cleared = await request("/api/settings/providers", {
     method: "PUT",
     body: JSON.stringify({
-      rightCodesApiKey: null,
-      deepSeekApiKey: null
+      visionApiKey: null
     })
   });
   assert.equal(cleared.body.providers.vision.configured, false);
-  assert.equal(cleared.body.providers.text.configured, false);
-  assert.equal(cleared.body.providers.image.configured, false);
+  assert.equal(cleared.body.providers.text.configured, true);
+  assert.equal(cleared.body.providers.image.configured, true);
+
+  const allCleared = await request("/api/settings/providers", {
+    method: "PUT",
+    body: JSON.stringify({
+      deepSeekApiKey: null,
+      imageApiKey: null
+    })
+  });
+  assert.equal(allCleared.body.providers.vision.configured, false);
+  assert.equal(allCleared.body.providers.text.configured, false);
+  assert.equal(allCleared.body.providers.image.configured, false);
 });
 
 test("project deletion removes only the selected project and its uploads", async () => {

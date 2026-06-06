@@ -69,17 +69,20 @@ Request:
 
 ```json
 {
-  "rightCodesApiKey": "shared-key-for-vision-and-image",
-  "deepSeekApiKey": "official-deepseek-key"
+  "visionApiKey": "right-code-key-for-gemini-vision",
+  "deepSeekApiKey": "official-deepseek-key",
+  "imageApiKey": "right-code-key-for-image-generation"
 }
 ```
 
 Rules:
 
-- Both fields are optional.
+- All three fields are optional and independent.
 - Omitted fields keep their existing values.
 - A non-empty string replaces the corresponding local key.
-- `rightCodesApiKey` writes both vision and image keys.
+- `visionApiKey` writes only `VISION_MODEL_API_KEY`.
+- `deepSeekApiKey` writes only `TEXT_MODEL_API_KEY`.
+- `imageApiKey` writes only `IMAGE_MODEL_API_KEY`.
 - `null` explicitly clears that provider key.
 - Empty strings are invalid.
 - Values are stored only in the ignored local `.env` file.

@@ -6,8 +6,9 @@ import { hasUsableApiKey } from "../ai-providers/provider-utils.mjs";
 import { DomainError } from "../workflow-domain/domain-error.mjs";
 
 const MANAGED_KEYS = Object.freeze({
-  rightCodesApiKey: ["VISION_MODEL_API_KEY", "IMAGE_MODEL_API_KEY"],
-  deepSeekApiKey: ["TEXT_MODEL_API_KEY"]
+  visionApiKey: ["VISION_MODEL_API_KEY"],
+  deepSeekApiKey: ["TEXT_MODEL_API_KEY"],
+  imageApiKey: ["IMAGE_MODEL_API_KEY"]
 });
 
 function invalidSettings(message) {

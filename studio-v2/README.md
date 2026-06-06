@@ -44,9 +44,10 @@ IMAGE_API_URL=https://www.right.codes/draw/v1/images/generations
 IMAGE_MODEL_API_KEY=your_right_code_key
 ```
 
-Right Code 的识图和图片生成可以使用同一个 Key。没有配置某类可用 Key
-时，该阶段会使用明确标记的演示模式；已经配置 Key 但供应商调用失败时，
-服务会返回错误，不会伪装成真实生成成功。
+识图、脚本和图片生成的 Key 独立保存。即使识图和图片都使用 Right Code，
+也可以填入不同 Key，并分别清除。没有配置某类可用 Key 时，该阶段会使用
+明确标记的演示模式；已经配置 Key 但供应商调用失败时，服务会返回错误，
+不会伪装成真实生成成功。
 
 ## 模块边界
 

@@ -48,6 +48,8 @@ optional `generated_image` metadata on each image-generation item.
 ## Secret And Failure Rules
 
 - API keys are read only from the ignored root `.env` or process environment.
+- Vision, text, and image credentials are configured independently even when
+  two providers happen to use the same vendor.
 - Keys must never be persisted in project JSON, exports, logs, or responses.
 - A configured provider failure must return a stable error instead of silently
   falling back to demo output.
