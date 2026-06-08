@@ -22,6 +22,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\studio-v2\start.ps1
 
 访问 `http://127.0.0.1:8810`。
 
+Windows 也可以双击根目录的 `打开鞋类广告工作台.vbs` 启动，使用
+`关闭鞋类广告工作台.vbs` 关闭该启动器创建的本地服务。
+
 ## 模块
 
 - `studio-v2/public/`：浏览器工作台

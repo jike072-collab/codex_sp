@@ -1,12 +1,12 @@
 Option Explicit
 
-Dim shell, fso, baseDir, pidPath, urlPath, pidFile, pidValue
+Dim shell, fso, baseDir, pidPath, pidFile, pidValue
 Set shell = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 
+' Stops only the studio-v2 process started by the companion launcher.
 baseDir = fso.GetParentFolderName(WScript.ScriptFullName)
-pidPath = baseDir & "\.web-server.pid"
-urlPath = baseDir & "\.web-server.url"
+pidPath = baseDir & "\.studio-v2-server.pid"
 
 If fso.FileExists(pidPath) Then
   Set pidFile = fso.OpenTextFile(pidPath, 1, False)
@@ -19,11 +19,5 @@ If fso.FileExists(pidPath) Then
 
   On Error Resume Next
   fso.DeleteFile pidPath, True
-  On Error GoTo 0
-End If
-
-If fso.FileExists(urlPath) Then
-  On Error Resume Next
-  fso.DeleteFile urlPath, True
   On Error GoTo 0
 End If
