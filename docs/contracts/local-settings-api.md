@@ -69,20 +69,22 @@ Request:
 
 ```json
 {
-  "rightCodesApiKey": "right-code-key-for-vision-and-image",
-  "deepSeekApiKey": "official-deepseek-key"
+  "visionApiKey": "right-code-vision-key",
+  "deepSeekApiKey": "official-deepseek-key",
+  "imageApiKey": "right-code-image-key"
 }
 ```
 
 Rules:
 
-- Both fields are optional and independent.
+- All three fields are optional and independent.
 - Omitted fields keep their existing values.
 - A non-empty string replaces the corresponding local key.
-- `rightCodesApiKey` writes both `VISION_MODEL_API_KEY` and `IMAGE_MODEL_API_KEY`.
+- `visionApiKey` writes only `VISION_MODEL_API_KEY`.
 - `deepSeekApiKey` writes only `TEXT_MODEL_API_KEY`.
-- Right Code vision and image calls remain separate providers and endpoints even though they share one account key.
-- Deprecated `visionApiKey` and `imageApiKey` request fields are accepted temporarily for stale browser pages and update both Right Code providers.
+- `imageApiKey` writes only `IMAGE_MODEL_API_KEY`.
+- Vision and image remain separate providers and endpoints, even when the user chooses to enter the same Right Code account key.
+- Deprecated `rightCodesApiKey` is accepted temporarily for stale browser pages and writes both Right Code provider keys.
 - `null` explicitly clears that provider key.
 - Empty strings are invalid.
 - Values are stored only in the ignored local `.env` file.

@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { analyzeProject } from "../src/ai-providers/vision-provider.mjs";
 import { generateProjectScript } from "../src/ai-providers/text-provider.mjs";
 import { generateProjectVisuals } from "../src/ai-providers/image-provider.mjs";
+import { postProviderJson } from "../src/ai-providers/provider-utils.mjs";
 import {
   generateDemoPlanningPackage,
   generateProjectDemoScript
@@ -117,6 +118,31 @@ test("Right Code vision adapter sends an OpenAI-compatible multimodal request", 
       ["exact silhouette"]
     );
   });
+});
+
+test("provider errors preserve string error details", async () => {
+  await assert.rejects(
+    () => postProviderJson({
+      url: "https://example.test/v1/chat/completions",
+      apiKey: "test-key",
+      body: {},
+      timeoutMs: 1000,
+      providerLabel: "Right Code 识图模型",
+      errorCode: "VISION_PROVIDER_ERROR",
+      fetchImpl: async () => new Response(JSON.stringify({
+        error: "API Key 不允许使用该模型"
+      }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" }
+      })
+    }),
+    (error) => {
+      assert.equal(error.code, "VISION_PROVIDER_ERROR");
+      assert.equal(error.providerStatus, 403);
+      assert.match(error.message, /API Key 不允许使用该模型/);
+      return true;
+    }
+  );
 });
 
 test("DeepSeek adapter requests JSON and validates the generated 20-second script", async () => {

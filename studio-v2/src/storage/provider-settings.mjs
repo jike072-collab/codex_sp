@@ -5,12 +5,6 @@ import { loadEnv, localEnvPath } from "../config.mjs";
 import { hasUsableApiKey } from "../ai-providers/provider-utils.mjs";
 import { DomainError } from "../workflow-domain/domain-error.mjs";
 
-const RIGHT_CODES_FIELDS = Object.freeze([
-  "rightCodesApiKey",
-  "visionApiKey",
-  "imageApiKey"
-]);
-
 function invalidSettings(message) {
   throw new DomainError(message, { code: "INVALID_PROVIDER_SETTINGS" });
 }
@@ -100,16 +94,32 @@ export async function updateProviderSettings(input) {
   }
 
   const updates = {};
-  const rightCodesValues = RIGHT_CODES_FIELDS
-    .map((field) => normalizeKeyUpdate(input, field))
-    .filter((value) => value !== undefined);
-  if (new Set(rightCodesValues).size > 1) {
-    invalidSettings("Right Code API Key fields conflict. Refresh the page and try again.");
+  const legacyRightCodesApiKey = normalizeKeyUpdate(input, "rightCodesApiKey");
+  const visionApiKey = normalizeKeyUpdate(input, "visionApiKey");
+  const imageApiKey = normalizeKeyUpdate(input, "imageApiKey");
+
+  if (
+    legacyRightCodesApiKey !== undefined
+    && visionApiKey !== undefined
+    && legacyRightCodesApiKey !== visionApiKey
+  ) {
+    invalidSettings("rightCodesApiKey conflicts with visionApiKey.");
   }
-  if (rightCodesValues.length) {
-    const [rightCodesApiKey] = rightCodesValues;
-    updates.VISION_MODEL_API_KEY = rightCodesApiKey;
-    updates.IMAGE_MODEL_API_KEY = rightCodesApiKey;
+  if (
+    legacyRightCodesApiKey !== undefined
+    && imageApiKey !== undefined
+    && legacyRightCodesApiKey !== imageApiKey
+  ) {
+    invalidSettings("rightCodesApiKey conflicts with imageApiKey.");
+  }
+
+  const nextVisionApiKey = visionApiKey ?? legacyRightCodesApiKey;
+  if (nextVisionApiKey !== undefined) {
+    updates.VISION_MODEL_API_KEY = nextVisionApiKey;
+  }
+  const nextImageApiKey = imageApiKey ?? legacyRightCodesApiKey;
+  if (nextImageApiKey !== undefined) {
+    updates.IMAGE_MODEL_API_KEY = nextImageApiKey;
   }
 
   const deepSeekApiKey = normalizeKeyUpdate(input, "deepSeekApiKey");

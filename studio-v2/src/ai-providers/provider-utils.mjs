@@ -80,7 +80,9 @@ export async function postProviderJson({
     let detail = "";
     try {
       const payload = await response.json();
-      detail = payload?.error?.message || payload?.message || "";
+      detail = typeof payload?.error === "string"
+        ? payload.error
+        : payload?.error?.message || payload?.message || "";
     } catch {
       // Provider error bodies are not guaranteed to be JSON.
     }

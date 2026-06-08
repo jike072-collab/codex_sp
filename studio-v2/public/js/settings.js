@@ -43,7 +43,7 @@ export async function refreshProviderSettings() {
 export async function openProviderSettings() {
   resetSensitiveFields();
   renderLoadingState();
-  el("apiSettingsNote").textContent = "留空不会覆盖当前配置；识图和图片当前同属 Right Code，本地会同步保存。";
+  el("apiSettingsNote").textContent = "留空不会覆盖当前配置；勾选清除会删除对应的本地 Key。";
   el("apiSettingsDialog").showModal();
 
   try {
@@ -68,8 +68,9 @@ export async function saveProviderSettings(event) {
   const form = event.currentTarget;
   const payload = {};
   const providerKeys = [
-    ["rightCodesApiKey", "clearRightCodesApiKey"],
-    ["deepSeekApiKey", "clearDeepSeekApiKey"]
+    ["visionApiKey", "clearVisionApiKey"],
+    ["deepSeekApiKey", "clearDeepSeekApiKey"],
+    ["imageApiKey", "clearImageApiKey"]
   ];
 
   providerKeys.forEach(([keyName, clearName]) => {
@@ -80,12 +81,6 @@ export async function saveProviderSettings(event) {
       payload[keyName] = value;
     }
   });
-
-  if ("rightCodesApiKey" in payload) {
-    // Keep an already-running pre-unification server compatible until restart.
-    payload.visionApiKey = payload.rightCodesApiKey;
-    payload.imageApiKey = payload.rightCodesApiKey;
-  }
 
   setFormBusy(true);
   try {
