@@ -98,21 +98,7 @@ export async function updateProviderSettings(input) {
   const visionApiKey = normalizeKeyUpdate(input, "visionApiKey");
   const imageApiKey = normalizeKeyUpdate(input, "imageApiKey");
 
-  if (
-    legacyRightCodesApiKey !== undefined
-    && visionApiKey !== undefined
-    && legacyRightCodesApiKey !== visionApiKey
-  ) {
-    invalidSettings("rightCodesApiKey conflicts with visionApiKey.");
-  }
-  if (
-    legacyRightCodesApiKey !== undefined
-    && imageApiKey !== undefined
-    && legacyRightCodesApiKey !== imageApiKey
-  ) {
-    invalidSettings("rightCodesApiKey conflicts with imageApiKey.");
-  }
-
+  // New independent fields win when a cached legacy page sends both shapes.
   const nextVisionApiKey = visionApiKey ?? legacyRightCodesApiKey;
   if (nextVisionApiKey !== undefined) {
     updates.VISION_MODEL_API_KEY = nextVisionApiKey;

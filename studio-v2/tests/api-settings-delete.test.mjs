@@ -96,6 +96,19 @@ test("provider settings persist locally without returning API keys", async () =>
   assert.match(stored, /VISION_MODEL_API_KEY=new-vision-secret/);
   assert.match(stored, /IMAGE_MODEL_API_KEY=image-secret/);
 
+  const mixedClientUpdated = await request("/api/settings/providers", {
+    method: "PUT",
+    body: JSON.stringify({
+      rightCodesApiKey: "cached-page-key",
+      visionApiKey: "independent-vision-key",
+      imageApiKey: "independent-image-key"
+    })
+  });
+  assert.equal(mixedClientUpdated.response.status, 200);
+  stored = await readFile(envPath, "utf8");
+  assert.match(stored, /VISION_MODEL_API_KEY=independent-vision-key/);
+  assert.match(stored, /IMAGE_MODEL_API_KEY=independent-image-key/);
+
   const visionCleared = await request("/api/settings/providers", {
     method: "PUT",
     body: JSON.stringify({ visionApiKey: null })
