@@ -11,6 +11,7 @@ import {
 import { join, relative, resolve } from "node:path";
 
 import { projectsRoot, uploadsRoot } from "../config.mjs";
+import { PROJECT_STAGES } from "../workflow-domain/project-workflow.mjs";
 import { cleanString } from "../workflow-domain/value-normalizers.mjs";
 
 export async function initializeStorage() {
@@ -36,6 +37,27 @@ function safeProjectUploadPath(projectId) {
   return target;
 }
 
+function assertStringField(project, field) {
+  if (typeof project[field] !== "string" || !project[field].trim()) {
+    throw new Error(`Project is missing required string field: ${field}`);
+  }
+}
+
+function assertProjectRecord(project) {
+  if (!project || typeof project !== "object" || Array.isArray(project)) {
+    throw new Error("Project must be an object.");
+  }
+  for (const field of ["id", "name", "targetCountry", "audience", "createdAt", "updatedAt"]) {
+    assertStringField(project, field);
+  }
+  if (!PROJECT_STAGES.includes(project.status)) {
+    throw new Error(`Project has an invalid status: ${project.status || "empty"}`);
+  }
+  if (!Array.isArray(project.assets)) {
+    throw new Error("Project assets must be an array.");
+  }
+}
+
 export async function readProject(projectId) {
   try {
     return JSON.parse(await readFile(projectPath(projectId), "utf8"));
@@ -46,7 +68,11 @@ export async function readProject(projectId) {
 }
 
 export async function saveProject(project) {
+  if (!project || typeof project !== "object" || Array.isArray(project)) {
+    throw new Error("Project must be an object.");
+  }
   project.updatedAt = new Date().toISOString();
+  assertProjectRecord(project);
   await writeFile(projectPath(project.id), JSON.stringify(project, null, 2), "utf8");
   return project;
 }
@@ -79,9 +105,16 @@ export async function deleteProject(projectId) {
 
 export async function listProjects() {
   const files = (await readdir(projectsRoot)).filter((name) => name.endsWith(".json"));
-  const projects = await Promise.all(
-    files.map(async (name) => JSON.parse(await readFile(join(projectsRoot, name), "utf8")))
-  );
+  const projects = [];
+  await Promise.all(files.map(async (name) => {
+    try {
+      const project = JSON.parse(await readFile(join(projectsRoot, name), "utf8"));
+      assertProjectRecord(project);
+      projects.push(project);
+    } catch (error) {
+      console.error(`Skipping unreadable project file: ${name}`, error);
+    }
+  }));
   return projects
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
     .map(({

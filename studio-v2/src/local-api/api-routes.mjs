@@ -115,7 +115,15 @@ export async function handleApi(request, response, url) {
       return sendJson(response, 200, { project });
     } catch (error) {
       transitionProject(project, "assets");
-      await saveProject(project);
+      try {
+        await saveProject(project);
+      } catch (rollbackError) {
+        console.error("Failed to roll back project after analyze failure.", {
+          projectId,
+          originalError: error,
+          rollbackError
+        });
+      }
       throw error;
     }
   }
