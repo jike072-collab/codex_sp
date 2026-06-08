@@ -68,7 +68,7 @@ export async function readProviderSettings() {
         provider: "Right Code",
         model: env.VISION_MODEL || "gemini-2.5-flash",
         apiUrl: env.VISION_API_URL
-          || "https://www.right.codes/draw/v1/chat/completions",
+          || "https://right.codes/gemini",
         configured: hasUsableApiKey(env.VISION_MODEL_API_KEY)
       },
       text: {

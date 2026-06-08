@@ -54,11 +54,20 @@ function demoAnalysis(project) {
   };
 }
 
+function isDrawEndpoint(apiUrl) {
+  return /\/draw(?:\/|$)/i.test(apiUrl);
+}
+
+function nativeGeminiUrl(apiUrl, model) {
+  if (/:generateContent(?:\?|$)/i.test(apiUrl)) return apiUrl;
+  return `${apiUrl.replace(/\/+$/, "")}/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+}
+
 export async function analyzeProject(project, { fetchImpl = fetch } = {}) {
   const env = await loadEnv();
   const key = env.VISION_MODEL_API_KEY;
   const apiUrl = env.VISION_API_URL
-    || "https://www.right.codes/draw/v1/chat/completions";
+    || "https://right.codes/gemini";
   const model = env.VISION_MODEL || "gemini-2.5-flash";
 
   if (!hasUsableApiKey(key)) return demoAnalysis(project);
@@ -70,39 +79,84 @@ export async function analyzeProject(project, { fetchImpl = fetch } = {}) {
   const imageParts = await Promise.all(project.assets.map(async (asset) => {
     const bytes = await readFile(join(uploadsRoot, project.id, asset.storedName));
     return {
-      type: "image_url",
-      image_url: { url: `data:${asset.mimeType};base64,${bytes.toString("base64")}` }
+      mimeType: asset.mimeType,
+      data: bytes.toString("base64")
     };
   }));
 
-  const payload = await postProviderJson({
-    url: apiUrl,
-    apiKey: key,
-    timeoutMs: positiveInteger(env.VISION_TIMEOUT_MS, 120000),
-    providerLabel: "Right Code 识图模型",
-    errorCode: "VISION_PROVIDER_ERROR",
-    fetchImpl,
-    body: {
-      model,
-      temperature: 0.1,
-      stream: false,
-      messages: [
-        { role: "system", content: systemPrompt },
-        {
+  let payload;
+  let content;
+  if (isDrawEndpoint(apiUrl)) {
+    payload = await postProviderJson({
+      url: apiUrl,
+      apiKey: key,
+      timeoutMs: positiveInteger(env.VISION_TIMEOUT_MS, 120000),
+      providerLabel: "Right Code 识图模型",
+      errorCode: "VISION_PROVIDER_ERROR",
+      fetchImpl,
+      body: {
+        model,
+        temperature: 0.1,
+        stream: false,
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "这些图片属于同一款鞋。请综合所有视角识别产品，并严格按系统要求输出 JSON。"
+              },
+              ...imageParts.map((image) => ({
+                type: "image_url",
+                image_url: { url: `data:${image.mimeType};base64,${image.data}` }
+              }))
+            ]
+          }
+        ]
+      }
+    });
+    content = payload?.choices?.[0]?.message?.content;
+  } else {
+    payload = await postProviderJson({
+      url: nativeGeminiUrl(apiUrl, model),
+      apiKey: key,
+      headers: { "x-goog-api-key": key },
+      timeoutMs: positiveInteger(env.VISION_TIMEOUT_MS, 120000),
+      providerLabel: "Right Code Gemini 识图模型",
+      errorCode: "VISION_PROVIDER_ERROR",
+      fetchImpl,
+      body: {
+        systemInstruction: {
+          parts: [{ text: systemPrompt }]
+        },
+        contents: [{
           role: "user",
-          content: [
+          parts: [
             {
-              type: "text",
               text: "这些图片属于同一款鞋。请综合所有视角识别产品，并严格按系统要求输出 JSON。"
             },
-            ...imageParts
+            ...imageParts.map((image) => ({
+              inlineData: image
+            }))
           ]
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          responseMimeType: "application/json"
         }
-      ]
-    }
-  });
+      }
+    });
+    const responseParts = payload?.candidates?.[0]?.content?.parts || [];
+    const answerParts = responseParts.filter(
+      (part) => !part.thought && typeof part.text === "string"
+    );
+    content = (answerParts.length ? answerParts : responseParts)
+      .map((part) => part.text)
+      .filter(Boolean)
+      .join("");
+  }
 
-  const content = payload?.choices?.[0]?.message?.content;
   if (!content) {
     throw new ProviderError("Right Code 识图模型响应中没有可用内容。", {
       code: "VISION_PROVIDER_ERROR"

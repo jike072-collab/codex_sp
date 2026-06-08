@@ -32,7 +32,7 @@ http://127.0.0.1:8810
 
 ```env
 VISION_MODEL=gemini-2.5-flash
-VISION_API_URL=https://www.right.codes/draw/v1/chat/completions
+VISION_API_URL=https://right.codes/gemini
 VISION_MODEL_API_KEY=your_right_code_key
 
 TEXT_MODEL=deepseek-v4-pro

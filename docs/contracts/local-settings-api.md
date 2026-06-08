@@ -37,7 +37,7 @@ Response:
     "vision": {
       "provider": "Right Code",
       "model": "gemini-2.5-flash",
-      "apiUrl": "https://www.right.codes/draw/v1/chat/completions",
+      "apiUrl": "https://right.codes/gemini",
       "configured": false
     },
     "text": {

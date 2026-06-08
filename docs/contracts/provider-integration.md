@@ -6,17 +6,20 @@ existing project workflow routes. Provider selection is entirely server-side.
 ## Vision
 
 - Workflow route: `POST /api/projects/:projectId/analyze`
-- Provider: Right Code OpenAI-compatible draw endpoint
-- Default endpoint: `https://www.right.codes/draw/v1/chat/completions`
+- Provider: Right Code native Gemini endpoint
+- Default base endpoint: `https://right.codes/gemini`
 - Default model: `gemini-2.5-flash`
-- Authentication: `Authorization: Bearer <VISION_MODEL_API_KEY>`
-- Request format: OpenAI-compatible `messages`; image inputs use
-  `type: "image_url"` and local base64 data URLs.
+- Authentication: `x-goog-api-key: <VISION_MODEL_API_KEY>`
+- Request format: Gemini `generateContent`; image inputs use base64
+  `inlineData`.
 - No usable key: deterministic demo analysis
 - Failure code: `VISION_PROVIDER_ERROR`
 
-The request uses OpenAI-compatible multimodal message content. Uploaded images
-are sent as local base64 data URLs and are not made publicly accessible.
+The adapter builds
+`/v1beta/models/:model:generateContent` from the configured base endpoint.
+Uploaded images are sent inline and are not made publicly accessible. A
+configured `/draw/v1/chat/completions` URL remains supported for legacy keys
+that are authorized for the Draw channel.
 
 ## Script
 
@@ -52,8 +55,7 @@ optional `generated_image` metadata on each image-generation item.
 ## Secret And Failure Rules
 
 - API keys are read only from the ignored root `.env` or process environment.
-- One Right Code account key is shared by the independent vision and image
-  providers. The DeepSeek credential remains independent.
+- Vision, text, and image credentials are configured independently.
 - Keys must never be persisted in project JSON, exports, logs, or responses.
 - A configured provider failure must return a stable error instead of silently
   falling back to demo output.
@@ -62,9 +64,10 @@ optional `generated_image` metadata on each image-generation item.
 
 ## Provider Documentation
 
-- Right Code draw API: `https://docs.right.codes/docs/rc_extension/draw/`
-- Right Code chat completions:
-  `https://docs.right.codes/docs/rc_extension/draw/chat-completions`
+- Right Code API key and channel restrictions:
+  `https://docs.right.codes/docs/rc_quick_start/apikey.html`
+- Right Code Gemini channel: `https://right.codes/gemini`
+- Right Code Draw API: `https://docs.right.codes/docs/rc_extension/draw/`
 - Right Code image generations:
   `https://docs.right.codes/docs/rc_extension/draw/images-generations.html`
 - DeepSeek API quick start: `https://api-docs.deepseek.com/`

@@ -83,7 +83,46 @@ function reviewedProject() {
   };
 }
 
-test("Right Code vision adapter sends an OpenAI-compatible multimodal request", async () => {
+test("Right Code vision adapter uses the native Gemini channel", async () => {
+  await withProviderEnv({
+    VISION_MODEL_API_KEY: "test-right-code-key",
+    VISION_API_URL: "https://right.codes/gemini",
+    VISION_MODEL: "gemini-2.5-flash"
+  }, async () => {
+    let requestBody;
+    const analysis = await analyzeProject(
+      { id: "vision-project", assets: [] },
+      {
+        fetchImpl: async (url, options) => {
+          assert.equal(
+            url,
+            "https://right.codes/gemini/v1beta/models/gemini-2.5-flash:generateContent"
+          );
+          assert.equal(options.headers["x-goog-api-key"], "test-right-code-key");
+          assert.equal("Authorization" in options.headers, false);
+          requestBody = JSON.parse(options.body);
+          return new Response(JSON.stringify({
+            candidates: [{
+              content: {
+                parts: [
+                  { thought: true, text: "Internal reasoning that is not JSON." },
+                  { text: JSON.stringify(reviewedProject().visionAnalysis) }
+                ]
+              }
+            }]
+          }), { status: 200 });
+        }
+      }
+    );
+
+    assert.equal(requestBody.contents[0].parts[0].text.includes("同一款鞋"), true);
+    assert.equal(requestBody.generationConfig.responseMimeType, "application/json");
+    assert.equal(analysis.mode, "api");
+    assert.deepEqual(analysis.product_lock_manifest.must_keep, ["exact silhouette"]);
+  });
+});
+
+test("Right Code vision adapter keeps legacy Draw channel compatibility", async () => {
   await withProviderEnv({
     VISION_MODEL_API_KEY: "test-right-code-key",
     VISION_API_URL: "https://example.test/draw/v1/chat/completions",

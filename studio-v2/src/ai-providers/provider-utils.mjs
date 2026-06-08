@@ -55,6 +55,7 @@ export async function postProviderJson({
   timeoutMs,
   providerLabel,
   errorCode,
+  headers,
   fetchImpl = fetch
 }) {
   let response;
@@ -63,7 +64,7 @@ export async function postProviderJson({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`
+        ...(headers || { Authorization: `Bearer ${apiKey}` })
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(timeoutMs)
