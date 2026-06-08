@@ -10,6 +10,8 @@ existing project workflow routes. Provider selection is entirely server-side.
 - Default endpoint: `https://www.right.codes/draw/v1/chat/completions`
 - Default model: `gemini-2.5-flash`
 - Authentication: `Authorization: Bearer <VISION_MODEL_API_KEY>`
+- Request format: OpenAI-compatible `messages`; image inputs use
+  `type: "image_url"` and local base64 data URLs.
 - No usable key: deterministic demo analysis
 - Failure code: `VISION_PROVIDER_ERROR`
 
@@ -38,6 +40,8 @@ and confirmed product-lock validation before it can be persisted.
 - Default endpoint: `https://www.right.codes/draw/v1/images/generations`
 - Default model: `gpt-image-2`
 - Authentication: `Authorization: Bearer <IMAGE_MODEL_API_KEY>`
+- Request fields: `model`, `prompt`, optional `image`, pixel `size`, and
+  `response_format: "url"`.
 - No usable key or `IMAGE_MODEL_PROVIDER=manual`: prompt-only demo package
 - Failure code: `IMAGE_PROVIDER_ERROR`
 
@@ -48,8 +52,8 @@ optional `generated_image` metadata on each image-generation item.
 ## Secret And Failure Rules
 
 - API keys are read only from the ignored root `.env` or process environment.
-- Vision, text, and image credentials are configured independently even when
-  two providers happen to use the same vendor.
+- One Right Code account key is shared by the independent vision and image
+  providers. The DeepSeek credential remains independent.
 - Keys must never be persisted in project JSON, exports, logs, or responses.
 - A configured provider failure must return a stable error instead of silently
   falling back to demo output.
@@ -59,4 +63,8 @@ optional `generated_image` metadata on each image-generation item.
 ## Provider Documentation
 
 - Right Code draw API: `https://docs.right.codes/docs/rc_extension/draw/`
+- Right Code chat completions:
+  `https://docs.right.codes/docs/rc_extension/draw/chat-completions`
+- Right Code image generations:
+  `https://docs.right.codes/docs/rc_extension/draw/images-generations.html`
 - DeepSeek API quick start: `https://api-docs.deepseek.com/`

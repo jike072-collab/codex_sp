@@ -303,14 +303,14 @@
 
       <div class="api-key-fields">
         <label class="api-key-field">
-          <span>识图 API Key</span>
-          <input name="visionApiKey" type="password" autocomplete="new-password"
+          <span>Right Code API Key</span>
+          <input name="rightCodesApiKey" type="password" autocomplete="new-password"
             placeholder="留空表示不修改">
-          <small>Right Code · Gemini 2.5 Flash，仅用于商品识图。</small>
+          <small>统一入口 https://www.right.codes/draw，同时用于 Gemini 2.5 Flash 识图和 gpt-image-2 生图。</small>
         </label>
         <label class="clear-provider-control">
-          <input name="clearVisionApiKey" type="checkbox">
-          <span>清除已保存的识图 Key</span>
+          <input name="clearRightCodesApiKey" type="checkbox">
+          <span>清除已保存的 Right Code Key</span>
         </label>
 
         <label class="api-key-field">
@@ -324,16 +324,6 @@
           <span>清除已保存的脚本 Key</span>
         </label>
 
-        <label class="api-key-field">
-          <span>图片 API Key</span>
-          <input name="imageApiKey" type="password" autocomplete="new-password"
-            placeholder="留空表示不修改">
-          <small>Right Code · gpt-image-2，仅用于图片生成。</small>
-        </label>
-        <label class="clear-provider-control">
-          <input name="clearImageApiKey" type="checkbox">
-          <span>清除已保存的图片 Key</span>
-        </label>
       </div>
 
       <p class="api-note" id="apiSettingsNote">留空不会覆盖当前配置；勾选清除会删除对应的本地 Key。</p>

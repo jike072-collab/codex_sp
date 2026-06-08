@@ -69,47 +69,56 @@ test("provider settings persist locally without returning API keys", async () =>
   const updated = await request("/api/settings/providers", {
     method: "PUT",
     body: JSON.stringify({
-      visionApiKey: "vision-secret",
+      rightCodesApiKey: "right-codes-secret",
       deepSeekApiKey: "deepseek-secret"
     })
   });
   assert.equal(updated.response.status, 200);
   assert.equal(updated.body.providers.vision.configured, true);
   assert.equal(updated.body.providers.text.configured, true);
-  assert.equal(updated.body.providers.image.configured, false);
+  assert.equal(updated.body.providers.image.configured, true);
   assert.equal(JSON.stringify(updated.body).includes("secret"), false);
 
   let stored = await readFile(envPath, "utf8");
-  assert.match(stored, /VISION_MODEL_API_KEY=vision-secret/);
-  assert.doesNotMatch(stored, /IMAGE_MODEL_API_KEY=/);
+  assert.match(stored, /VISION_MODEL_API_KEY=right-codes-secret/);
+  assert.match(stored, /IMAGE_MODEL_API_KEY=right-codes-secret/);
   assert.match(stored, /TEXT_MODEL_API_KEY=deepseek-secret/);
 
-  const imageUpdated = await request("/api/settings/providers", {
+  const legacyUpdated = await request("/api/settings/providers", {
     method: "PUT",
-    body: JSON.stringify({ imageApiKey: "image-secret" })
+    body: JSON.stringify({ visionApiKey: "legacy-right-codes-secret" })
   });
-  assert.equal(imageUpdated.body.providers.vision.configured, true);
-  assert.equal(imageUpdated.body.providers.text.configured, true);
-  assert.equal(imageUpdated.body.providers.image.configured, true);
+  assert.equal(legacyUpdated.body.providers.vision.configured, true);
+  assert.equal(legacyUpdated.body.providers.text.configured, true);
+  assert.equal(legacyUpdated.body.providers.image.configured, true);
   stored = await readFile(envPath, "utf8");
-  assert.match(stored, /VISION_MODEL_API_KEY=vision-secret/);
-  assert.match(stored, /IMAGE_MODEL_API_KEY=image-secret/);
+  assert.match(stored, /VISION_MODEL_API_KEY=legacy-right-codes-secret/);
+  assert.match(stored, /IMAGE_MODEL_API_KEY=legacy-right-codes-secret/);
+
+  const conflictingLegacyFields = await request("/api/settings/providers", {
+    method: "PUT",
+    body: JSON.stringify({
+      visionApiKey: "one-key",
+      imageApiKey: "another-key"
+    })
+  });
+  assert.equal(conflictingLegacyFields.response.status, 400);
+  assert.equal(conflictingLegacyFields.body.code, "INVALID_PROVIDER_SETTINGS");
 
   const cleared = await request("/api/settings/providers", {
     method: "PUT",
     body: JSON.stringify({
-      visionApiKey: null
+      rightCodesApiKey: null
     })
   });
   assert.equal(cleared.body.providers.vision.configured, false);
   assert.equal(cleared.body.providers.text.configured, true);
-  assert.equal(cleared.body.providers.image.configured, true);
+  assert.equal(cleared.body.providers.image.configured, false);
 
   const allCleared = await request("/api/settings/providers", {
     method: "PUT",
     body: JSON.stringify({
-      deepSeekApiKey: null,
-      imageApiKey: null
+      deepSeekApiKey: null
     })
   });
   assert.equal(allCleared.body.providers.vision.configured, false);

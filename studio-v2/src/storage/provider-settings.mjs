@@ -5,11 +5,11 @@ import { loadEnv, localEnvPath } from "../config.mjs";
 import { hasUsableApiKey } from "../ai-providers/provider-utils.mjs";
 import { DomainError } from "../workflow-domain/domain-error.mjs";
 
-const MANAGED_KEYS = Object.freeze({
-  visionApiKey: ["VISION_MODEL_API_KEY"],
-  deepSeekApiKey: ["TEXT_MODEL_API_KEY"],
-  imageApiKey: ["IMAGE_MODEL_API_KEY"]
-});
+const RIGHT_CODES_FIELDS = Object.freeze([
+  "rightCodesApiKey",
+  "visionApiKey",
+  "imageApiKey"
+]);
 
 function invalidSettings(message) {
   throw new DomainError(message, { code: "INVALID_PROVIDER_SETTINGS" });
@@ -100,10 +100,21 @@ export async function updateProviderSettings(input) {
   }
 
   const updates = {};
-  for (const field of Object.keys(MANAGED_KEYS)) {
-    const value = normalizeKeyUpdate(input, field);
-    if (value === undefined) continue;
-    for (const key of MANAGED_KEYS[field]) updates[key] = value;
+  const rightCodesValues = RIGHT_CODES_FIELDS
+    .map((field) => normalizeKeyUpdate(input, field))
+    .filter((value) => value !== undefined);
+  if (new Set(rightCodesValues).size > 1) {
+    invalidSettings("Right Code API Key fields conflict. Refresh the page and try again.");
+  }
+  if (rightCodesValues.length) {
+    const [rightCodesApiKey] = rightCodesValues;
+    updates.VISION_MODEL_API_KEY = rightCodesApiKey;
+    updates.IMAGE_MODEL_API_KEY = rightCodesApiKey;
+  }
+
+  const deepSeekApiKey = normalizeKeyUpdate(input, "deepSeekApiKey");
+  if (deepSeekApiKey !== undefined) {
+    updates.TEXT_MODEL_API_KEY = deepSeekApiKey;
   }
 
   if (Object.keys(updates).length) {

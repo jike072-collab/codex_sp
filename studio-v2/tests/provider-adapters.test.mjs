@@ -94,6 +94,8 @@ test("Right Code vision adapter sends an OpenAI-compatible multimodal request", 
       {
         fetchImpl: async (url, options) => {
           assert.equal(url, "https://example.test/draw/v1/chat/completions");
+          assert.equal(options.headers.Authorization, "Bearer test-right-code-key");
+          assert.equal(options.headers["Content-Type"], "application/json");
           requestBody = JSON.parse(options.body);
           return new Response(JSON.stringify({
             choices: [{
@@ -164,6 +166,8 @@ test("Right Code image adapter generates four referenced image requests", async 
     await generateProjectVisuals(project, "2026-06-06T01:20:00.000Z", {
       fetchImpl: async (url, options) => {
         assert.equal(url, "https://example.test/draw/v1/images/generations");
+        assert.equal(options.headers.Authorization, "Bearer test-right-code-key");
+        assert.equal(options.headers["Content-Type"], "application/json");
         requests.push(JSON.parse(options.body));
         return new Response(JSON.stringify({
           data: [{ url: `https://images.test/${requests.length}.png` }]
@@ -173,8 +177,10 @@ test("Right Code image adapter generates four referenced image requests", async 
 
     assert.equal(requests.length, 4);
     assert.equal(requests[0].model, "gpt-image-2");
+    assert.equal(typeof requests[0].prompt, "string");
     assert.deepEqual(requests[0].image, []);
     assert.equal(requests[0].size, "1536x1024");
+    assert.equal(requests[0].response_format, "url");
     assert.equal(requests[1].size, "1024x1536");
     assert.equal(project.imagePackage.mode, "api");
     assert.equal(

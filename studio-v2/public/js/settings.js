@@ -3,7 +3,7 @@ import { api, el, showToast } from "./core.js";
 const PROVIDER_KINDS = ["vision", "text", "image"];
 
 function resetSensitiveFields() {
-  el("apiSettingsForm").reset();
+  el("apiSettingsForm")?.reset();
 }
 
 function setFormBusy(value) {
@@ -68,9 +68,8 @@ export async function saveProviderSettings(event) {
   const form = event.currentTarget;
   const payload = {};
   const providerKeys = [
-    ["visionApiKey", "clearVisionApiKey"],
-    ["deepSeekApiKey", "clearDeepSeekApiKey"],
-    ["imageApiKey", "clearImageApiKey"]
+    ["rightCodesApiKey", "clearRightCodesApiKey"],
+    ["deepSeekApiKey", "clearDeepSeekApiKey"]
   ];
 
   providerKeys.forEach(([keyName, clearName]) => {
@@ -81,6 +80,12 @@ export async function saveProviderSettings(event) {
       payload[keyName] = value;
     }
   });
+
+  if ("rightCodesApiKey" in payload) {
+    // Keep an already-running pre-unification server compatible until restart.
+    payload.visionApiKey = payload.rightCodesApiKey;
+    payload.imageApiKey = payload.rightCodesApiKey;
+  }
 
   setFormBusy(true);
   try {
