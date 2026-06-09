@@ -58,17 +58,16 @@
           </div>
           <div class="header-actions">
             <span class="save-state" id="saveState">已保存到本机</span>
-            <button class="ghost-button" id="headerExportButton" type="button" disabled>导出项目</button>
           </div>
         </header>
 
         <ol class="stepper" id="stepper">
-          <li data-step="assets"><b>01</b><span>商品素材</span></li>
-          <li data-step="review"><b>02</b><span>产品锁定</span></li>
-          <li class="workflow-skipped-step" data-step="market" aria-hidden="true"><b>03</b><span>创意确认</span></li>
-          <li data-step="script"><b>04</b><span>广告脚本</span></li>
-          <li data-step="visual"><b>05</b><span>视觉资产</span></li>
-          <li data-step="export"><b>06</b><span>交付导出</span></li>
+          <li data-step="assets"><span>商品素材</span></li>
+          <li data-step="review"><span>产品锁定</span></li>
+          <li class="workflow-skipped-step" data-step="market" aria-hidden="true"><span>创意确认</span></li>
+          <li data-step="script"><span>广告脚本</span></li>
+          <li data-step="visual"><span>视觉资产</span></li>
+          <li data-step="export"><span>交付导出</span></li>
         </ol>
 
         <div class="stage-layout">
@@ -99,6 +98,11 @@
             </div>
 
             <div class="stage-view hidden" id="reviewStage">
+              <div class="review-top-actions">
+                <button class="ghost-button" id="backToAssetsButton" type="button">返回素材</button>
+                <button class="primary-button" type="submit" form="reviewForm">确认产品锁定</button>
+              </div>
+
               <div class="section-heading">
                 <div>
                   <p class="section-index">STEP 02</p>
@@ -109,58 +113,64 @@
               </div>
 
               <form id="reviewForm">
-                <div class="review-top-actions">
-                  <button class="text-button" id="backToAssetsButton" type="button">返回素材</button>
-                  <button class="primary-button" type="submit">确认产品锁定</button>
-                </div>
-                <div class="form-section">
-                  <h3>投放设置</h3>
-                  <div class="setup-grid">
-                    <label>
-                      <span>目标国家</span>
+                <div class="form-section review-settings-panel">
+                  <h3>投放与创意设置</h3>
+                  <div class="review-drawer-grid">
+                    <details class="review-drawer">
+                      <summary>
+                        <span>国家</span>
+                        <strong id="countrySummaryValue">泰国</strong>
+                      </summary>
                       <select name="targetCountry" id="countryOptions" required></select>
-                    </label>
-                    <div>
-                      <span>目标人群</span>
+                    </details>
+
+                    <details class="review-drawer">
+                      <summary>
+                        <span>人群</span>
+                        <strong id="audienceSummaryValue">日常运动与通勤人群</strong>
+                      </summary>
                       <input name="audience" type="hidden" required>
                       <div class="audience-picker" id="audienceOptions"></div>
-                    </div>
-                    <div>
-                      <span class="field-label">视频尺寸</span>
+                    </details>
+
+                    <details class="review-drawer">
+                      <summary>
+                        <span>尺寸</span>
+                        <strong id="aspectSummaryValue">9:16</strong>
+                      </summary>
                       <input name="output_aspect_ratio" type="hidden" value="9:16">
                       <button class="aspect-summary-button" id="openAspectDrawerButton" type="button">
                         <span id="aspectSummaryIcon" class="aspect-icon" style="--ratio:9 / 16"></span>
-                        <strong id="aspectSummaryValue">9:16</strong>
                         <small id="aspectSummaryLabel">竖屏短视频</small>
                       </button>
-                    </div>
-                  </div>
-                </div>
+                    </details>
 
-                <div class="form-section">
-                  <h3>创意方向</h3>
-                  <div class="creative-stack">
-                    <details open>
-                      <summary>创意主题</summary>
-                      <span class="field-label">创意主题</span>
+                    <details class="review-drawer">
+                      <summary>
+                        <span>主题</span>
+                        <strong id="themeSummaryValue">城市动线</strong>
+                      </summary>
                       <div class="choice-grid compact" id="creativeThemeOptions"></div>
                     </details>
-                    <details open>
-                      <summary>语气</summary>
-                      <span class="field-label">语气</span>
+
+                    <details class="review-drawer">
+                      <summary>
+                        <span>语气</span>
+                        <strong id="toneSummaryValue">有活力</strong>
+                      </summary>
                       <div class="tone-grid compact" id="toneOptions"></div>
                     </details>
-                  </div>
-                </div>
 
-                <div class="form-section">
-                  <h3>核心信息</h3>
-                  <label>
-                    <span>一句话主张</span>
-                    <textarea class="message-box compact-message" name="coreMessage"
+                    <details class="review-drawer review-drawer-wide">
+                      <summary>
+                        <span>一句话主张</span>
+                        <strong id="coreMessageSummaryValue">确认时自动生成</strong>
+                      </summary>
+                      <textarea class="message-box compact-message" name="coreMessage"
                       placeholder="留空时会根据鞋款识别结果自动生成"></textarea>
-                  </label>
-                  <small class="inline-help">不确定可以先留空，确认时会自动补一条适合当前鞋子的主张。</small>
+                      <small class="inline-help">不确定可以先留空，确认时会自动补一条适合当前鞋子的主张。</small>
+                    </details>
+                  </div>
                 </div>
 
                 <details class="optional-review-details">

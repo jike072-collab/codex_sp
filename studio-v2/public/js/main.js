@@ -16,7 +16,12 @@ import {
   saveMarketBrief,
   uploadFiles
 } from "./projects.js";
-import { canViewStep, renderWorkspace, updateAspectSummary } from "./render.js";
+import {
+  canViewStep,
+  renderWorkspace,
+  syncReviewSummaries,
+  updateAspectSummary
+} from "./render.js";
 import {
   clearProviderSettingsInputs,
   closeProviderSettings,
@@ -48,10 +53,11 @@ function wireEvents() {
     state.viewStatus = "review";
     renderWorkspace();
   });
-  el("headerExportButton").addEventListener("click", downloadExportPackage);
   el("openAspectDrawerButton").addEventListener("click", () => el("aspectDrawer").showModal());
   el("closeBriefSummaryButton").addEventListener("click", () => el("briefSummaryDialog").close());
   el("summaryGenerateScriptButton").addEventListener("click", generateScript);
+  el("reviewForm").addEventListener("input", syncReviewSummaries);
+  el("reviewForm").addEventListener("change", syncReviewSummaries);
   el("closeImagePreviewButton").addEventListener("click", () => el("imagePreviewDialog").close());
   el("imagePreviewDialog").addEventListener("click", (event) => {
     if (event.target.id === "imagePreviewDialog") el("imagePreviewDialog").close();
@@ -110,6 +116,7 @@ function wireEvents() {
     const audienceChoice = event.target.closest("input[name='audience_choice']");
     if (audienceChoice) {
       el("reviewForm").elements.audience.value = audienceChoice.value;
+      syncReviewSummaries();
       return;
     }
 

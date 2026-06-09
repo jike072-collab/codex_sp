@@ -77,7 +77,6 @@ export function renderWorkspace() {
   if (briefCountry) briefCountry.value = countryNames[setup.targetCountry] || setup.targetCountry || "";
   if (briefAudience) briefAudience.value = setup.audience || "";
   if (briefAspect) briefAspect.value = setup.outputAspectRatio;
-  el("headerExportButton").disabled = project.status !== "export";
 
   renderAssets();
   renderStepper(activeStatus);
@@ -252,6 +251,37 @@ export function updateAspectSummary(value) {
   if (el("aspectSummaryLabel")) el("aspectSummaryLabel").textContent = label;
 }
 
+function selectedOptionLabel(options, value) {
+  return options.find(([itemValue]) => itemValue === value)?.[1] || value || "";
+}
+
+export function syncReviewSummaries() {
+  const form = el("reviewForm");
+  if (!form) return;
+  const countryValue = form.elements.targetCountry?.value || "Thailand";
+  const audienceValue = form.elements.audience?.value || "";
+  const aspectValue = form.elements.output_aspect_ratio?.value || "9:16";
+  const themeValue = form.elements.creativeTheme?.value || "city-motion";
+  const toneValue = form.elements.tone?.value || "energetic";
+  const coreValue = form.elements.coreMessage?.value.trim() || "确认时自动生成";
+  if (el("countrySummaryValue")) {
+    el("countrySummaryValue").textContent = countryNames[countryValue] || countryValue;
+  }
+  if (el("audienceSummaryValue")) {
+    el("audienceSummaryValue").textContent = audienceValue;
+  }
+  if (el("themeSummaryValue")) {
+    el("themeSummaryValue").textContent = selectedOptionLabel(creativeThemeOptions, themeValue);
+  }
+  if (el("toneSummaryValue")) {
+    el("toneSummaryValue").textContent = selectedOptionLabel(toneOptions, toneValue);
+  }
+  if (el("coreMessageSummaryValue")) {
+    el("coreMessageSummaryValue").textContent = coreValue;
+  }
+  updateAspectSummary(aspectValue);
+}
+
 export function renderAspectDrawer(selectedValue) {
   const container = el("aspectDrawerOptions");
   if (!container) return;
@@ -316,6 +346,7 @@ export function fillReviewForm(analysis) {
   if (form.elements.coreMessage && !form.elements.coreMessage.value) {
     form.elements.coreMessage.value = setup.coreMessage;
   }
+  syncReviewSummaries();
   el("autoAnalysisSummary").innerHTML = renderAutoAnalysisSummary(analysis);
   el("mustKeepPreview").textContent = displayValue(lock.must_keep);
   el("mustNotChangePreview").textContent = displayValue(lock.must_not_change);
@@ -324,7 +355,7 @@ export function fillReviewForm(analysis) {
     : hasAnalysis
       ? "演示识别 · 请修改"
       : "正在识别 · 请稍候";
-  form.querySelectorAll("button[type='submit']").forEach((button) => {
+  document.querySelectorAll("#reviewForm button[type='submit'], button[form='reviewForm']").forEach((button) => {
     button.disabled = !hasAnalysis || state.busy;
   });
 
