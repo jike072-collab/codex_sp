@@ -3,6 +3,7 @@ import {
   el,
   escapeHtml,
   formatTime,
+  projectSetup,
   state
 } from "./core.js";
 
@@ -121,11 +122,12 @@ function renderSegmentEditor(segmentKey, segment) {
 }
 
 function renderGenerateScript(project) {
+  const shotsPerSegment = projectSetup(project).shotsPerSegment;
   return `
     <div class="future-content script-start-panel">
       <p class="section-index">STEP 04</p>
       <h2>市场创意已确认</h2>
-      <p>选择每个 10 秒段落的镜头数，然后生成 20 秒脚本。后续会按两个 10 秒段落分别生成故事板。</p>
+      <p>将使用第二步选择的每段 ${escapeHtml(shotsPerSegment)} 个镜头生成 20 秒脚本。后续会按两个 10 秒段落分别生成故事板。</p>
       <div class="confirmed-card">
         <span>✓</span>
         <div>
@@ -133,16 +135,9 @@ function renderGenerateScript(project) {
           <small>${project.marketConfirmedAt ? `保存时间：${formatTime(project.marketConfirmedAt)}` : "市场 brief 已保存。"}</small>
         </div>
       </div>
-      <div class="shot-count-picker" role="radiogroup" aria-label="每 10 秒镜头数">
-        ${[3, 4, 5].map((count) => `
-          <label class="choice-card inline">
-            <input type="radio" name="shotsPerSegment" value="${count}" ${count === 5 ? "checked" : ""}>
-            <span><strong>${count} 个镜头</strong><small>每 10 秒一组</small></span>
-          </label>
-        `).join("")}
-      </div>
       <div class="script-progress" id="scriptProgress" hidden>
-        <span></span>
+        <span><i></i></span>
+        <strong>0%</strong>
         <p>正在生成两个 10 秒脚本段落，请稍候...</p>
       </div>
       <div class="button-row">
@@ -166,6 +161,14 @@ function renderScriptEditor(project) {
       <span class="requirement">20 秒</span>
     </div>
     <form id="scriptForm" novalidate>
+      <div class="script-action-bar">
+        <button class="ghost-button" type="button" data-action="edit-market">返回第二步调整</button>
+        <div class="action-cluster">
+          <p id="scriptHint">确认后生成两个分段故事板。</p>
+          <button class="primary-button" id="confirmAndGenerateButton" type="button"
+            data-action="confirm-and-generate-visual">确认脚本并生成故事板图片</button>
+        </div>
+      </div>
       <div class="workflow-panel">
         <div>
           <p class="section-index">MARKET BRIEF</p>
@@ -173,14 +176,8 @@ function renderScriptEditor(project) {
         </div>
         <p>${escapeHtml(project.marketBrief?.coreMessage || "")}</p>
       </div>
-      ${SEGMENTS.map(([segmentKey]) => renderSegmentEditor(segmentKey, script[segmentKey] || {})).join("")}
-      <div class="stage-actions">
-        <button class="text-button" type="button" data-action="edit-market">返回第二步调整</button>
-        <div class="action-cluster">
-          <p id="scriptHint">确认后生成两个分段故事板。</p>
-          <button class="primary-button" id="confirmAndGenerateButton" type="button"
-            data-action="confirm-and-generate-visual">确认脚本并生成故事板图片</button>
-        </div>
+      <div class="script-segments-grid">
+        ${SEGMENTS.map(([segmentKey]) => renderSegmentEditor(segmentKey, script[segmentKey] || {})).join("")}
       </div>
     </form>
   `;
@@ -255,7 +252,8 @@ function renderExportProgress(project) {
       <h2>正在生成故事板图片</h2>
       <p>会生成两个故事板：0-10 秒和 10-20 秒。尺寸使用你在第二步选择的 ${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")}。</p>
       <div class="script-progress active">
-        <span></span>
+        <span><i></i></span>
+        <strong>生成中</strong>
         <p>正在调用图片模型生成故事板，请稍候...</p>
       </div>
     </div>
@@ -266,7 +264,7 @@ function selectedStoryboardItems(project) {
   const selectedRatio = project.marketBrief?.outputAspectRatio || "9:16";
   const items = project.imagePackage?.image_generation || [];
   return ["0-10s", "10-20s"]
-    .map((segmentId) => items.find((item) =>
+    .map((segmentId) => [...items].reverse().find((item) =>
       item.segment_id === segmentId &&
       item.type === "storyboard_board" &&
       item.aspect_ratio === selectedRatio
@@ -352,9 +350,6 @@ export function renderExportStage(project = state.project) {
         <p>这里只保留你拿去生成视频需要的内容：两张故事板图片，以及各自对应的 10 秒脚本。</p>
       </div>
       <span class="requirement">${escapeHtml(imageItems.length)} 张故事板 · ${escapeHtml(project.marketBrief?.outputAspectRatio || imageItems[0]?.aspect_ratio || "")}</span>
-    </div>
-    <div class="export-actions">
-      <button class="primary-button" type="button" data-action="download-export">下载 JSON 交付包</button>
     </div>
     <div class="deliverable-grid">
       ${imageItems.map((item, index) => renderDeliverable(project, item, index)).join("")}

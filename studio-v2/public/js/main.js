@@ -8,19 +8,21 @@ import {
   createProject,
   deleteAsset,
   deleteProject,
-  downloadExportPackage,
+  deleteSelectedProjects,
   generateScript,
   generateVisual,
   loadProjects,
   openProject,
   saveMarketBrief,
+  startProjectBatchDelete,
+  cancelProjectBatchDelete,
+  toggleProjectSelection,
   uploadFiles
 } from "./projects.js";
 import {
   canViewStep,
   renderWorkspace,
-  syncReviewSummaries,
-  updateAspectSummary
+  syncReviewSummaries
 } from "./render.js";
 import {
   clearProviderSettingsInputs,
@@ -53,7 +55,6 @@ function wireEvents() {
     state.viewStatus = "review";
     renderWorkspace();
   });
-  el("openAspectDrawerButton").addEventListener("click", () => el("aspectDrawer").showModal());
   el("closeBriefSummaryButton").addEventListener("click", () => el("briefSummaryDialog").close());
   el("summaryGenerateScriptButton").addEventListener("click", generateScript);
   el("reviewForm").addEventListener("input", syncReviewSummaries);
@@ -138,20 +139,18 @@ function wireEvents() {
       },
       "confirm-and-generate-visual": () => confirmScriptAndGenerateVisual(),
       "generate-script": () => generateScript(),
-      "generate-visual": () => generateVisual(),
-      "download-export": () => downloadExportPackage()
+      "generate-visual": () => generateVisual()
     };
     actions[actionButton.dataset.action]?.();
   });
 
-  el("aspectDrawer").addEventListener("click", (event) => {
-    const input = event.target.closest("input[name='output_aspect_ratio']");
-    if (!input) return;
-    updateAspectSummary(input.value);
-    el("aspectDrawer").close();
-  });
-
   el("projectList").addEventListener("click", (event) => {
+    const checkbox = event.target.closest("[data-project-select-id]");
+    if (checkbox) {
+      toggleProjectSelection(checkbox.dataset.projectSelectId, checkbox.checked);
+      return;
+    }
+
     const deleteButton = event.target.closest("[data-delete-project-id]");
     if (deleteButton) {
       deleteProject(deleteButton.dataset.deleteProjectId);
@@ -161,6 +160,20 @@ function wireEvents() {
     const button = event.target.closest("[data-project-id]");
     if (button) {
       openProject(button.dataset.projectId).catch((error) => showToast(error.message));
+    }
+  });
+
+  el("projectBulkActions").addEventListener("click", (event) => {
+    if (event.target.closest("[data-project-bulk-start]")) {
+      startProjectBatchDelete();
+      return;
+    }
+    if (event.target.closest("[data-project-bulk-cancel]")) {
+      cancelProjectBatchDelete();
+      return;
+    }
+    if (event.target.closest("[data-project-bulk-delete]")) {
+      deleteSelectedProjects();
     }
   });
 

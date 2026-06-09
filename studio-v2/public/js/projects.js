@@ -1,4 +1,15 @@
-import { api, el, setBusy, showToast, state } from "./core.js";
+import {
+  api,
+  countryNames,
+  creativeThemeOptions,
+  el,
+  escapeHtml,
+  projectSetup,
+  setBusy,
+  showToast,
+  state,
+  toneOptions
+} from "./core.js";
 import {
   planningPackageFromForm,
   setWorkflowBusy,
@@ -34,13 +45,17 @@ export async function openProject(projectId) {
 }
 
 export async function deleteProject(projectId) {
+  if (state.deletingProjectIds.has(projectId)) return;
   const project = state.projects.find((item) => item.id === projectId);
   const label = project?.name || "这个项目";
   if (!window.confirm(`删除“${label}”？`)) return;
 
+  state.deletingProjectIds.add(projectId);
+  renderProjectList();
   try {
     await api(`/api/projects/${encodeURIComponent(projectId)}`, { method: "DELETE" });
     const wasCurrentProject = state.project?.id === projectId;
+    state.selectedProjectIds.delete(projectId);
     await loadProjects();
     if (wasCurrentProject) {
       if (state.projects.length) {
@@ -56,6 +71,66 @@ export async function deleteProject(projectId) {
     showToast("项目已删除。");
   } catch (error) {
     showToast(error.message);
+  } finally {
+    state.deletingProjectIds.delete(projectId);
+    renderProjectList();
+  }
+}
+
+export function startProjectBatchDelete() {
+  state.projectSelectionMode = true;
+  state.selectedProjectIds = new Set(
+    state.projects
+      .filter((project) => project.id !== state.project?.id)
+      .map((project) => project.id)
+  );
+  renderProjectList();
+}
+
+export function cancelProjectBatchDelete() {
+  state.projectSelectionMode = false;
+  state.selectedProjectIds.clear();
+  renderProjectList();
+}
+
+export function toggleProjectSelection(projectId, selected) {
+  if (selected) state.selectedProjectIds.add(projectId);
+  else state.selectedProjectIds.delete(projectId);
+  renderProjectList();
+}
+
+export async function deleteSelectedProjects() {
+  const ids = [...state.selectedProjectIds].filter((id) =>
+    state.projects.some((project) => project.id === id)
+  );
+  if (!ids.length) return;
+  if (!window.confirm(`删除所选 ${ids.length} 个项目？`)) return;
+
+  ids.forEach((id) => state.deletingProjectIds.add(id));
+  renderProjectList();
+  try {
+    for (const id of ids) {
+      await api(`/api/projects/${encodeURIComponent(id)}`, { method: "DELETE" });
+      state.selectedProjectIds.delete(id);
+    }
+    const currentWasDeleted = ids.includes(state.project?.id);
+    await loadProjects();
+    if (currentWasDeleted) {
+      if (state.projects.length) await openProject(state.projects[0].id);
+      else {
+        state.project = null;
+        state.viewStatus = null;
+        el("workspace").classList.add("hidden");
+        el("emptyScreen").classList.remove("hidden");
+      }
+    }
+    state.projectSelectionMode = false;
+    showToast(`已删除 ${ids.length} 个项目。`);
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    ids.forEach((id) => state.deletingProjectIds.delete(id));
+    renderProjectList();
   }
 }
 
@@ -151,14 +226,15 @@ function renderBriefSummary(project) {
   const dialog = el("briefSummaryDialog");
   const content = el("briefSummaryContent");
   if (!dialog || !content) return;
+  const labelFor = (options, value) => options.find(([item]) => item === value)?.[1] || value || "";
   content.innerHTML = `
     <div class="summary-grid">
-      <div><span>目标国家</span><strong>${brief.targetCountry || project.targetCountry}</strong></div>
-      <div><span>目标人群</span><strong>${brief.audience || project.audience}</strong></div>
-      <div><span>创意主题</span><strong>${brief.creativeTheme || ""}</strong></div>
-      <div><span>语气</span><strong>${brief.tone || ""}</strong></div>
+      <div><span>目标国家</span><strong>${escapeHtml(countryNames[brief.targetCountry] || brief.targetCountry || project.targetCountry)}</strong></div>
+      <div><span>目标人群</span><strong>${escapeHtml(brief.audience || project.audience)}</strong></div>
+      <div><span>创意主题</span><strong>${escapeHtml(labelFor(creativeThemeOptions, brief.creativeTheme))}</strong></div>
+      <div><span>语气</span><strong>${escapeHtml(labelFor(toneOptions, brief.tone))}</strong></div>
     </div>
-    <p class="summary-message">${brief.coreMessage || ""}</p>
+    <p class="summary-message">${escapeHtml(brief.coreMessage || "")}</p>
   `;
   dialog.showModal();
 }
@@ -241,9 +317,7 @@ export async function saveMarketBrief(event) {
 
 export async function generateScript() {
   el("briefSummaryDialog")?.close();
-  const shotsPerSegment = Number(
-    document.querySelector("input[name='shotsPerSegment']:checked")?.value || 5
-  );
+  const shotsPerSegment = projectSetup(state.project).shotsPerSegment;
   setWorkflowBusy(true, "generateScriptButton", "正在生成脚本...", "生成演示脚本");
   setScriptProgress(true);
   try {
@@ -270,6 +344,19 @@ function setScriptProgress(active) {
   if (!progress) return;
   progress.hidden = !active;
   progress.classList.toggle("active", active);
+  const label = progress.querySelector("strong");
+  if (!label) return;
+  window.clearInterval(setScriptProgress.timer);
+  if (!active) {
+    label.textContent = "0%";
+    return;
+  }
+  let percent = 12;
+  label.textContent = `${percent}%`;
+  setScriptProgress.timer = window.setInterval(() => {
+    percent = Math.min(92, percent + Math.ceil((100 - percent) / 9));
+    label.textContent = `${percent}%`;
+  }, 420);
 }
 
 export async function confirmScript(event) {
@@ -385,8 +472,4 @@ export async function generateVisual() {
   } finally {
     setWorkflowBusy(false, "generateVisualButton", "正在生成故事版图片...", "生成故事版图片");
   }
-}
-
-export function downloadExportPackage() {
-  window.location.href = `/api/projects/${encodeURIComponent(state.project.id)}/export`;
 }
