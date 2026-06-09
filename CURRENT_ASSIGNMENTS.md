@@ -49,8 +49,11 @@ codex/frontend-market-step
 唯一任务入口：
 
 ```text
-tasks/codex-frontend-market-step.md
+tasks/codex-frontend-current.md
 ```
+
+Codex B 在另一台电脑工作，通过 GitHub 仓库领取任务。领取前必须同步
+`main`，并以仓库中的当前任务文件、冻结契约和分支提交为准，不依赖聊天线程。
 
 允许修改：
 

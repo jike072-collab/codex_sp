@@ -99,6 +99,23 @@ Do not invent alternate routes, payload fields, status names, or enum values.
 If a needed behavior is missing from a contract, pause and update the contract
 through Codex A before implementing competing behavior.
 
+## Cross-Computer Repository Coordination
+
+Frontend work may happen on another computer. From now on, frontend coordination
+must use GitHub repository state, not chat thread memory.
+
+- Codex B uses only the current task file in `tasks/`, the frozen contracts, and
+  its branch commits as the source of truth.
+- Before claiming or continuing frontend work, Codex B must fetch the repository,
+  rebase or merge the latest `main`, and confirm the base commit in its task
+  handoff.
+- Progress is reported through task-file status updates or branch commits with
+  clear handoff notes.
+- Do not rely on prior chat threads, local-only notes, or stale branch content
+  to define frontend scope.
+- Codex A updates shared contracts and task files on `main`; Codex B implements
+  only the assigned frontend scope after syncing from GitHub.
+
 ## Step Discipline
 
 Use this loop for every module:
