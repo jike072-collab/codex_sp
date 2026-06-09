@@ -11,6 +11,7 @@ import {
 import { join, relative, resolve } from "node:path";
 
 import { projectsRoot, uploadsRoot } from "../config.mjs";
+import { getExportReadiness } from "../workflow-domain/export-package.mjs";
 import { PROJECT_STAGES } from "../workflow-domain/project-workflow.mjs";
 import { cleanString } from "../workflow-domain/value-normalizers.mjs";
 
@@ -103,6 +104,22 @@ export async function deleteProject(projectId) {
   }
 }
 
+export async function deleteProjects(projectIds) {
+  const uniqueIds = [...new Set(projectIds)];
+  const deletedProjectIds = [];
+  const missingProjectIds = [];
+
+  for (const projectId of uniqueIds) {
+    const deleted = await deleteProject(projectId);
+    if (deleted) deletedProjectIds.push(projectId);
+    else missingProjectIds.push(projectId);
+  }
+
+  deletedProjectIds.sort();
+  missingProjectIds.sort();
+  return { deletedProjectIds, missingProjectIds };
+}
+
 export async function listProjects() {
   const files = (await readdir(projectsRoot)).filter((name) => name.endsWith(".json"));
   const projects = [];
@@ -128,6 +145,9 @@ export async function listProjects() {
       hasAnalysis: Boolean(visionAnalysis),
       hasPlanningPackage: Boolean(planningPackage),
       hasImagePackage: Boolean(imagePackage),
+      exportReady: getExportReadiness({ ...project, planningPackage, imagePackage }).ready,
+      visualNeedsRegeneration: project.status === "export"
+        && !getExportReadiness({ ...project, planningPackage, imagePackage }).ready,
       omniPackageCount: Array.isArray(manualOmniPackages) ? manualOmniPackages.length : 0
     }));
 }

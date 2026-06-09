@@ -168,6 +168,41 @@ test("project deletion removes only the selected project and its uploads", async
   assert.equal(missing.response.status, 404);
 });
 
+test("batch project deletion removes only the selected projects", async () => {
+  const first = await request("/api/projects", {
+    method: "POST",
+    body: JSON.stringify({ name: "Batch delete A" })
+  });
+  const second = await request("/api/projects", {
+    method: "POST",
+    body: JSON.stringify({ name: "Batch delete B" })
+  });
+  const third = await request("/api/projects", {
+    method: "POST",
+    body: JSON.stringify({ name: "Batch delete C" })
+  });
+
+  const response = await request("/api/projects", {
+    method: "DELETE",
+    body: JSON.stringify({
+      projectIds: [first.body.project.id, third.body.project.id]
+    })
+  });
+
+  assert.equal(response.response.status, 200);
+  assert.deepEqual(response.body.deletedProjectIds.sort(), [
+    first.body.project.id,
+    third.body.project.id
+  ].sort());
+  assert.deepEqual(response.body.missingProjectIds, []);
+  assert.equal(await repository.readProject(first.body.project.id), null);
+  assert.equal(await repository.readProject(third.body.project.id), null);
+
+  const remaining = await request(`/api/projects/${second.body.project.id}`);
+  assert.equal(remaining.response.status, 200);
+  assert.equal(remaining.body.project.name, "Batch delete B");
+});
+
 test("asset deletion removes one uploaded image before analysis", async () => {
   const created = await request("/api/projects", {
     method: "POST",

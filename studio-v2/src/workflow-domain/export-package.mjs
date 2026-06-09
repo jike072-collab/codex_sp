@@ -1,5 +1,4 @@
 import { DomainError } from "./domain-error.mjs";
-import { assertProjectStage } from "./project-workflow.mjs";
 
 function storyboardDeliverables(project) {
   const script = project.planningPackage?.script_20s || {};
@@ -16,14 +15,43 @@ function storyboardDeliverables(project) {
   }));
 }
 
+export function getExportReadiness(project) {
+  if (project?.status !== "export") {
+    return { ready: false, code: "EXPORT_NOT_READY", reason: "project_status" };
+  }
+  if (!project.planningPackage || !project.imagePackage) {
+    return { ready: false, code: "EXPORT_NOT_READY", reason: "missing_package" };
+  }
+
+  const items = project.imagePackage.image_generation;
+  if (!Array.isArray(items) || items.length !== 2) {
+    return { ready: false, code: "EXPORT_NOT_READY", reason: "storyboard_count" };
+  }
+
+  const expectedAspectRatio = project.marketBrief?.outputAspectRatio || "9:16";
+  const expectedSegments = new Set(["0-10s", "10-20s"]);
+  for (const item of items) {
+    if (item?.type !== "storyboard_board") {
+      return { ready: false, code: "EXPORT_NOT_READY", reason: "storyboard_type" };
+    }
+    if (item.aspect_ratio !== expectedAspectRatio) {
+      return { ready: false, code: "EXPORT_NOT_READY", reason: "aspect_ratio" };
+    }
+    if (!expectedSegments.delete(item.segment_id)) {
+      return { ready: false, code: "EXPORT_NOT_READY", reason: "storyboard_segment" };
+    }
+  }
+
+  return {
+    ready: expectedSegments.size === 0,
+    code: expectedSegments.size === 0 ? "EXPORT_READY" : "EXPORT_NOT_READY",
+    reason: expectedSegments.size === 0 ? "ready" : "storyboard_segment"
+  };
+}
+
 export function buildExportPackage(project, exportedAt = new Date().toISOString()) {
-  assertProjectStage(project, "export", "导出交付包");
-  if (
-    !project.planningPackage ||
-    !project.imagePackage ||
-    !Array.isArray(project.imagePackage.image_generation) ||
-    project.imagePackage.image_generation.length !== 2
-  ) {
+  const readiness = getExportReadiness(project);
+  if (!readiness.ready) {
     throw new DomainError("项目交付内容不完整，无法导出。", {
       code: "EXPORT_NOT_READY"
     });
