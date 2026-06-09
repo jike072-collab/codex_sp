@@ -1,90 +1,41 @@
 # 当前并行分工
 
-当前只启用两个开发角色。不要自行认领其他 Track，避免同时改动共享接口。
+本轮前后端任务已经完成并合并到 `main`。新的工作开始前，两个 Codex 都必须
+先读取 `AGENTS.md`、`CODEX_RUNBOOK.md` 和 `docs/MODEL-ROUTING.md`，再按任务
+难度选择模型。
 
-## Codex A：主线与集成（当前对话）
-
-分支：
-
-```text
-main
-```
+## Codex A：后端与集成
 
 负责：
 
-- `studio-v2/src/workflow-domain/**`
-- `studio-v2/src/local-api/**`
-- `studio-v2/src/ai-providers/**`
-- `studio-v2/src/storage/**`
+- `studio-v2/src/**`
+- `studio-v2/server.mjs`
 - `studio-v2/tests/**`
-- `prompts/**`
+- `docs/contracts/**`
 - `schemas/**`
-- 跨模块接口契约
-- 合并、回归测试与 GitHub 主分支
+- `prompts/**`
+- 合并、回归测试和 GitHub 主分支
 
-当前任务：
+本轮任务记录：`tasks/codex-backend-current.md`（已完成）。
 
-1. [完成] 定义市场创意数据结构。
-2. [完成] 实现 `POST /api/projects/:id/market`。
-3. [完成] 定义合法项目状态转换。
-4. [完成] 冻结脚本、视觉与导出接口契约。
-5. [完成] 实现无 Key 的后端演示闭环。
-6. [完成] 检查并集成 Codex B 的前端分支。
-7. [完成] 接入 Right Code Gemini 2.5 Flash 识图、DeepSeek V4 Pro 脚本和 Right Code gpt-image-2 图片生成。
-8. [完成] 实现项目删除与本地 API Key 设置接口，并集成前端入口。
-9. [完成] 拆分识图与生图 API Key 配置，保持三个 provider 独立。
-10. [完成] 与前端三接口设置保持一致，识图、脚本和生图 Key 独立保存。
-11. [完成] 整合故事版前端闭环，完成存储健壮性审计与浏览器闭环验证。
-12. [完成] 收口 Step 02 合并创意设置、脚本镜头数选择、Right Code 生图 403 参考图重试、API Key 职责显示与 Codex B 前端 QA 交接。
-13. [完成] 合并第一版闭环，清理旧 `scripts/`、`web/` 原型入口，保留 `studio-v2/8810` 启动方式。
+## Codex B：浏览器前端
 
-## Codex B：完整闭环前端（另一个 Codex）
-
-分支：
-
-```text
-codex/frontend-market-step
-```
-
-唯一任务入口：
-
-```text
-tasks/codex-frontend-current.md
-```
-
-Codex B 在另一台电脑工作，通过 GitHub 仓库领取任务。领取前必须同步
-`main`，并以仓库中的当前任务文件、冻结契约和分支提交为准，不依赖聊天线程。
-
-允许修改：
+负责：
 
 - `studio-v2/public/**`
 
-禁止修改：
+本轮任务记录：`tasks/codex-frontend-current.md`（已完成）。
 
-- `studio-v2/src/**`
-- `studio-v2/server.mjs`
-- `schemas/**`
-- `prompts/**`
-- 根目录协作文档
+Codex B 在另一台电脑工作，必须通过 GitHub 仓库领取任务。开始前同步最新
+`main`，以仓库中的任务文件、冻结契约和提交为准，不依赖聊天记录。
 
-完成后提交到自己的分支，不直接合并 `main`。
+## 当前交付目标
 
-当前任务已收口为浏览器 QA/微调：市场创意、脚本编辑、两张故事板最终交付和 JSON 导出。完整接口见：
+- 直接编辑第二步创意信息
+- 每段 10 秒脚本按用户选择的镜头数生成和编辑
+- 最终只展示两张故事板图片和两段对应脚本
+- 支持项目批量删除
+- 对供应商超时、可能扣费和失败原因给出明确反馈
 
-```text
-docs/contracts/market-creative-api.md
-docs/contracts/demo-loop-api.md
-```
-
-当前前端 follow-up 已变更为 QA/微调：同步 `main`，不要继续旧的 market placeholder 任务，不要重新引入 `rightCodesApiKey`，只在 `studio-v2/public/**` 内核对 Step 02 合并流程、尺寸抽屉、总结弹窗、脚本镜头数选择、进度条和三 Key 设置弹窗。
-
-## 尚未启动
-
-Storage 增强和批量任务暂不分配。
-
-## 本轮分工
-
-- Codex A 当前任务入口：`tasks/codex-backend-current.md`
-  - 批量删除、旧项目清理、导出状态收口、故事板失败归因
-- Codex B 当前任务入口：`tasks/codex-frontend-current.md`
-  - Step 02 直接编辑、脚本页重排、删除交互、动画与视觉 polish
+当前没有未分配的并行开发任务。下一轮由 Codex A 创建独立任务文件和分支，
+并在任务中记录 `Route: simple|standard|complex`。

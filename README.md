@@ -15,7 +15,7 @@ GitHub：`https://github.com/jike072-collab/codex_sp`
 5. 确认产品锁定与市场创意
 6. 生成并编辑两段 10 秒脚本
 7. 按第二步选择的尺寸生成两张故事板图
-8. 下载只包含第一版交付内容的 JSON 包
+8. 查看两张故事板图片并复制两段对应脚本
 
 启动：
 
@@ -42,7 +42,9 @@ Windows 也可以双击根目录的 `打开鞋类广告工作台.vbs` 启动，�
 当前负责人和另一个 Codex 的唯一任务入口：
 
 - `CURRENT_ASSIGNMENTS.md`
-- `tasks/codex-frontend-market-step.md`
+- `tasks/codex-backend-current.md`
+- `tasks/codex-frontend-current.md`
+- `docs/MODEL-ROUTING.md`
 
 协作规则见：
 

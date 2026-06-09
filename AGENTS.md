@@ -6,6 +6,7 @@ Read these files before editing:
 - `CURRENT_ASSIGNMENTS.md`
 - `docs/ARCHITECTURE.md`
 - `docs/PARALLEL-WORK.md`
+- `docs/MODEL-ROUTING.md`
 - `docs/TASKS.md`
 
 ## Required Workflow

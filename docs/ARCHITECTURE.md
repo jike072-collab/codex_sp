@@ -49,7 +49,8 @@ Current implementation area: `studio-v2/src/local-api/` and the thin `studio-v2/
 
 Owns the product workflow, entities, state transitions, validation rules, review gates, and provider-independent contracts.
 
-Core concepts include project, source asset, product lock, market direction, script, storyboard, keyframe, review decision, and export package.
+Core concepts include project, source asset, product lock, market direction,
+script, storyboard, review decision, and final delivery.
 
 - Defines allowed stage transitions and required inputs.
 - Keeps human approval explicit and auditable.

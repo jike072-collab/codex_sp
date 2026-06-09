@@ -1,97 +1,17 @@
 # Parallel Task Board
 
-This is the future task pool. For work that is active now, `CURRENT_ASSIGNMENTS.md` takes precedence.
+The latest completed assignments are recorded in:
 
-Remote repository: `https://github.com/jike072-collab/codex_sp`
+- `tasks/codex-backend-current.md`
+- `tasks/codex-frontend-current.md`
 
-Each task uses its own `codex/<task>` branch and owns only the listed paths.
+There are no unassigned active tracks. For a new round, Codex A must:
 
-## Track A: Frontend Workflow
+1. Sync and branch from the latest `main`.
+2. Create one task file per Codex with non-overlapping owned paths.
+3. Record `Route: simple|standard|complex` using `docs/MODEL-ROUTING.md`.
+4. Freeze shared contracts before frontend implementation begins.
+5. Integrate only after each branch passes its owned checks.
 
-Branch: `codex/frontend-market-step`
-
-Owned paths:
-
-- `studio-v2/public/**`
-
-Task:
-
-- Implement step 03: target market, audience, creative direction, and review.
-- Call stable local API contracts; do not edit backend modules.
-
-## Track B: Local API
-
-Branch: `codex/local-api-contracts`
-
-Owned paths:
-
-- `studio-v2/src/local-api/**`
-- `studio-v2/server.mjs`
-
-Task:
-
-- Add structured API errors and request validation.
-- Preserve current routes while documenting any new contract.
-
-## Track C: Workflow Domain
-
-Branch: `codex/domain-transitions`
-
-Owned paths:
-
-- `studio-v2/src/workflow-domain/**`
-- `schemas/**`
-
-Task:
-
-- Define project stage transitions and validation rules.
-- Move product-lock normalization into provider-independent domain code.
-
-## Track D: AI Providers
-
-Branch: `codex/ai-provider-adapters`
-
-Owned paths:
-
-- `studio-v2/src/ai-providers/**`
-- `prompts/**`
-
-Task:
-
-- Define vision and text provider interfaces.
-- Keep fake/demo providers usable without credentials.
-- Add timeout and safe provider error mapping.
-
-## Track E: Storage
-
-Branch: `codex/storage-safety`
-
-Owned paths:
-
-- `studio-v2/src/storage/**`
-
-Task:
-
-- Add atomic project writes and schema versioning.
-- Add safe asset removal and project archive operations.
-
-## Track F: Tests
-
-Branch: `codex/core-tests`
-
-Owned paths:
-
-- `studio-v2/tests/**`
-
-Task:
-
-- Add zero-dependency unit and API tests using temporary directories and fake providers.
-- Cover create project, upload, demo analysis, review confirmation, and invalid transitions.
-
-## Integration Order
-
-1. Workflow domain contracts
-2. Storage and AI providers
-3. Local API
-4. Frontend
-5. Tests and release verification
+Frontend work remains limited to `studio-v2/public/**`. Backend, contracts,
+storage, providers, and integration remain owned by Codex A.

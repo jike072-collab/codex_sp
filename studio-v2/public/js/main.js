@@ -89,17 +89,6 @@ function wireEvents() {
   });
 
   el("workspace").addEventListener("click", (event) => {
-    const assetHistoryButton = event.target.closest("[data-asset-history]");
-    if (assetHistoryButton) {
-      const asset = state.project?.assets?.find((item) => item.id === assetHistoryButton.dataset.assetHistory);
-      if (asset) {
-        const sizeKb = asset.size ? `${Math.round(asset.size / 1024)}KB` : "未知大小";
-        const uploadedAt = asset.uploadedAt ? ` · ${new Date(asset.uploadedAt).toLocaleString()}` : "";
-        showToast(`${asset.name} · ${sizeKb}${uploadedAt}`);
-      }
-      return;
-    }
-
     const deleteAssetButton = event.target.closest("[data-delete-asset-id]");
     if (deleteAssetButton) {
       deleteAsset(deleteAssetButton.dataset.deleteAssetId).catch((error) => showToast(error.message));

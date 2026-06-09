@@ -79,11 +79,7 @@ export async function deleteProject(projectId) {
 
 export function startProjectBatchDelete() {
   state.projectSelectionMode = true;
-  state.selectedProjectIds = new Set(
-    state.projects
-      .filter((project) => project.id !== state.project?.id)
-      .map((project) => project.id)
-  );
+  state.selectedProjectIds.clear();
   renderProjectList();
 }
 
@@ -109,10 +105,12 @@ export async function deleteSelectedProjects() {
   ids.forEach((id) => state.deletingProjectIds.add(id));
   renderProjectList();
   try {
-    for (const id of ids) {
-      await api(`/api/projects/${encodeURIComponent(id)}`, { method: "DELETE" });
-      state.selectedProjectIds.delete(id);
-    }
+    await api("/api/projects", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectIds: ids })
+    });
+    ids.forEach((id) => state.selectedProjectIds.delete(id));
     const currentWasDeleted = ids.includes(state.project?.id);
     await loadProjects();
     if (currentWasDeleted) {

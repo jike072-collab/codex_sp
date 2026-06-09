@@ -18,7 +18,7 @@ create project
 -> generate demo script
 -> confirm edited script
 -> generate two storyboard images using the Step 02 aspect ratio
--> download JSON export
+-> review the two storyboard images and matching scripts
 ```
 
 Do not spend first-version time on real model integrations, visual redesign,
@@ -66,7 +66,7 @@ Responsibilities:
 Branch:
 
 ```text
-codex/frontend-market-step
+codex/<frontend-task>
 ```
 
 Owns:
@@ -80,8 +80,8 @@ Responsibilities:
 - Render workflow stages from persisted `project.status`.
 - Implement market creative form against the frozen market contract.
 - Implement script generation, editable script confirmation, two-storyboard
-  delivery display, script copy actions, and JSON export download against the
-  frozen demo-loop contract.
+  delivery display and script copy actions against the frozen demo-loop
+  contract.
 - Preserve the existing visual language and avoid framework/dependency changes.
 - Verify the affected browser workflow.
 
@@ -115,6 +115,19 @@ must use GitHub repository state, not chat thread memory.
   to define frontend scope.
 - Codex A updates shared contracts and task files on `main`; Codex B implements
   only the assigned frontend scope after syncing from GitHub.
+
+## Automatic Model Routing
+
+Read `docs/MODEL-ROUTING.md` before delegating or starting a new task.
+
+- Classify every task as `simple`, `standard`, or `complex`.
+- The coordinator must select the mapped model and thinking level when creating
+  or continuing a Codex thread.
+- Tool-driven multi-step work, cross-module changes, provider billing/timeouts,
+  data compatibility, and visual review force the complex route.
+- A task may upgrade but must not downgrade inside the same coherent session.
+- Task files and delegation messages must record the route so the Codex on the
+  other computer makes the same choice.
 
 ## Step Discipline
 
@@ -161,8 +174,8 @@ Browser smoke checks:
 - `script`: generate button calls `/script/generate`; editable shot fields
   render; confirmation calls `/script/confirm`; success enters `visual`.
 - `visual`: generate button calls `/visual/generate`; success enters `export`.
-- `export`: exactly two selected-aspect storyboard images, matching 0-10s and
-  10-20s script copy controls, and JSON download are visible.
+- `export`: exactly two selected-aspect storyboard images and matching 0-10s
+  and 10-20s script copy controls are visible.
 
 ### Final closed-loop verification
 
@@ -172,7 +185,8 @@ Before handoff or integration, run:
 node --test studio-v2/tests/*.test.mjs
 ```
 
-Then exercise the browser workflow from project creation through JSON export.
+Then exercise the browser workflow from project creation through the final two
+storyboard images and matching scripts.
 If a local sandbox blocks port listening, rerun the same command with approved
 unsandboxed permission and record that reason.
 
@@ -200,7 +214,8 @@ If one Codex finishes while the other is still working:
    Codex B owns generation button and editable script UI.
 4. Storyboard package: Codex A owns deterministic package generation; Codex B
    owns two-storyboard display, image preview, and script copy UI.
-5. JSON export: Codex A owns export endpoint; Codex B owns download entrypoint.
+5. Final delivery: Codex B presents exactly two storyboard images and their two
+   matching scripts without a JSON download entrypoint.
 6. Integration: Codex A merges and reruns the full closed-loop verification.
 
 ## Current Local Provider Rules

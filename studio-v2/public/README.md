@@ -1,28 +1,21 @@
 # Frontend Module
 
-Owner for the current parallel task: **Codex B**
+This module owns browser UI, view state, form handling, progress feedback, and
+calls to the local API.
 
-Branch:
-
-```text
-codex/frontend-market-step
-```
-
-Active task:
+Owned path:
 
 ```text
-tasks/codex-frontend-market-step.md
+studio-v2/public/**
 ```
-
-This module owns browser UI, view state, form handling, progress feedback, and calls to the local API.
 
 It must not:
 
 - Read or write local files directly.
 - Call AI providers directly.
-- Store API keys.
+- Store API keys in project data.
 - Change workflow transitions.
-- Invent API payloads outside documented contracts.
+- Invent payloads outside documented contracts.
 
 Current modules:
 
@@ -31,3 +24,5 @@ Current modules:
 - `js/projects.js`: project API operations
 - `js/main.js`: event wiring and application boot
 
+New frontend work must be assigned through a repository task file and include
+the route from `docs/MODEL-ROUTING.md`.

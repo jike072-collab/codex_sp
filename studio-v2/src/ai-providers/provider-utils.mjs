@@ -82,6 +82,7 @@ export async function postProviderJson({
   }
 
   if (!response.ok) {
+    const timedOut = [408, 504, 524].includes(response.status);
     let detail = "";
     try {
       const payload = await response.json();
@@ -95,8 +96,11 @@ export async function postProviderJson({
     throw new ProviderError(
       `${providerLabel}调用失败（HTTP ${response.status}）${suffix}`,
       {
-        code: errorCode,
-        providerStatus: response.status
+        code: timedOut && errorCode.endsWith("_ERROR")
+          ? errorCode.replace(/_ERROR$/, "_TIMEOUT")
+          : errorCode,
+        providerStatus: response.status,
+        possiblyBilled: timedOut
       }
     );
   }

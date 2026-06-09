@@ -1,6 +1,8 @@
 # Codex B Current Frontend Task
 
-Status: ACTIVE
+Status: COMPLETE
+
+Route: standard
 
 Base commit: `9aa1915` (`Document remote frontend coordination`)
 
@@ -60,8 +62,8 @@ Do not edit:
 
 ## Current Guardrails
 
-- Do not continue old `codex/frontend-market-step` placeholder work unless a new
-  task explicitly says to do so.
+- Do not continue an older placeholder branch unless a new task explicitly
+  restores it.
 - Do not carry forward old branch behavior or local changes as current scope.
 - Use only the current task file, frozen contracts, and branch commits as the
   coordination record.

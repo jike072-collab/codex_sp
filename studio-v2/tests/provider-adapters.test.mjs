@@ -159,6 +159,26 @@ test("Right Code vision adapter keeps legacy Draw channel compatibility", async 
   });
 });
 
+test("provider HTTP 524 is classified as a possibly billed timeout", async () => {
+  await assert.rejects(
+    postProviderJson({
+      url: "https://example.test/images",
+      apiKey: "test-key",
+      body: { prompt: "storyboard" },
+      timeoutMs: 1000,
+      providerLabel: "Right Code 图片模型",
+      errorCode: "IMAGE_PROVIDER_ERROR",
+      fetchImpl: async () => new Response("", { status: 524 })
+    }),
+    (error) => {
+      assert.equal(error.code, "IMAGE_PROVIDER_TIMEOUT");
+      assert.equal(error.providerStatus, 524);
+      assert.equal(error.possiblyBilled, true);
+      return true;
+    }
+  );
+});
+
 test("provider errors preserve string error details", async () => {
   await assert.rejects(
     () => postProviderJson({

@@ -153,11 +153,9 @@ export function renderAssets() {
   el("assetGrid").innerHTML = assets.map((asset) => `
     <article class="asset-card">
       <div class="asset-card-actions">
-        <button class="asset-icon-button" type="button"
-          data-asset-history="${escapeHtml(asset.id)}" aria-label="查看 ${escapeHtml(asset.name)} 的历史">↺</button>
         <button class="asset-icon-button danger" type="button"
           data-delete-asset-id="${escapeHtml(asset.id)}" aria-label="删除 ${escapeHtml(asset.name)}"
-          ${canUpload ? "" : "disabled"}>×</button>
+          ${canUpload ? "" : "disabled"}>删除</button>
       </div>
       <img src="${escapeHtml(asset.url)}" alt="${escapeHtml(asset.name)}">
       <span>${escapeHtml(asset.name)}</span>
@@ -211,7 +209,7 @@ function renderCompletionList(status) {
     market: ["目标国家已选择", "目标人群已确认", "创意主题、核心信息和语气已填写"],
     script: ["产品锁定和创意方向已保存", "选择每个 10 秒段落的镜头数", "生成脚本后可继续编辑"],
     visual: ["脚本已确认", "故事板方向清晰", "准备生成两张分段故事板"],
-    export: ["两张故事板已整理", "两段 10 秒脚本可复制", "JSON 交付包可下载"]
+    export: ["两张故事板已整理", "两段 10 秒脚本可复制", "第一版交付内容已就绪"]
   };
   const items = itemsByStatus[status] || itemsByStatus.assets;
   el("completionList").innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
