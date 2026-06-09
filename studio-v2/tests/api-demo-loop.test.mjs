@@ -229,3 +229,100 @@ test("script confirmation rejects a broken timeline", async () => {
   assert.equal(response.response.status, 400);
   assert.equal(response.body.code, "INVALID_SCRIPT");
 });
+
+test("visual generation timeout records a retryable failure state", async () => {
+  const repository = await import("../src/storage/project-repository.mjs");
+  const {
+    generateProjectDemoScript
+  } = await import("../src/workflow-domain/demo-script.mjs");
+  const {
+    confirmPlanningPackage
+  } = await import("../src/workflow-domain/script-review.mjs");
+
+  const providerRequests = [];
+  const providerServer = http.createServer((req, res) => {
+    providerRequests.push(req.url);
+    req.on("data", () => {});
+    req.on("end", () => {});
+    req.resume();
+  });
+  await new Promise((resolveListen, reject) => {
+    providerServer.once("error", reject);
+    providerServer.listen(0, "127.0.0.1", resolveListen);
+  });
+  const providerAddress = providerServer.address();
+  const providerBaseUrl = `http://127.0.0.1:${providerAddress.port}`;
+
+  const previousEnv = {
+    IMAGE_MODEL_API_KEY: process.env.IMAGE_MODEL_API_KEY,
+    IMAGE_MODEL_PROVIDER: process.env.IMAGE_MODEL_PROVIDER,
+    IMAGE_API_URL: process.env.IMAGE_API_URL,
+    IMAGE_TIMEOUT_MS: process.env.IMAGE_TIMEOUT_MS
+  };
+  Object.assign(process.env, {
+    IMAGE_MODEL_API_KEY: "test-right-code-key",
+    IMAGE_MODEL_PROVIDER: "right_codes",
+    IMAGE_API_URL: `${providerBaseUrl}/draw/v1/images/generations`,
+    IMAGE_TIMEOUT_MS: "50"
+  });
+
+  try {
+    const created = await jsonRequest("/api/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        name: "Timed storyboard generation",
+        targetCountry: "Thailand",
+        audience: "日常运动与通勤人群"
+      })
+    });
+    const projectId = created.body.project.id;
+
+    await jsonRequest(`/api/projects/${projectId}/assets`, {
+      method: "POST",
+      body: JSON.stringify({
+        files: [{ name: "shoe.png", dataUrl: tinyPng }]
+      })
+    });
+
+    const project = await repository.readProject(projectId);
+    project.status = "script";
+    project.reviewConfirmedAt = "2026-06-06T00:10:00.000Z";
+    project.visionAnalysis = {
+      product_lock_manifest: {
+        must_keep: ["exact silhouette"],
+        must_not_change: ["do not change color"]
+      }
+    };
+    project.marketBrief = marketBrief;
+    project.marketConfirmedAt = "2026-06-06T00:20:00.000Z";
+    generateProjectDemoScript(project, "2026-06-06T01:00:00.000Z", {
+      shotsPerSegment: 4
+    });
+    confirmPlanningPackage(
+      project,
+      structuredClone(project.planningPackage),
+      "2026-06-06T01:10:00.000Z"
+    );
+    await repository.saveProject(project);
+
+    const response = await jsonRequest(`/api/projects/${projectId}/visual/generate`, {
+      method: "POST"
+    });
+    assert.equal(response.response.status, 502);
+    assert.equal(response.body.code, "IMAGE_PROVIDER_TIMEOUT");
+
+    const reopened = await jsonRequest(`/api/projects/${projectId}`);
+    assert.equal(reopened.body.project.status, "visual");
+    assert.equal(reopened.body.project.visualGenerationFailure.code, "IMAGE_PROVIDER_TIMEOUT");
+    assert.equal(reopened.body.project.visualGenerationFailure.possiblyBilled, true);
+    assert.equal(reopened.body.project.visualGeneratedAt, null);
+    assert.equal(reopened.body.project.imagePackage.image_generation.length, 2);
+    assert.equal(providerRequests.length, 1);
+  } finally {
+    await new Promise((resolveClose) => providerServer.close(resolveClose));
+    for (const [key, value] of Object.entries(previousEnv)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});

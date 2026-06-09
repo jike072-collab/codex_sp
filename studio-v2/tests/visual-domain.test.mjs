@@ -1,8 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildExportPackage } from "../src/workflow-domain/export-package.mjs";
-import { generateVisualPackage } from "../src/workflow-domain/visual-package.mjs";
+import { buildExportPackage, getExportReadiness } from "../src/workflow-domain/export-package.mjs";
+import {
+  generateVisualPackage,
+  recordVisualGenerationFailure
+} from "../src/workflow-domain/visual-package.mjs";
 
 function segment(segment_id, start) {
   return {
@@ -116,4 +119,94 @@ test("visual generation can replace stale export assets", () => {
     project.imagePackage.image_generation.map((item) => item.type),
     ["storyboard_board", "storyboard_board"]
   );
+});
+
+test("legacy export-era packages are treated as not ready until the current storyboard shape exists", () => {
+  const project = {
+    id: "project-3",
+    name: "Project",
+    status: "export",
+    targetCountry: "Thailand",
+    audience: "Audience",
+    createdAt: "2026-06-06T00:00:00.000Z",
+    updatedAt: "2026-06-06T00:00:00.000Z",
+    assets: [],
+    visionAnalysis: {},
+    marketBrief: { outputAspectRatio: "4:5" },
+    scriptConfirmedAt: "2026-06-06T00:00:00.000Z",
+    planningPackage: {
+      product_lock_manifest: {
+        must_keep: ["exact silhouette"],
+        must_not_change: ["do not change color"]
+      },
+      script_20s: {
+        total_duration_sec: 20,
+        segment_a_0_10s: segment("0-10s", 0),
+        segment_b_10_20s: segment("10-20s", 10)
+      }
+    },
+    imagePackage: {
+      image_generation: [
+        { segment_id: "0-10s", type: "storyboard_board", aspect_ratio: "16:9" },
+        { segment_id: "0-10s", type: "video_keyframe", aspect_ratio: "9:16" },
+        { segment_id: "10-20s", type: "storyboard_board", aspect_ratio: "16:9" },
+        { segment_id: "10-20s", type: "video_keyframe", aspect_ratio: "9:16" }
+      ]
+    }
+  };
+
+  const readiness = getExportReadiness(project);
+  assert.equal(readiness.ready, false);
+  assert.equal(readiness.code, "EXPORT_NOT_READY");
+  assert.equal(readiness.reason, "storyboard_count");
+  assert.throws(() => buildExportPackage(project), {
+    code: "EXPORT_NOT_READY"
+  });
+});
+
+test("visual generation failures are recorded when provider calls time out", () => {
+  const project = {
+    id: "project-4",
+    name: "Project",
+    status: "visual",
+    targetCountry: "Thailand",
+    audience: "Audience",
+    createdAt: "2026-06-06T00:00:00.000Z",
+    updatedAt: "2026-06-06T00:00:00.000Z",
+    assets: [],
+    visionAnalysis: {},
+    marketBrief: { outputAspectRatio: "4:5" },
+    scriptConfirmedAt: "2026-06-06T00:00:00.000Z",
+    planningPackage: {
+      product_lock_manifest: {
+        must_keep: ["exact silhouette"],
+        must_not_change: ["do not change color"]
+      },
+      script_20s: {
+        total_duration_sec: 20,
+        segment_a_0_10s: segment("0-10s", 0),
+        segment_b_10_20s: segment("10-20s", 10)
+      }
+    }
+  };
+
+  recordVisualGenerationFailure(
+    project,
+    Object.assign(new Error("Right Code 图片模型请求超时。"), {
+      code: "IMAGE_PROVIDER_TIMEOUT",
+      possiblyBilled: true,
+      providerStatus: 504
+    }),
+    "2026-06-06T04:00:00.000Z"
+  );
+
+  assert.equal(project.status, "visual");
+  assert.equal(project.visualGeneratedAt, null);
+  assert.deepEqual(project.visualGenerationFailure, {
+    code: "IMAGE_PROVIDER_TIMEOUT",
+    message: "Right Code 图片模型请求超时。",
+    failedAt: "2026-06-06T04:00:00.000Z",
+    possiblyBilled: true,
+    providerStatus: 504
+  });
 });

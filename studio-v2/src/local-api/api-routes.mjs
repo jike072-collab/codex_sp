@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { readJsonBody, sendJson, sendJsonDownload } from "./http-helpers.mjs";
 import {
   deleteProject,
+  deleteProjects,
   listProjects,
   readProject,
   removeProjectAsset,
@@ -25,7 +26,26 @@ import {
 import { generateProjectScript } from "../ai-providers/text-provider.mjs";
 import { confirmPlanningPackage } from "../workflow-domain/script-review.mjs";
 import { generateProjectVisuals } from "../ai-providers/image-provider.mjs";
+import { ProviderError } from "../ai-providers/provider-utils.mjs";
 import { buildExportPackage } from "../workflow-domain/export-package.mjs";
+import { recordVisualGenerationFailure } from "../workflow-domain/visual-package.mjs";
+
+function projectIdsFromBody(body) {
+  const projectIds = Array.isArray(body.projectIds) ? body.projectIds : [];
+  if (!projectIds.length) {
+    throw new DomainError("请选择至少一个项目。", {
+      code: "PROJECT_IDS_REQUIRED"
+    });
+  }
+  for (const projectId of projectIds) {
+    if (typeof projectId !== "string" || !/^[a-z0-9-]+$/i.test(projectId)) {
+      throw new DomainError("项目编号无效。", {
+        code: "INVALID_PROJECT_ID"
+      });
+    }
+  }
+  return projectIds;
+}
 
 export async function handleApi(request, response, url) {
   if (url.pathname === "/api/settings/providers") {
@@ -41,6 +61,11 @@ export async function handleApi(request, response, url) {
 
   if (request.method === "GET" && url.pathname === "/api/projects") {
     return sendJson(response, 200, { projects: await listProjects() });
+  }
+
+  if (request.method === "DELETE" && url.pathname === "/api/projects") {
+    const body = await readJsonBody(request, 64 * 1024);
+    return sendJson(response, 200, await deleteProjects(projectIdsFromBody(body)));
   }
 
   if (request.method === "POST" && url.pathname === "/api/projects") {
@@ -64,7 +89,8 @@ export async function handleApi(request, response, url) {
       scriptConfirmedAt: null,
       imagePackage: null,
       manualOmniPackages: [],
-      visualGeneratedAt: null
+      visualGeneratedAt: null,
+      visualGenerationFailure: null
     };
     await saveProject(project);
     return sendJson(response, 201, { project });
@@ -174,9 +200,25 @@ export async function handleApi(request, response, url) {
   }
 
   if (request.method === "POST" && action === "visual/generate") {
-    await generateProjectVisuals(project);
-    await saveProject(project);
-    return sendJson(response, 200, { project });
+    try {
+      await generateProjectVisuals(project);
+      await saveProject(project);
+      return sendJson(response, 200, { project });
+    } catch (error) {
+      if (error instanceof ProviderError && String(error.code || "").startsWith("IMAGE_")) {
+        recordVisualGenerationFailure(project, error);
+        try {
+          await saveProject(project);
+        } catch (saveError) {
+          console.error("Failed to save visual provider failure state.", {
+            projectId,
+            originalError: error,
+            saveError
+          });
+        }
+      }
+      throw error;
+    }
   }
 
   if (request.method === "GET" && action === "export") {

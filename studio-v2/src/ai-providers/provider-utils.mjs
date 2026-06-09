@@ -6,12 +6,13 @@ const PLACEHOLDER_KEYS = new Set([
 ]);
 
 export class ProviderError extends Error {
-  constructor(message, { code = "PROVIDER_ERROR", providerStatus, cause } = {}) {
+  constructor(message, { code = "PROVIDER_ERROR", providerStatus, possiblyBilled = false, cause } = {}) {
     super(message, { cause });
     this.name = "ProviderError";
     this.code = code;
     this.statusCode = 502;
     this.providerStatus = providerStatus;
+    this.possiblyBilled = possiblyBilled;
   }
 }
 
@@ -71,9 +72,12 @@ export async function postProviderJson({
     });
   } catch (error) {
     const timedOut = error?.name === "TimeoutError" || error?.name === "AbortError";
+    const code = timedOut && errorCode.endsWith("_ERROR")
+      ? errorCode.replace(/_ERROR$/, "_TIMEOUT")
+      : errorCode;
     throw new ProviderError(
       timedOut ? `${providerLabel}请求超时。` : `${providerLabel}连接失败。`,
-      { code: errorCode, cause: error }
+      { code, possiblyBilled: timedOut, cause: error }
     );
   }
 

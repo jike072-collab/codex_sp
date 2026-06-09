@@ -125,10 +125,26 @@ export function generateVisualPackage(project, generatedAt = new Date().toISOStr
   };
   project.manualOmniPackages = [];
   project.visualGeneratedAt = generatedAt;
+  project.visualGenerationFailure = null;
   if (project.status === "visual") {
     transitionProject(project, "export");
   } else {
     project.status = "export";
+  }
+  return project;
+}
+
+export function recordVisualGenerationFailure(project, error, failedAt = new Date().toISOString()) {
+  project.status = "visual";
+  project.visualGeneratedAt = null;
+  project.visualGenerationFailure = {
+    code: error?.code || "IMAGE_PROVIDER_ERROR",
+    message: error?.message || "故事板图片生成失败。",
+    failedAt,
+    possiblyBilled: Boolean(error?.possiblyBilled)
+  };
+  if (Number.isInteger(error?.providerStatus)) {
+    project.visualGenerationFailure.providerStatus = error.providerStatus;
   }
   return project;
 }

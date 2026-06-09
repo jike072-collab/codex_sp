@@ -8,6 +8,6 @@ export class DomainError extends Error {
 }
 
 export function isExpectedError(error) {
+  if (error?.name === "ProviderError") return true;
   return Number.isInteger(error?.statusCode) && error.statusCode >= 400 && error.statusCode < 500;
 }
-

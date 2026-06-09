@@ -23,6 +23,37 @@ Success:
 }
 ```
 
+## Batch Delete Projects
+
+```http
+DELETE /api/projects
+Content-Type: application/json
+```
+
+Request:
+
+```json
+{
+  "projectIds": ["opaque-project-id", "another-project-id"]
+}
+```
+
+Rules:
+
+- Delete only the listed projects.
+- Delete each selected project and its uploaded source-image directory.
+- Return the ids that were deleted and the ids that were missing.
+- Do not affect any other project.
+
+Success:
+
+```json
+{
+  "deletedProjectIds": ["opaque-project-id"],
+  "missingProjectIds": ["another-project-id"]
+}
+```
+
 ## Read Provider Settings
 
 ```http
