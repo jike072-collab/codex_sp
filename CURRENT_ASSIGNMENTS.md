@@ -81,3 +81,10 @@ docs/contracts/demo-loop-api.md
 ## 尚未启动
 
 Storage 增强和批量任务暂不分配。
+
+## 本轮分工
+
+- Codex A 当前任务入口：`tasks/codex-backend-current.md`
+  - 批量删除、旧项目清理、导出状态收口、故事板失败归因
+- Codex B 当前任务入口：`tasks/codex-frontend-current.md`
+  - Step 02 直接编辑、脚本页重排、删除交互、动画与视觉 polish
