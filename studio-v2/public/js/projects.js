@@ -68,6 +68,21 @@ function fileToDataUrl(file) {
   });
 }
 
+export async function deleteAsset(assetId) {
+  if (!state.project?.id) return;
+  if (state.project.status !== "assets") {
+    showToast("项目进入后续步骤后，素材已锁定。");
+    return;
+  }
+  const data = await api(`/api/projects/${encodeURIComponent(state.project.id)}/assets/${encodeURIComponent(assetId)}`, {
+    method: "DELETE"
+  });
+  state.project = data.project;
+  renderWorkspace();
+  await loadProjects();
+  showToast("素材已删除。");
+}
+
 export async function uploadFiles(fileList) {
   if (!state.project) {
     showToast("请先创建一个项目。");

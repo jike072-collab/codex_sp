@@ -91,7 +91,9 @@ function storyboardAsset(project, segment, aspectRatio, rules) {
 }
 
 export function generateVisualPackage(project, generatedAt = new Date().toISOString()) {
-  assertProjectStage(project, "visual", "生成故事版图片");
+  if (!["visual", "export"].includes(project.status)) {
+    assertProjectStage(project, "visual", "生成故事版图片");
+  }
   if (!project.planningPackage || !project.scriptConfirmedAt) {
     throw new DomainError("请先确认广告脚本，再生成故事版图片。", {
       code: "SCRIPT_CONFIRMATION_REQUIRED"
@@ -123,6 +125,10 @@ export function generateVisualPackage(project, generatedAt = new Date().toISOStr
   };
   project.manualOmniPackages = [];
   project.visualGeneratedAt = generatedAt;
-  transitionProject(project, "export");
+  if (project.status === "visual") {
+    transitionProject(project, "export");
+  } else {
+    project.status = "export";
+  }
   return project;
 }

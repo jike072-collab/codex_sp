@@ -6,6 +6,7 @@ import {
   confirmScript,
   confirmScriptAndGenerateVisual,
   createProject,
+  deleteAsset,
   deleteProject,
   downloadExportPackage,
   generateScript,
@@ -51,6 +52,10 @@ function wireEvents() {
   el("openAspectDrawerButton").addEventListener("click", () => el("aspectDrawer").showModal());
   el("closeBriefSummaryButton").addEventListener("click", () => el("briefSummaryDialog").close());
   el("summaryGenerateScriptButton").addEventListener("click", generateScript);
+  el("closeImagePreviewButton").addEventListener("click", () => el("imagePreviewDialog").close());
+  el("imagePreviewDialog").addEventListener("click", (event) => {
+    if (event.target.id === "imagePreviewDialog") el("imagePreviewDialog").close();
+  });
 
   el("stepper").addEventListener("click", (event) => {
     const item = event.target.closest("[data-step]");
@@ -77,6 +82,31 @@ function wireEvents() {
   });
 
   el("workspace").addEventListener("click", (event) => {
+    const assetHistoryButton = event.target.closest("[data-asset-history]");
+    if (assetHistoryButton) {
+      const asset = state.project?.assets?.find((item) => item.id === assetHistoryButton.dataset.assetHistory);
+      if (asset) {
+        const sizeKb = asset.size ? `${Math.round(asset.size / 1024)}KB` : "未知大小";
+        const uploadedAt = asset.uploadedAt ? ` · ${new Date(asset.uploadedAt).toLocaleString()}` : "";
+        showToast(`${asset.name} · ${sizeKb}${uploadedAt}`);
+      }
+      return;
+    }
+
+    const deleteAssetButton = event.target.closest("[data-delete-asset-id]");
+    if (deleteAssetButton) {
+      deleteAsset(deleteAssetButton.dataset.deleteAssetId).catch((error) => showToast(error.message));
+      return;
+    }
+
+    const previewButton = event.target.closest("[data-preview-image]");
+    if (previewButton) {
+      el("imagePreviewTitle").textContent = previewButton.dataset.previewTitle || "故事板预览";
+      el("imagePreviewContent").src = previewButton.dataset.previewImage;
+      el("imagePreviewDialog").showModal();
+      return;
+    }
+
     const audienceChoice = event.target.closest("input[name='audience_choice']");
     if (audienceChoice) {
       el("reviewForm").elements.audience.value = audienceChoice.value;

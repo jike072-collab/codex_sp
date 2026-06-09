@@ -129,6 +129,13 @@ export function renderAssets() {
   const canUpload = project?.status === "assets" && !state.busy;
   el("assetGrid").innerHTML = assets.map((asset) => `
     <article class="asset-card">
+      <div class="asset-card-actions">
+        <button class="asset-icon-button" type="button"
+          data-asset-history="${escapeHtml(asset.id)}" aria-label="查看 ${escapeHtml(asset.name)} 的历史">↺</button>
+        <button class="asset-icon-button danger" type="button"
+          data-delete-asset-id="${escapeHtml(asset.id)}" aria-label="删除 ${escapeHtml(asset.name)}"
+          ${canUpload ? "" : "disabled"}>×</button>
+      </div>
       <img src="${escapeHtml(asset.url)}" alt="${escapeHtml(asset.name)}">
       <span>${escapeHtml(asset.name)}</span>
     </article>

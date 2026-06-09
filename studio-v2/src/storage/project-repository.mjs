@@ -158,9 +158,25 @@ export async function storeProjectAssets(project, files) {
       mimeType: matchData[1],
       hash,
       size: bytes.length,
+      uploadedAt: new Date().toISOString(),
       url: `/uploads/${project.id}/${storedName}`
     });
   }
 
   return project;
+}
+
+export async function removeProjectAsset(project, assetId) {
+  const index = project.assets.findIndex((asset) => asset.id === assetId);
+  if (index < 0) return false;
+
+  const [asset] = project.assets.splice(index, 1);
+  const uploadDir = safeProjectUploadPath(project.id);
+  const target = resolve(uploadDir, asset.storedName);
+  const pathFromUploadDir = relative(uploadDir, target);
+  if (!pathFromUploadDir || pathFromUploadDir.startsWith("..") || pathFromUploadDir.includes(":")) {
+    throw new Error("素材路径超出允许范围。");
+  }
+  await rm(target, { force: true });
+  return true;
 }

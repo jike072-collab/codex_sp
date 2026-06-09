@@ -69,3 +69,51 @@ test("visual generation creates two selected-aspect storyboards", () => {
   assert.equal(delivery.manualOmniPackages.length, 0);
   assert.equal(delivery.storyboardDeliverables.length, 2);
 });
+
+test("visual generation can replace stale export assets", () => {
+  const project = {
+    id: "project-2",
+    name: "Project",
+    status: "export",
+    targetCountry: "Thailand",
+    audience: "Audience",
+    createdAt: "2026-06-06T00:00:00.000Z",
+    updatedAt: "2026-06-06T00:00:00.000Z",
+    assets: [],
+    visionAnalysis: {},
+    marketBrief: { outputAspectRatio: "9:16" },
+    scriptConfirmedAt: "2026-06-06T00:00:00.000Z",
+    imagePackage: {
+      image_generation: [
+        { segment_id: "0-10s", type: "storyboard_board", aspect_ratio: "16:9" },
+        { segment_id: "0-10s", type: "video_keyframe", aspect_ratio: "9:16" },
+        { segment_id: "10-20s", type: "storyboard_board", aspect_ratio: "16:9" },
+        { segment_id: "10-20s", type: "video_keyframe", aspect_ratio: "9:16" }
+      ]
+    },
+    planningPackage: {
+      product_lock_manifest: {
+        must_keep: ["exact silhouette"],
+        must_not_change: ["do not change color"]
+      },
+      script_20s: {
+        total_duration_sec: 20,
+        segment_a_0_10s: segment("0-10s", 0),
+        segment_b_10_20s: segment("10-20s", 10)
+      }
+    }
+  };
+
+  generateVisualPackage(project, "2026-06-06T03:00:00.000Z");
+
+  assert.equal(project.status, "export");
+  assert.equal(project.imagePackage.image_generation.length, 2);
+  assert.deepEqual(
+    project.imagePackage.image_generation.map((item) => item.aspect_ratio),
+    ["9:16", "9:16"]
+  );
+  assert.deepEqual(
+    project.imagePackage.image_generation.map((item) => item.type),
+    ["storyboard_board", "storyboard_board"]
+  );
+});

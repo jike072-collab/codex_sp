@@ -32,10 +32,6 @@ function clean(value) {
   return String(value || "").trim();
 }
 
-function prettyJson(value) {
-  return JSON.stringify(value || {}, null, 2);
-}
-
 function marketTitle(project) {
   const brief = project.marketBrief || {};
   const country = countryNames[brief.targetCountry] || brief.targetCountry || "目标市场";
@@ -266,6 +262,30 @@ function renderExportProgress(project) {
   `;
 }
 
+function selectedStoryboardItems(project) {
+  const selectedRatio = project.marketBrief?.outputAspectRatio || "9:16";
+  const items = project.imagePackage?.image_generation || [];
+  return ["0-10s", "10-20s"]
+    .map((segmentId) => items.find((item) =>
+      item.segment_id === segmentId &&
+      item.type === "storyboard_board" &&
+      item.aspect_ratio === selectedRatio
+    ))
+    .filter(Boolean);
+}
+
+function renderExportMismatch(project) {
+  const selectedRatio = project.marketBrief?.outputAspectRatio || "9:16";
+  return `
+    <div class="future-content script-start-panel visual-error-card">
+      <p class="section-index">FINAL DELIVERY</p>
+      <h2>故事板尺寸需要重新生成</h2>
+      <p>这个项目里保存的是旧版视觉结果，和第二步选择的 ${escapeHtml(selectedRatio)} 不一致。点击下面按钮会覆盖旧结果，只生成两张 ${escapeHtml(selectedRatio)} 故事板。</p>
+      <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">重新生成当前尺寸故事板</button>
+    </div>
+  `;
+}
+
 function renderExportError(project) {
   return `
     <div class="future-content script-start-panel visual-error-card">
@@ -283,10 +303,11 @@ function renderStoryboardImage(item) {
     return `<div class="generated-image-preview"><span>${escapeHtml(item.aspect_ratio || "")}</span></div>`;
   }
   return `
-    <a class="generated-image-preview clickable-preview"
-      href="${escapeHtml(item.generated_image.url)}" target="_blank" rel="noreferrer">
+    <button class="generated-image-preview clickable-preview" type="button"
+      data-preview-image="${escapeHtml(item.generated_image.url)}"
+      data-preview-title="${escapeHtml(`${item.segment_id} 故事板 · ${item.aspect_ratio}`)}">
       <img src="${escapeHtml(item.generated_image.url)}" alt="${escapeHtml(item.asset_id)}">
-    </a>
+    </button>
   `;
 }
 
@@ -300,19 +321,11 @@ function renderDeliverable(project, item, index) {
           <p class="section-index">${escapeHtml(item.segment_id)}</p>
           <h3>${escapeHtml(item.segment_id)} 故事板 · ${escapeHtml(item.aspect_ratio)}</h3>
         </div>
-        <span class="requirement">10 秒脚本</span>
-      </div>
-      ${renderStoryboardImage(item)}
-      <div class="copy-header">
-        <strong>对应脚本</strong>
         <button class="ghost-button small" type="button" data-copy-target="segmentScript${index}">复制脚本</button>
       </div>
+      ${renderStoryboardImage(item)}
+      <strong class="script-copy-title">对应脚本</strong>
       <pre id="segmentScript${index}">${escapeHtml(scriptText)}</pre>
-      <div class="copy-header">
-        <strong>故事板 Prompt</strong>
-        <button class="ghost-button small" type="button" data-copy-target="storyboardPrompt${index}">复制 Prompt</button>
-      </div>
-      <pre id="storyboardPrompt${index}">${escapeHtml(item.prompt || "")}</pre>
     </article>
   `;
 }
@@ -321,10 +334,13 @@ export function renderExportStage(project = state.project) {
   const container = el("exportStageContent");
   if (!container || !project) return;
 
-  const imageItems = project.imagePackage?.image_generation || [];
-  if (!imageItems.length) {
+  const rawImageItems = project.imagePackage?.image_generation || [];
+  const imageItems = selectedStoryboardItems(project);
+  if (imageItems.length !== 2) {
     container.innerHTML = state.visualGenerationError
       ? renderExportError(project)
+      : rawImageItems.length
+      ? renderExportMismatch(project)
       : renderExportProgress(project);
     return;
   }

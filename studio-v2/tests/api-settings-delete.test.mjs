@@ -167,3 +167,33 @@ test("project deletion removes only the selected project and its uploads", async
   const missing = await request(`/api/projects/${firstId}`, { method: "DELETE" });
   assert.equal(missing.response.status, 404);
 });
+
+test("asset deletion removes one uploaded image before analysis", async () => {
+  const created = await request("/api/projects", {
+    method: "POST",
+    body: JSON.stringify({ name: "Asset cleanup" })
+  });
+  const projectId = created.body.project.id;
+  const uploaded = await request(`/api/projects/${projectId}/assets`, {
+    method: "POST",
+    body: JSON.stringify({
+      files: [
+        { name: "shoe-a.png", dataUrl: tinyPng },
+        { name: "shoe-b.png", dataUrl: tinyPng.replace("AScY42Y", "AScY42Y") }
+      ]
+    })
+  });
+  assert.equal(uploaded.response.status, 200);
+  assert.equal(uploaded.body.project.assets.length, 1);
+  const asset = uploaded.body.project.assets[0];
+  assert.ok(asset.uploadedAt);
+  const uploadedPath = join(dataRoot, "uploads", projectId, asset.storedName);
+  await access(uploadedPath);
+
+  const removed = await request(`/api/projects/${projectId}/assets/${asset.id}`, {
+    method: "DELETE"
+  });
+  assert.equal(removed.response.status, 200);
+  assert.equal(removed.body.project.assets.length, 0);
+  await assert.rejects(access(uploadedPath));
+});

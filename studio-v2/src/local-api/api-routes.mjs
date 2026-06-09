@@ -5,6 +5,7 @@ import {
   deleteProject,
   listProjects,
   readProject,
+  removeProjectAsset,
   saveProject,
   storeProjectAssets
 } from "../storage/project-repository.mjs";
@@ -95,6 +96,19 @@ export async function handleApi(request, response, url) {
       });
     }
     await storeProjectAssets(project, files);
+    await saveProject(project);
+    return sendJson(response, 200, { project });
+  }
+
+  const assetDeleteMatch = action?.match(/^assets\/([a-z0-9-]+)$/i);
+  if (request.method === "DELETE" && assetDeleteMatch) {
+    assertProjectStage(project, "assets", "删除商品素材");
+    const removed = await removeProjectAsset(project, assetDeleteMatch[1]);
+    if (!removed) {
+      throw new DomainError("素材不存在或已被删除。", {
+        code: "ASSET_NOT_FOUND"
+      });
+    }
     await saveProject(project);
     return sendJson(response, 200, { project });
   }
