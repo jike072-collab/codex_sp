@@ -116,7 +116,25 @@ function shot(start_sec, end_sec, values) {
   };
 }
 
-export function generateDemoPlanningPackage(project) {
+function normalizeShotCount(value) {
+  const count = Number(value);
+  return [3, 4, 5].includes(count) ? count : 5;
+}
+
+function timedShots(start, end, templates, count) {
+  const selectedCount = normalizeShotCount(count);
+  const duration = (end - start) / selectedCount;
+  const selectedTemplates = selectedCount < templates.length
+    ? [...templates.slice(0, selectedCount - 1), templates.at(-1)]
+    : templates;
+  return selectedTemplates.map((values, index) => {
+    const shotStart = Number((start + duration * index).toFixed(2));
+    const shotEnd = Number((index === selectedCount - 1 ? end : start + duration * (index + 1)).toFixed(2));
+    return shot(shotStart, shotEnd, values);
+  });
+}
+
+export function generateDemoPlanningPackage(project, options = {}) {
   assertProjectStage(project, "script", "生成广告脚本");
   if (!project.visionAnalysis || !project.reviewConfirmedAt) {
     throw new DomainError("请先确认产品锁定，再生成广告脚本。", {
@@ -135,6 +153,101 @@ export function generateDemoPlanningPackage(project) {
   const captions = locale.captions;
   const lock = structuredClone(project.visionAnalysis.product_lock_manifest);
   const sellingPoints = sellingPointsFromAnalysis(project.visionAnalysis);
+  const shotsPerSegment = normalizeShotCount(options.shotsPerSegment);
+  const segmentATemplates = [
+    {
+      visual: "Immediate low-angle product-first landing with the full shoe identity readable.",
+      action: "The shoe enters frame and lands cleanly without changing shape or color.",
+      camera: "Low-angle close-up with a short push-in.",
+      selling_point: sellingPoints[0].point,
+      localized_caption_or_vo: captions[0],
+      sound: "Beat hit and short whoosh.",
+      transition: "Fast push-in."
+    },
+    {
+      visual: "Macro pass across the confirmed upper texture, lace layout, and side detail.",
+      action: "A controlled light sweep reveals visible product construction.",
+      camera: "Macro side detail.",
+      selling_point: sellingPoints[0].point,
+      localized_caption_or_vo: captions[1],
+      sound: "Soft snap over the beat.",
+      transition: "Match cut."
+    },
+    {
+      visual: "Short movement sequence with the shoe remaining the clear hero.",
+      action: "One confident step carries the product into motion.",
+      camera: "Low side tracking shot.",
+      selling_point: sellingPoints.at(-1).point,
+      localized_caption_or_vo: captions[2],
+      sound: "Footstep rhythm and music lift.",
+      transition: "Motion cut into proof segment."
+    },
+    {
+      visual: "Side profile detail hold with the confirmed midsole shape readable.",
+      action: "The shoe pivots slightly to show the side structure.",
+      camera: "Clean three-quarter side close-up.",
+      selling_point: sellingPoints.at(-1).point,
+      localized_caption_or_vo: captions[2],
+      sound: "Short camera click and beat lift.",
+      transition: "Graphic match cut."
+    },
+    {
+      visual: "Fast full-shoe hero flash that locks the silhouette before the next segment.",
+      action: "The shoe lands in a stable hero pose for a quick read.",
+      camera: "Full product close-up.",
+      selling_point: "Clear product recognition",
+      localized_caption_or_vo: captions[0],
+      sound: "Final hit into proof segment.",
+      transition: "Hard cut."
+    }
+  ];
+  const segmentBTemplates = [
+    {
+      visual: "Controlled sole and side-profile proof shot using only visible product details.",
+      action: "The shoe rolls through one stable step with the sole profile readable.",
+      camera: "Low three-quarter product angle.",
+      selling_point: sellingPoints.at(-1).point,
+      localized_caption_or_vo: captions[2],
+      sound: "Clean contact sound.",
+      transition: "Quick clean cut."
+    },
+    {
+      visual: "Smooth everyday movement matched to the selected audience and market tone.",
+      action: "Two natural steps keep the confirmed colors and silhouette consistent.",
+      camera: "Side tracking medium close-up.",
+      selling_point: project.marketBrief.coreMessage,
+      localized_caption_or_vo: captions[3],
+      sound: "Music rises with light footsteps.",
+      transition: "Soft speed ramp."
+    },
+    {
+      visual: "Final clean ecommerce hero with the complete shoe visible.",
+      action: "The shoe settles into a simple hero pose and holds.",
+      camera: "Full product hero close-up.",
+      selling_point: "Clear product recognition",
+      localized_caption_or_vo: locale.cta,
+      sound: "Final beat and short hold.",
+      transition: "End hold."
+    },
+    {
+      visual: "Close product proof pass across the outsole and lower side detail.",
+      action: "A short motion pass keeps the sole and side pattern stable.",
+      camera: "Low macro tracking move.",
+      selling_point: sellingPoints.at(-1).point,
+      localized_caption_or_vo: captions[1],
+      sound: "Light scrape and beat tick.",
+      transition: "Clean whip cut."
+    },
+    {
+      visual: "CTA-ready hero frame with the shoe centered and fully readable.",
+      action: "The shoe holds steady with no added logos or invented labels.",
+      camera: "Centered ecommerce hero frame.",
+      selling_point: project.marketBrief.coreMessage,
+      localized_caption_or_vo: locale.cta,
+      sound: "Final resolved chord.",
+      transition: "End hold."
+    }
+  ];
 
   return {
     mode: "demo",
@@ -160,69 +273,13 @@ export function generateDemoPlanningPackage(project) {
         segment_id: "0-10s",
         theme: "Hook and product identity",
         duration_sec: 10,
-        shots: [
-          shot(0, 2.5, {
-            visual: "Immediate low-angle product-first landing with the full shoe identity readable.",
-            action: "The shoe enters frame and lands cleanly without changing shape or color.",
-            camera: "Low-angle close-up with a short push-in.",
-            selling_point: sellingPoints[0].point,
-            localized_caption_or_vo: captions[0],
-            sound: "Beat hit and short whoosh.",
-            transition: "Fast push-in."
-          }),
-          shot(2.5, 6, {
-            visual: "Macro pass across the confirmed upper texture, lace layout, and side detail.",
-            action: "A controlled light sweep reveals visible product construction.",
-            camera: "Macro side detail.",
-            selling_point: sellingPoints[0].point,
-            localized_caption_or_vo: captions[1],
-            sound: "Soft snap over the beat.",
-            transition: "Match cut."
-          }),
-          shot(6, 10, {
-            visual: "Short movement sequence with the shoe remaining the clear hero.",
-            action: "One confident step carries the product into motion.",
-            camera: "Low side tracking shot.",
-            selling_point: sellingPoints.at(-1).point,
-            localized_caption_or_vo: captions[2],
-            sound: "Footstep rhythm and music lift.",
-            transition: "Motion cut into proof segment."
-          })
-        ]
+        shots: timedShots(0, 10, segmentATemplates, shotsPerSegment)
       },
       segment_b_10_20s: {
         segment_id: "10-20s",
         theme: "Proof and product close",
         duration_sec: 10,
-        shots: [
-          shot(10, 13, {
-            visual: "Controlled sole and side-profile proof shot using only visible product details.",
-            action: "The shoe rolls through one stable step with the sole profile readable.",
-            camera: "Low three-quarter product angle.",
-            selling_point: sellingPoints.at(-1).point,
-            localized_caption_or_vo: captions[2],
-            sound: "Clean contact sound.",
-            transition: "Quick clean cut."
-          }),
-          shot(13, 17, {
-            visual: "Smooth everyday movement matched to the selected audience and market tone.",
-            action: "Two natural steps keep the confirmed colors and silhouette consistent.",
-            camera: "Side tracking medium close-up.",
-            selling_point: project.marketBrief.coreMessage,
-            localized_caption_or_vo: captions[3],
-            sound: "Music rises with light footsteps.",
-            transition: "Soft speed ramp."
-          }),
-          shot(17, 20, {
-            visual: "Final clean ecommerce hero with the complete shoe visible.",
-            action: "The shoe settles into a simple hero pose and holds.",
-            camera: "Full product hero close-up.",
-            selling_point: "Clear product recognition",
-            localized_caption_or_vo: locale.cta,
-            sound: "Final beat and short hold.",
-            transition: "End hold."
-          })
-        ]
+        shots: timedShots(10, 20, segmentBTemplates, shotsPerSegment)
       }
     },
     localized_copy: {
@@ -248,10 +305,10 @@ export function generateDemoPlanningPackage(project) {
   };
 }
 
-export function generateProjectDemoScript(project, generatedAt = new Date().toISOString()) {
+export function generateProjectDemoScript(project, generatedAt = new Date().toISOString(), options = {}) {
   return applyGeneratedPlanningPackage(
     project,
-    generateDemoPlanningPackage(project),
+    generateDemoPlanningPackage(project, options),
     generatedAt
   );
 }

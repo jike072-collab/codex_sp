@@ -15,12 +15,13 @@ import {
   saveMarketBrief,
   uploadFiles
 } from "./projects.js";
-import { canViewStep, renderWorkspace } from "./render.js";
+import { canViewStep, renderWorkspace, updateAspectSummary } from "./render.js";
 import {
   clearProviderSettingsInputs,
   closeProviderSettings,
   openProviderSettings,
-  saveProviderSettings
+  saveProviderSettings,
+  toggleProviderSecret
 } from "./settings.js";
 
 function wireEvents() {
@@ -31,6 +32,7 @@ function wireEvents() {
   el("apiSettingsButton").addEventListener("click", openProviderSettings);
   el("closeApiSettingsButton").addEventListener("click", closeProviderSettings);
   el("apiSettingsDialog").addEventListener("close", clearProviderSettingsInputs);
+  el("apiSettingsDialog").addEventListener("click", toggleProviderSecret);
   el("apiSettingsForm").addEventListener("submit", saveProviderSettings);
   el("newProjectForm").addEventListener("submit", createProject);
   el("reviewForm").addEventListener("submit", confirmReview);
@@ -46,6 +48,9 @@ function wireEvents() {
     renderWorkspace();
   });
   el("headerExportButton").addEventListener("click", downloadExportPackage);
+  el("openAspectDrawerButton").addEventListener("click", () => el("aspectDrawer").showModal());
+  el("closeBriefSummaryButton").addEventListener("click", () => el("briefSummaryDialog").close());
+  el("summaryGenerateScriptButton").addEventListener("click", generateScript);
 
   el("stepper").addEventListener("click", (event) => {
     const item = event.target.closest("[data-step]");
@@ -72,6 +77,12 @@ function wireEvents() {
   });
 
   el("workspace").addEventListener("click", (event) => {
+    const audienceChoice = event.target.closest("input[name='audience_choice']");
+    if (audienceChoice) {
+      el("reviewForm").elements.audience.value = audienceChoice.value;
+      return;
+    }
+
     const copyButton = event.target.closest("[data-copy-target]");
     if (copyButton) {
       copyBlockText(copyButton.dataset.copyTarget)
@@ -85,7 +96,7 @@ function wireEvents() {
 
     const actions = {
       "edit-market": () => {
-        state.viewStatus = "market";
+        state.viewStatus = "review";
         renderWorkspace();
       },
       "confirm-and-generate-visual": () => confirmScriptAndGenerateVisual(),
@@ -94,6 +105,13 @@ function wireEvents() {
       "download-export": () => downloadExportPackage()
     };
     actions[actionButton.dataset.action]?.();
+  });
+
+  el("aspectDrawer").addEventListener("click", (event) => {
+    const input = event.target.closest("input[name='output_aspect_ratio']");
+    if (!input) return;
+    updateAspectSummary(input.value);
+    el("aspectDrawer").close();
   });
 
   el("projectList").addEventListener("click", (event) => {
@@ -111,8 +129,15 @@ function wireEvents() {
 
   const dropZone = el("dropZone");
   const fileInput = el("fileInput");
-  dropZone.addEventListener("click", () => fileInput.click());
-  fileInput.addEventListener("change", () => uploadFiles(fileInput.files));
+  dropZone.addEventListener("click", () => {
+    if (dropZone.disabled) return;
+    fileInput.value = "";
+    fileInput.click();
+  });
+  fileInput.addEventListener("change", async () => {
+    await uploadFiles(fileInput.files);
+    fileInput.value = "";
+  });
 
   ["dragenter", "dragover"].forEach((name) => {
     dropZone.addEventListener(name, (event) => {
@@ -126,7 +151,10 @@ function wireEvents() {
       dropZone.classList.remove("dragging");
     });
   });
-  dropZone.addEventListener("drop", (event) => uploadFiles(event.dataTransfer.files));
+  dropZone.addEventListener("drop", (event) => {
+    if (dropZone.disabled) return;
+    uploadFiles(event.dataTransfer.files);
+  });
 }
 
 async function boot() {

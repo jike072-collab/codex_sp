@@ -32,6 +32,14 @@ export const aspectRatioOptions = [
   ["2:3", "商品竖图"]
 ];
 
+export const audienceOptions = [
+  ["daily-commute", "日常运动与通勤人群", "走路、通勤、轻运动都能覆盖"],
+  ["young-street", "年轻潮流穿搭人群", "关注造型、配色和出片感"],
+  ["fitness-light", "轻运动健身人群", "强调稳定、轻快和日常训练"],
+  ["campus", "校园与入门运动人群", "预算友好、活力、容易搭配"],
+  ["outdoor-casual", "户外休闲人群", "周末出行、耐看、舒适"]
+];
+
 export const creativeThemeOptions = [
   ["city-motion", "城市动线", "日常出行、街区移动"],
   ["daily-comfort", "全天舒适", "通勤、长穿、稳定陪伴"],
@@ -76,11 +84,13 @@ export function projectSetup(project = state.project) {
   const outputAspectRatio = preferences.outputAspectRatio || "9:16";
   const creativeTheme = saved.creativeTheme || preferences.creativeTheme || "city-motion";
   const tone = saved.tone || preferences.tone || "energetic";
+  const audience = saved.audience || preferences.audience || project?.audience || audienceOptions[0][1];
   return {
     targetCountry: marketCountryOptions.some(([value]) => value === targetCountry)
       ? targetCountry
       : "Thailand",
-    audience: saved.audience || preferences.audience || project?.audience || "日常运动与通勤人群",
+    audience,
+    coreMessage: saved.coreMessage || preferences.coreMessage || "",
     outputAspectRatio: aspectRatioOptions.some(([value]) => value === outputAspectRatio)
       ? outputAspectRatio
       : "9:16",
@@ -108,6 +118,9 @@ export function showToast(message) {
 
 export function setBusy(value, message = "处理中...") {
   state.busy = value;
+  const canUpload = !value && state.project?.status === "assets";
+  el("dropZone").disabled = !canUpload;
+  el("fileInput").disabled = !canUpload;
   el("analyzeButton").disabled = value || !state.project?.assets?.length;
   el("analyzeButton").textContent = value ? message : "识别并锁定产品";
   el("saveState").textContent = value ? message : "已保存到本机";

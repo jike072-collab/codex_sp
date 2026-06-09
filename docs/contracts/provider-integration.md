@@ -48,14 +48,25 @@ and confirmed product-lock validation before it can be persisted.
 - No usable key or `IMAGE_MODEL_PROVIDER=manual`: prompt-only demo package
 - Failure code: `IMAGE_PROVIDER_ERROR`
 
-The provider receives all uploaded product views as base64 references. Four
+The provider receives all uploaded product views as plain base64 reference
+strings in the `image` array, without a `data:<mime>;base64,` prefix. Four
 requests are made, one per persisted prompt. Successful results are stored as
 optional `generated_image` metadata on each image-generation item.
+
+If Right Code returns HTTP `403` while reference images are included, the image
+adapter retries the same `/draw/v1/images/generations` request once without
+reference images and records `generated_image.referenceMode` as
+`prompt_only_after_reference_403`. This keeps the local demo moving when a token
+can access prompt-only Draw generation but cannot use image references. If the
+prompt-only retry also returns `403`, the error is surfaced to the browser and
+the operator must fix the token's Draw channel/model permissions.
 
 ## Secret And Failure Rules
 
 - API keys are read only from the ignored root `.env` or process environment.
 - Vision, text, and image credentials are configured independently.
+- The old single `rightCodesApiKey` update field is no longer part of the
+  settings contract. Use `visionApiKey` and `imageApiKey` separately.
 - Keys must never be persisted in project JSON, exports, logs, or responses.
 - A configured provider failure must return a stable error instead of silently
   falling back to demo output.

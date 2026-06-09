@@ -1,5 +1,6 @@
 import {
   aspectRatioOptions,
+  audienceOptions,
   creativeThemeOptions,
   countryNames,
   el,
@@ -63,7 +64,7 @@ export function renderWorkspace() {
   const project = state.project;
   if (!project) return;
   const activeStatus = viewStatus();
-  const isReviewingPast = activeStatus !== project.status;
+  const isReviewingPast = activeStatus !== project.status && isStageReached(activeStatus);
 
   el("projectTitle").textContent = project.name;
   el("projectState").textContent = isReviewingPast
@@ -123,16 +124,22 @@ export function renderStepper(activeStatus = viewStatus()) {
 }
 
 export function renderAssets() {
+  const project = state.project;
   const assets = state.project?.assets || [];
+  const canUpload = project?.status === "assets" && !state.busy;
   el("assetGrid").innerHTML = assets.map((asset) => `
     <article class="asset-card">
       <img src="${escapeHtml(asset.url)}" alt="${escapeHtml(asset.name)}">
       <span>${escapeHtml(asset.name)}</span>
     </article>
   `).join("");
-  el("assetHint").textContent = assets.length
-    ? `已上传 ${assets.length} 张图片。确认都属于同一款鞋后开始识别。`
-    : "至少上传一张图片后才能开始识别。";
+  el("assetHint").textContent = project?.status !== "assets"
+    ? "当前项目已进入后续步骤，素材已锁定；如需上传新鞋图，请新建项目。"
+    : assets.length
+      ? `已上传 ${assets.length} 张图片。确认都属于同一款鞋后开始识别。`
+      : "至少上传一张图片后才能开始识别。";
+  el("dropZone").disabled = !canUpload;
+  el("fileInput").disabled = !canUpload;
   el("analyzeButton").disabled = state.busy || !assets.length;
 }
 
@@ -170,9 +177,9 @@ function renderCompletionList(status) {
   const itemsByStatus = {
     assets: ["图片属于同一款鞋", "关键角度足够清晰", "产品外观可以稳定锁定"],
     analyzing: ["等待识别完成", "保留原始素材", "准备进入人工审核"],
-    review: ["产品概况已检查", "外观身份已修正", "必须保持和禁止修改项已确认"],
+    review: ["目标人群和尺寸已选择", "创意方向和核心信息已整理", "产品锁定已确认"],
     market: ["目标国家已选择", "目标人群已确认", "创意主题、核心信息和语气已填写"],
-    script: ["市场 brief 已保存", "脚本阶段可以读取创意方向", "如需修改可返回市场创意"],
+    script: ["产品锁定和创意方向已保存", "选择每个 10 秒段落的镜头数", "生成脚本后可继续编辑"],
     visual: ["脚本已确认", "故事板方向清晰", "关键帧要求准备完成"],
     export: ["视觉资产已确认", "交付文件已整理", "Flow Omni 包可导出"]
   };
@@ -202,9 +209,22 @@ function optionLabels(options, selectedValue) {
   `).join("");
 }
 
-function aspectLabels(selectedValue) {
+function audienceLabels(selectedValue) {
+  return audienceOptions.map(([value, label, description]) => `
+    <label class="choice-card audience-card">
+      <input type="radio" name="audience_choice"
+        value="${escapeHtml(label)}" ${label === selectedValue ? "checked" : ""}>
+      <span>
+        <strong>${escapeHtml(label)}</strong>
+        <small>${escapeHtml(description)}</small>
+      </span>
+    </label>
+  `).join("");
+}
+
+function aspectOptionHtml(selectedValue) {
   return aspectRatioOptions.map(([value, label]) => `
-    <label class="aspect-option" title="${escapeHtml(label)}">
+    <label class="aspect-option drawer-aspect-option" title="${escapeHtml(label)}">
       <input type="radio" name="output_aspect_ratio"
         value="${escapeHtml(value)}" ${value === selectedValue ? "checked" : ""}>
       <span class="aspect-icon" style="--ratio:${escapeHtml(value.replace(":", " / "))}"></span>
@@ -212,6 +232,23 @@ function aspectLabels(selectedValue) {
       <small>${escapeHtml(label)}</small>
     </label>
   `).join("");
+}
+
+export function updateAspectSummary(value) {
+  const option = aspectRatioOptions.find(([item]) => item === value) || aspectRatioOptions[0];
+  const [ratio, label] = option;
+  const form = el("reviewForm");
+  if (form?.elements.output_aspect_ratio) form.elements.output_aspect_ratio.value = ratio;
+  const icon = el("aspectSummaryIcon");
+  if (icon) icon.style.setProperty("--ratio", ratio.replace(":", " / "));
+  if (el("aspectSummaryValue")) el("aspectSummaryValue").textContent = ratio;
+  if (el("aspectSummaryLabel")) el("aspectSummaryLabel").textContent = label;
+}
+
+export function renderAspectDrawer(selectedValue) {
+  const container = el("aspectDrawerOptions");
+  if (!container) return;
+  container.innerHTML = aspectOptionHtml(selectedValue);
 }
 
 function renderAutoAnalysisSummary(analysis) {
@@ -240,6 +277,7 @@ export function fillReviewForm(analysis) {
   const form = el("reviewForm");
   const lock = analysis?.product_lock_manifest || {};
   const setup = projectSetup(state.project);
+  const hasAnalysis = Boolean(analysis);
   form.elements.shoe_type.value = valueAt(analysis, "product_summary.shoe_type");
   form.elements.likely_usage.value = valueAt(analysis, "product_summary.likely_usage.value");
   form.elements.overall_style.value = valueAt(analysis, "product_summary.overall_style");
@@ -263,15 +301,25 @@ export function fillReviewForm(analysis) {
   `).join("");
   form.elements.targetCountry.value = setup.targetCountry;
   form.elements.audience.value = setup.audience;
-  el("aspectOptions").innerHTML = aspectLabels(setup.outputAspectRatio);
+  el("audienceOptions").innerHTML = audienceLabels(setup.audience);
+  updateAspectSummary(setup.outputAspectRatio);
+  renderAspectDrawer(setup.outputAspectRatio);
   el("creativeThemeOptions").innerHTML = optionLabels(creativeThemeOptions, setup.creativeTheme);
   el("toneOptions").innerHTML = optionLabels(toneOptions, setup.tone);
+  if (form.elements.coreMessage && !form.elements.coreMessage.value) {
+    form.elements.coreMessage.value = setup.coreMessage;
+  }
   el("autoAnalysisSummary").innerHTML = renderAutoAnalysisSummary(analysis);
   el("mustKeepPreview").textContent = displayValue(lock.must_keep);
   el("mustNotChangePreview").textContent = displayValue(lock.must_not_change);
   el("analysisMode").textContent = analysis?.mode === "api"
     ? "AI 识别 · 待审核"
-    : "演示识别 · 请修改";
+    : hasAnalysis
+      ? "演示识别 · 请修改"
+      : "正在识别 · 请稍候";
+  form.querySelectorAll("button[type='submit']").forEach((button) => {
+    button.disabled = !hasAnalysis || state.busy;
+  });
 
   const warnings = analysis?.image_quality?.missing_or_unclear || [];
   const notes = analysis?.image_quality?.notes || [];
@@ -286,6 +334,7 @@ export function analysisFromForm() {
   const outputAspectRatio = form.elements.output_aspect_ratio?.value || "9:16";
   const creativeTheme = form.elements.creativeTheme?.value || "city-motion";
   const tone = form.elements.tone?.value || "energetic";
+  const coreMessage = form.elements.coreMessage?.value.trim() || autoCoreMessage(previous, audience);
   const toeAndLace = lines(form.elements.toe_and_lace.value);
   const sole = lines(form.elements.sole_structure.value);
   const sideAndHeel = lines(form.elements.side_and_heel.value);
@@ -294,7 +343,8 @@ export function analysisFromForm() {
     audience,
     outputAspectRatio,
     creativeTheme,
-    tone
+    tone,
+    coreMessage
   });
   const briefCountry = el("briefCountry");
   const briefAudience = el("briefAudience");
@@ -328,5 +378,42 @@ export function analysisFromForm() {
       must_keep: lines(form.elements.must_keep.value),
       must_not_change: lines(form.elements.must_not_change.value)
     }
+  };
+}
+
+function autoCoreMessage(analysis, audience) {
+  const summary = analysis?.product_summary || {};
+  const lock = analysis?.product_lock_manifest || {};
+  const colors = Array.isArray(lock.main_colors) && lock.main_colors.length
+    ? `${lock.main_colors.slice(0, 2).join("、")} 配色`
+    : "清晰鞋型";
+  const usage = summary.likely_usage?.value || "日常出行";
+  return `${colors}，适合${audience || usage}的轻快稳定穿搭。`;
+}
+
+export function marketBriefFromReviewForm() {
+  const form = el("reviewForm");
+  const setup = projectSetup(state.project);
+  const targetCountry = form.elements.targetCountry?.value || setup.targetCountry;
+  const audience = form.elements.audience?.value || setup.audience;
+  const creativeTheme = form.elements.creativeTheme?.value || setup.creativeTheme;
+  const tone = form.elements.tone?.value || setup.tone;
+  const coreMessage = form.elements.coreMessage?.value.trim()
+    || autoCoreMessage(state.project?.visionAnalysis, audience);
+  form.elements.coreMessage.value = coreMessage;
+  saveProjectPreferences(state.project, {
+    targetCountry,
+    audience,
+    outputAspectRatio: form.elements.output_aspect_ratio?.value || setup.outputAspectRatio,
+    creativeTheme,
+    tone,
+    coreMessage
+  });
+  return {
+    targetCountry,
+    audience,
+    creativeTheme,
+    coreMessage,
+    tone
   };
 }

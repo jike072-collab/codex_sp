@@ -4,6 +4,11 @@ const PROVIDER_KINDS = ["vision", "text", "image"];
 
 function resetSensitiveFields() {
   el("apiSettingsForm")?.reset();
+  document.querySelectorAll("[data-toggle-secret]").forEach((button) => {
+    const input = el("apiSettingsForm")?.elements[button.dataset.toggleSecret];
+    if (input) input.type = "password";
+    button.textContent = "眼";
+  });
 }
 
 function setFormBusy(value) {
@@ -15,7 +20,13 @@ function setFormBusy(value) {
 function renderProviderStatus(providers = {}) {
   PROVIDER_KINDS.forEach((kind) => {
     const provider = providers[kind] || {};
-    const details = [provider.provider, provider.model].filter(Boolean).join(" · ");
+    const details = [
+      provider.role,
+      provider.provider,
+      provider.channel,
+      provider.model,
+      provider.keyPreview
+    ].filter(Boolean).join(" · ");
     const stateElement = el(`${kind}ProviderState`);
 
     el(`${kind}ProviderDetails`).textContent = details || "状态不可用";
@@ -61,6 +72,16 @@ export function closeProviderSettings() {
 
 export function clearProviderSettingsInputs() {
   resetSensitiveFields();
+}
+
+export function toggleProviderSecret(event) {
+  const button = event.target.closest("[data-toggle-secret]");
+  if (!button) return;
+  const input = el("apiSettingsForm").elements[button.dataset.toggleSecret];
+  if (!input) return;
+  const showing = input.type === "text";
+  input.type = showing ? "password" : "text";
+  button.textContent = showing ? "眼" : "藏";
 }
 
 export async function saveProviderSettings(event) {

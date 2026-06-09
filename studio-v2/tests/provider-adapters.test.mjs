@@ -204,6 +204,8 @@ test("DeepSeek adapter requests JSON and validates the generated 20-second scrip
     });
 
     assert.equal(requestBody.model, "deepseek-v4-pro");
+    const userPayload = JSON.parse(requestBody.messages[1].content);
+    assert.equal(userPayload.shots_per_10s_segment, 5);
     assert.deepEqual(requestBody.response_format, { type: "json_object" });
     assert.deepEqual(requestBody.thinking, { type: "enabled" });
     assert.equal(project.planningPackage.mode, "api");
@@ -220,6 +222,10 @@ test("Right Code image adapter generates four referenced image requests", async 
     IMAGE_MODEL_PROVIDER: "right_codes"
   }, async () => {
     const project = reviewedProject();
+    project.assets = [{
+      storedName: "shoe.png",
+      mimeType: "image/png"
+    }];
     generateProjectDemoScript(project, "2026-06-06T01:00:00.000Z");
     confirmPlanningPackage(
       project,
@@ -228,7 +234,13 @@ test("Right Code image adapter generates four referenced image requests", async 
     );
 
     const requests = [];
+    const referenceBytes = Buffer.from("synthetic-shoe-reference");
     await generateProjectVisuals(project, "2026-06-06T01:20:00.000Z", {
+      uploadsRootPath: "C:\\synthetic-uploads",
+      readFileImpl: async (path) => {
+        assert.match(path, /provider-project[\\/]shoe\.png$/);
+        return referenceBytes;
+      },
       fetchImpl: async (url, options) => {
         assert.equal(url, "https://example.test/draw/v1/images/generations");
         assert.equal(options.headers.Authorization, "Bearer test-right-code-key");
@@ -243,7 +255,8 @@ test("Right Code image adapter generates four referenced image requests", async 
     assert.equal(requests.length, 4);
     assert.equal(requests[0].model, "gpt-image-2");
     assert.equal(typeof requests[0].prompt, "string");
-    assert.deepEqual(requests[0].image, []);
+    assert.deepEqual(requests[0].image, [referenceBytes.toString("base64")]);
+    assert.equal(requests[0].image[0].startsWith("data:image/"), false);
     assert.equal(requests[0].size, "1536x1024");
     assert.equal(requests[0].response_format, "url");
     assert.equal(requests[1].size, "1024x1536");
@@ -251,6 +264,54 @@ test("Right Code image adapter generates four referenced image requests", async 
     assert.equal(
       project.imagePackage.image_generation[3].generated_image.url,
       "https://images.test/4.png"
+    );
+  });
+});
+
+test("Right Code image adapter retries prompt-only when references are forbidden", async () => {
+  await withProviderEnv({
+    IMAGE_MODEL_API_KEY: "test-right-code-key",
+    IMAGE_API_URL: "https://example.test/draw/v1/images/generations",
+    IMAGE_MODEL: "gpt-image-2",
+    IMAGE_MODEL_PROVIDER: "right_codes"
+  }, async () => {
+    const project = reviewedProject();
+    project.assets = [{ storedName: "shoe.png", mimeType: "image/png" }];
+    generateProjectDemoScript(project, "2026-06-06T01:00:00.000Z");
+    confirmPlanningPackage(
+      project,
+      structuredClone(project.planningPackage),
+      "2026-06-06T01:10:00.000Z"
+    );
+
+    const requests = [];
+    await generateProjectVisuals(project, "2026-06-06T01:20:00.000Z", {
+      uploadsRootPath: "C:\\synthetic-uploads",
+      readFileImpl: async () => Buffer.from("synthetic-shoe-reference"),
+      fetchImpl: async (_url, options) => {
+        const body = JSON.parse(options.body);
+        requests.push(body);
+        if (requests.length === 1) {
+          assert.equal(body.image.length, 1);
+          return new Response(JSON.stringify({
+            error: "API Key 不允许访问该渠道，请前往令牌管理界面修改令牌权限"
+          }), { status: 403 });
+        }
+        assert.deepEqual(body.image, []);
+        return new Response(JSON.stringify({
+          data: [{ url: `https://images.test/retry-${requests.length}.png` }]
+        }), { status: 200 });
+      }
+    });
+
+    assert.equal(requests.length, 5);
+    assert.equal(
+      project.imagePackage.image_generation[0].generated_image.referenceMode,
+      "prompt_only_after_reference_403"
+    );
+    assert.equal(
+      project.imagePackage.image_generation[1].generated_image.referenceMode,
+      "prompt_only"
     );
   });
 });

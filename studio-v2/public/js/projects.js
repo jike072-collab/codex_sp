@@ -11,6 +11,7 @@ import {
 } from "./market.js";
 import {
   analysisFromForm,
+  marketBriefFromReviewForm,
   renderProjectList,
   renderWorkspace
 } from "./render.js";
@@ -67,6 +68,14 @@ function fileToDataUrl(file) {
 }
 
 export async function uploadFiles(fileList) {
+  if (!state.project) {
+    showToast("请先创建一个项目。");
+    return;
+  }
+  if (state.project.status !== "assets") {
+    showToast("当前项目已进入后续步骤，不能继续上传素材；请新建项目重新上传。");
+    return;
+  }
   const files = Array.from(fileList || []).filter(
     (file) => /^image\/(jpeg|png|webp)$/.test(file.type)
   );
@@ -101,6 +110,8 @@ export async function uploadFiles(fileList) {
 }
 
 export async function analyze() {
+  state.viewStatus = "review";
+  renderWorkspace();
   setBusy(true, "正在识别鞋款...");
   try {
     const data = await api(`/api/projects/${state.project.id}/analyze`, { method: "POST" });
@@ -115,7 +126,25 @@ export async function analyze() {
     showToast(error.message);
   } finally {
     setBusy(false);
+    renderWorkspace();
   }
+}
+
+function renderBriefSummary(project) {
+  const brief = project.marketBrief || {};
+  const dialog = el("briefSummaryDialog");
+  const content = el("briefSummaryContent");
+  if (!dialog || !content) return;
+  content.innerHTML = `
+    <div class="summary-grid">
+      <div><span>目标国家</span><strong>${brief.targetCountry || project.targetCountry}</strong></div>
+      <div><span>目标人群</span><strong>${brief.audience || project.audience}</strong></div>
+      <div><span>创意主题</span><strong>${brief.creativeTheme || ""}</strong></div>
+      <div><span>语气</span><strong>${brief.tone || ""}</strong></div>
+    </div>
+    <p class="summary-message">${brief.coreMessage || ""}</p>
+  `;
+  dialog.showModal();
 }
 
 export async function createProject(event) {
@@ -139,18 +168,25 @@ export async function createProject(event) {
 
 export async function confirmReview(event) {
   event.preventDefault();
-  setBusy(true, "正在保存审核...");
+  const marketBrief = marketBriefFromReviewForm();
+  setBusy(true, "正在确认产品与创意...");
   try {
-    const data = await api(`/api/projects/${state.project.id}/review`, {
+    const reviewed = await api(`/api/projects/${state.project.id}/review`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ visionAnalysis: analysisFromForm() })
     });
-    state.project = data.project;
-    state.viewStatus = data.project.status;
+    const marketed = await api(`/api/projects/${encodeURIComponent(reviewed.project.id)}/market`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ marketBrief })
+    });
+    state.project = marketed.project;
+    state.viewStatus = "script";
     renderWorkspace();
     await loadProjects();
-    showToast("产品锁定已确认。");
+    renderBriefSummary(state.project);
+    showToast("产品锁定和创意方向已确认。");
   } catch (error) {
     showToast(error.message);
   } finally {
@@ -188,12 +224,17 @@ export async function saveMarketBrief(event) {
 }
 
 export async function generateScript() {
+  el("briefSummaryDialog")?.close();
+  const shotsPerSegment = Number(
+    document.querySelector("input[name='shotsPerSegment']:checked")?.value || 5
+  );
   setWorkflowBusy(true, "generateScriptButton", "正在生成脚本...", "生成演示脚本");
+  setScriptProgress(true);
   try {
     const data = await api(`/api/projects/${encodeURIComponent(state.project.id)}/script/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({})
+      body: JSON.stringify({ shotsPerSegment })
     });
     state.project = data.project;
     state.viewStatus = data.project.status;
@@ -204,7 +245,15 @@ export async function generateScript() {
     showToast(error.message);
   } finally {
     setWorkflowBusy(false, "generateScriptButton", "正在生成脚本...", "生成演示脚本");
+    setScriptProgress(false);
   }
+}
+
+function setScriptProgress(active) {
+  const progress = el("scriptProgress");
+  if (!progress) return;
+  progress.hidden = !active;
+  progress.classList.toggle("active", active);
 }
 
 export async function confirmScript(event) {

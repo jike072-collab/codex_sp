@@ -38,7 +38,17 @@ Expected client errors use:
 POST /api/projects/:projectId/script/generate
 ```
 
-Request body is optional. An empty JSON object is accepted.
+Request body is optional. An empty JSON object is accepted. The browser may
+send `shotsPerSegment` to choose how many shots each 10-second segment should
+contain:
+
+```json
+{
+  "shotsPerSegment": 5
+}
+```
+
+Allowed values are `3`, `4`, and `5`; invalid or missing values default to `5`.
 
 Requirements:
 
@@ -54,6 +64,9 @@ Behavior:
 - Repeated demo calls replace the unconfirmed planning package with the same
   deterministic result. API mode may return different creative wording.
 - Project status remains `script`.
+- Each generated 10-second segment contains the requested number of shots in
+  demo mode. API mode receives the requested count in the text-provider prompt
+  and must still pass the 20-second timeline validator.
 - Set `scriptGeneratedAt`.
 - Clear `scriptConfirmedAt` when replacing an unconfirmed package.
 
@@ -220,7 +233,8 @@ In API image mode, each `image_generation` item also includes:
     "provider": "right_codes",
     "model": "gpt-image-2",
     "url": "https://provider.example/generated.png",
-    "size": "1024x1536"
+    "size": "1024x1536",
+    "referenceMode": "reference_images"
   }
 }
 ```

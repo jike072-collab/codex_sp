@@ -282,7 +282,7 @@ button { cursor: pointer; }
 
 .stepper {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   padding: 0;
   margin: 0 0 18px;
   list-style: none;
@@ -305,6 +305,7 @@ button { cursor: pointer; }
 .stepper li.available { cursor: pointer; }
 .stepper li.available:hover { color: var(--ink); }
 .stepper li.unavailable { cursor: not-allowed; opacity: 0.58; }
+.stepper .workflow-skipped-step { display: none; }
 
 .stage-layout {
   display: grid;
@@ -361,6 +362,10 @@ button { cursor: pointer; }
 }
 
 .drop-zone:hover, .drop-zone.dragging { background: #f3f8d8; border-color: var(--accent-dark); }
+.drop-zone:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
 .drop-zone strong { font-size: 15px; }
 .drop-zone small { color: var(--muted); }
 .upload-icon { display: grid; place-items: center; width: 42px; height: 42px; margin-bottom: 5px; font-size: 22px; border: 1px solid #c8ccc2; border-radius: 50%; }
@@ -378,6 +383,19 @@ button { cursor: pointer; }
   margin-top: 24px;
   padding-top: 20px;
   border-top: 1px solid var(--line);
+}
+
+.review-top-actions {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin: -8px 0 12px;
+  padding: 10px 0 14px;
+  background: rgba(251, 251, 247, 0.94);
+  border-bottom: 1px solid var(--line);
 }
 
 .stage-actions p { margin: 0; color: var(--muted); font-size: 12px; }
@@ -416,7 +434,7 @@ input[readonly], textarea[readonly] { color: #5c625a; background: #f4f4ef; }
 .form-grid.two { grid-template-columns: repeat(2, 1fr); }
 .setup-grid {
   display: grid;
-  grid-template-columns: 170px minmax(220px, 1fr) 280px;
+  grid-template-columns: 150px minmax(280px, 1fr) 190px;
   gap: 14px;
   align-items: start;
 }
@@ -449,7 +467,7 @@ input[readonly], textarea[readonly] { color: #5c625a; background: #f4f4ef; }
 .market-summary dt { margin-bottom: 6px; color: #777d73; font-size: 10px; font-weight: 800; }
 .market-summary dd { margin: 0; color: var(--ink); font-size: 12px; line-height: 1.45; }
 
-.choice-grid, .tone-grid, .aspect-grid, .aspect-picker, .creative-setup {
+.choice-grid, .tone-grid, .aspect-grid, .aspect-picker, .creative-setup, .audience-picker, .creative-stack {
   display: grid;
   gap: 12px;
 }
@@ -461,6 +479,21 @@ input[readonly], textarea[readonly] { color: #5c625a; background: #f4f4ef; }
 .choice-grid.compact { grid-template-columns: repeat(4, 1fr); }
 .tone-grid.compact { grid-template-columns: repeat(4, 1fr); }
 .aspect-picker { grid-template-columns: repeat(6, minmax(38px, 1fr)); gap: 7px; }
+.audience-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.creative-stack { grid-template-columns: 1fr; }
+.creative-stack details {
+  padding: 12px;
+  background: #f7f7f1;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.creative-stack summary {
+  margin-bottom: 10px;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
 
 .choice-card {
   position: relative;
@@ -481,7 +514,11 @@ input[readonly], textarea[readonly] { color: #5c625a; background: #f4f4ef; }
 }
 
 .choice-card.compact-choice {
-  min-height: 70px;
+  min-height: 62px;
+  padding: 11px;
+}
+.choice-card.audience-card {
+  min-height: 68px;
   padding: 11px;
 }
 
@@ -491,6 +528,40 @@ input[readonly], textarea[readonly] { color: #5c625a; background: #f4f4ef; }
 .choice-card small { margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.4; }
 .choice-card:has(input:checked) { border-color: var(--accent-dark); box-shadow: 0 0 0 3px rgba(221, 255, 63, 0.22); }
 .message-box { min-height: 105px; }
+.message-box.compact-message { min-height: 72px; }
+.inline-help {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.aspect-summary-button {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  grid-template-areas:
+    "icon value"
+    "icon label";
+  align-items: center;
+  gap: 2px 9px;
+  width: 100%;
+  min-height: 58px;
+  padding: 8px 10px;
+  text-align: left;
+  background: var(--white);
+  border: 1px solid #ccd0c7;
+  border-radius: 8px;
+}
+.aspect-summary-button .aspect-icon { grid-area: icon; width: 24px; justify-self: center; }
+.aspect-summary-button strong { grid-area: value; font-size: 13px; }
+.aspect-summary-button small {
+  grid-area: label;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .aspect-option {
   display: grid;
@@ -652,6 +723,42 @@ input[readonly], textarea[readonly] { color: #5c625a; background: #f4f4ef; }
   gap: 12px;
 }
 
+.shot-count-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.script-progress {
+  margin: 14px 0 18px;
+  text-align: left;
+}
+.script-progress span {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  height: 8px;
+  background: #e8eadf;
+  border-radius: 999px;
+}
+.script-progress span::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 45%;
+  background: var(--accent);
+  border-radius: inherit;
+  animation: progress-slide 1.4s ease-in-out infinite;
+}
+.script-progress p { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+
+@keyframes progress-slide {
+  0% { transform: translateX(-105%); }
+  50% { transform: translateX(85%); }
+  100% { transform: translateX(230%); }
+}
+
 .workflow-panel {
   display: flex;
   align-items: flex-start;
@@ -798,6 +905,57 @@ dialog {
   border: 0;
 }
 
+.drawer-dialog {
+  width: min(460px, calc(100vw - 34px));
+  margin: auto 0 auto auto;
+  height: 100vh;
+  max-height: 100vh;
+}
+
+.drawer-dialog::backdrop { background: rgba(14, 16, 13, 0.32); }
+.drawer-card {
+  min-height: 100vh;
+  padding: 28px;
+  background: var(--surface);
+  box-shadow: -20px 0 70px rgba(0, 0, 0, 0.18);
+}
+.drawer-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+.drawer-heading h2 { margin: 0; font: 700 26px/1.2 Georgia, "Microsoft YaHei", serif; }
+.aspect-drawer-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.drawer-aspect-option { min-height: 92px; }
+
+.summary-dialog-card { width: min(520px, calc(100vw - 40px)); }
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.summary-grid div {
+  padding: 12px;
+  background: #f7f7f1;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.summary-grid span, .summary-grid strong { display: block; }
+.summary-grid span { color: var(--muted); font-size: 10px; font-weight: 800; }
+.summary-grid strong { margin-top: 5px; font-size: 13px; }
+.summary-message {
+  margin: 0;
+  padding: 14px;
+  color: #30352d;
+  font-size: 13px;
+  line-height: 1.6;
+  background: #edf4e9;
+  border: 1px solid #cbdcc7;
+  border-radius: 8px;
+}
+
 dialog::backdrop { background: rgba(14, 16, 13, 0.66); backdrop-filter: blur(5px); }
 .dialog-card { position: relative; display: grid; gap: 18px; padding: 32px; background: var(--surface); border-radius: 12px; box-shadow: 0 30px 100px rgba(0, 0, 0, 0.25); }
 .dialog-card h2 { margin-bottom: -8px; }
@@ -846,6 +1004,20 @@ dialog::backdrop { background: rgba(14, 16, 13, 0.66); backdrop-filter: blur(5px
 }
 .api-key-field > span { font-size: 12px; font-weight: 700; }
 .api-key-field small { color: var(--muted); font-size: 11px; }
+.api-key-input-row {
+  display: grid;
+  grid-template-columns: 1fr 42px;
+  gap: 8px;
+}
+.secret-toggle-button {
+  min-height: 42px;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 900;
+  background: #f7f7f1;
+  border: 1px solid #ccd0c7;
+  border-radius: 7px;
+}
 .clear-provider-control {
   display: flex !important;
   align-items: center;
@@ -884,7 +1056,7 @@ dialog::backdrop { background: rgba(14, 16, 13, 0.66); backdrop-filter: blur(5px
   .market-summary dl { grid-template-columns: repeat(3, 1fr); }
   .tone-grid { grid-template-columns: repeat(2, 1fr); }
   .aspect-grid { grid-template-columns: repeat(2, 1fr); }
-  .setup-grid, .creative-setup, .lock-summary { grid-template-columns: 1fr; }
+  .setup-grid, .creative-setup, .lock-summary, .audience-picker, .shot-count-picker { grid-template-columns: 1fr; }
   .choice-grid.compact, .tone-grid.compact { grid-template-columns: repeat(2, 1fr); }
   .market-brief-strip { grid-template-columns: repeat(3, 1fr); }
   .generated-image-grid { grid-template-columns: 1fr; }

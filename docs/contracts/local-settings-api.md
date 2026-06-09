@@ -36,27 +36,39 @@ Response:
   "providers": {
     "vision": {
       "provider": "Right Code",
+      "role": "识图 Key",
+      "channel": "Gemini (/gemini)",
       "model": "gemini-2.5-flash",
       "apiUrl": "https://right.codes/gemini",
-      "configured": false
+      "configured": false,
+      "keyPreview": ""
     },
     "text": {
       "provider": "DeepSeek",
+      "role": "脚本 Key",
+      "channel": "Chat Completions",
       "model": "deepseek-v4-pro",
       "apiUrl": "https://api.deepseek.com/chat/completions",
-      "configured": false
+      "configured": false,
+      "keyPreview": ""
     },
     "image": {
       "provider": "Right Code",
+      "role": "生图 Key",
+      "channel": "画图 (/draw)",
       "model": "gpt-image-2",
       "apiUrl": "https://www.right.codes/draw/v1/images/generations",
-      "configured": false
+      "configured": false,
+      "keyPreview": ""
     }
   }
 }
 ```
 
-API key values are never returned.
+Full API key values are never returned. In local-only development, the response
+may include a short `keyPreview` such as `已保存 · 末尾 abcd` so the operator can
+confirm which local token is responsible for each provider without exposing the
+complete secret.
 
 ## Update Provider Keys
 
@@ -84,7 +96,6 @@ Rules:
 - `deepSeekApiKey` writes only `TEXT_MODEL_API_KEY`.
 - `imageApiKey` writes only `IMAGE_MODEL_API_KEY`.
 - Vision and image remain separate providers and endpoints, even when the user chooses to enter the same Right Code account key.
-- Deprecated `rightCodesApiKey` is accepted temporarily for stale browser pages and writes both Right Code provider keys.
 - `null` explicitly clears that provider key.
 - Empty strings are invalid.
 - Values are stored only in the ignored local `.env` file.

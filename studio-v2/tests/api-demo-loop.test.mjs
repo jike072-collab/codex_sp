@@ -107,18 +107,24 @@ test("no-key demo mode completes the full persisted export loop", async () => {
   assert.equal(marketed.body.project.status, "script");
 
   const firstGeneration = await jsonRequest(`/api/projects/${projectId}/script/generate`, {
-    method: "POST"
+    method: "POST",
+    body: JSON.stringify({ shotsPerSegment: 4 })
   });
   assert.equal(firstGeneration.response.status, 200);
   assert.equal(firstGeneration.body.project.status, "script");
   assert.equal(firstGeneration.body.project.planningPackage.mode, "demo");
   assert.equal(
     firstGeneration.body.project.planningPackage.script_20s.segment_a_0_10s.shots.length,
-    3
+    4
+  );
+  assert.equal(
+    firstGeneration.body.project.planningPackage.script_20s.segment_b_10_20s.shots.length,
+    4
   );
 
   const secondGeneration = await jsonRequest(`/api/projects/${projectId}/script/generate`, {
-    method: "POST"
+    method: "POST",
+    body: JSON.stringify({ shotsPerSegment: 4 })
   });
   assert.deepEqual(
     secondGeneration.body.project.planningPackage,

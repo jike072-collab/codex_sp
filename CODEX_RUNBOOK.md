@@ -185,3 +185,18 @@ If one Codex finishes while the other is still working:
    owns prompt and Flow Omni display/copy UI.
 5. JSON export: Codex A owns export endpoint; Codex B owns download entrypoint.
 6. Integration: Codex A merges and reruns the full closed-loop verification.
+
+## Current Local Provider Rules
+
+- API settings use three independent local keys:
+  `visionApiKey`, `deepSeekApiKey`, and `imageApiKey`.
+- Do not reintroduce the legacy single `rightCodesApiKey` contract.
+- Right Code vision uses the Gemini channel: `https://right.codes/gemini`.
+- Right Code image generation uses the Draw channel:
+  `https://www.right.codes/draw/v1/images/generations`.
+- If Draw rejects reference images with HTTP 403, the backend retries prompt-only
+  generation once. A second 403 means the saved image key does not have the
+  required Draw/model permission.
+- Provider settings may display role/channel/model and a local key suffix for
+  operator debugging, but full keys remain out of project JSON, exports, logs,
+  commits, and final handoff text.

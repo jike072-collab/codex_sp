@@ -20,6 +20,12 @@ function normalizeKeyUpdate(input, field) {
   return trimmed;
 }
 
+function keyPreview(value) {
+  const key = String(value || "").trim();
+  if (!hasUsableApiKey(key)) return "";
+  return `已保存 · 末尾 ${key.slice(-4)}`;
+}
+
 async function readEnvText() {
   try {
     return await readFile(localEnvPath(), "utf8");
@@ -66,23 +72,32 @@ export async function readProviderSettings() {
     providers: {
       vision: {
         provider: "Right Code",
+        role: "识图 Key",
+        channel: "Gemini (/gemini)",
         model: env.VISION_MODEL || "gemini-2.5-flash",
         apiUrl: env.VISION_API_URL
           || "https://right.codes/gemini",
-        configured: hasUsableApiKey(env.VISION_MODEL_API_KEY)
+        configured: hasUsableApiKey(env.VISION_MODEL_API_KEY),
+        keyPreview: keyPreview(env.VISION_MODEL_API_KEY)
       },
       text: {
         provider: "DeepSeek",
+        role: "脚本 Key",
+        channel: "Chat Completions",
         model: env.TEXT_MODEL || "deepseek-v4-pro",
         apiUrl: env.TEXT_API_URL || "https://api.deepseek.com/chat/completions",
-        configured: hasUsableApiKey(env.TEXT_MODEL_API_KEY)
+        configured: hasUsableApiKey(env.TEXT_MODEL_API_KEY),
+        keyPreview: keyPreview(env.TEXT_MODEL_API_KEY)
       },
       image: {
         provider: "Right Code",
+        role: "生图 Key",
+        channel: "画图 (/draw)",
         model: env.IMAGE_MODEL || "gpt-image-2",
         apiUrl: env.IMAGE_API_URL
           || "https://www.right.codes/draw/v1/images/generations",
-        configured: hasUsableApiKey(env.IMAGE_MODEL_API_KEY)
+        configured: hasUsableApiKey(env.IMAGE_MODEL_API_KEY),
+        keyPreview: keyPreview(env.IMAGE_MODEL_API_KEY)
       }
     }
   };
@@ -94,18 +109,14 @@ export async function updateProviderSettings(input) {
   }
 
   const updates = {};
-  const legacyRightCodesApiKey = normalizeKeyUpdate(input, "rightCodesApiKey");
   const visionApiKey = normalizeKeyUpdate(input, "visionApiKey");
   const imageApiKey = normalizeKeyUpdate(input, "imageApiKey");
 
-  // New independent fields win when a cached legacy page sends both shapes.
-  const nextVisionApiKey = visionApiKey ?? legacyRightCodesApiKey;
-  if (nextVisionApiKey !== undefined) {
-    updates.VISION_MODEL_API_KEY = nextVisionApiKey;
+  if (visionApiKey !== undefined) {
+    updates.VISION_MODEL_API_KEY = visionApiKey;
   }
-  const nextImageApiKey = imageApiKey ?? legacyRightCodesApiKey;
-  if (nextImageApiKey !== undefined) {
-    updates.IMAGE_MODEL_API_KEY = nextImageApiKey;
+  if (imageApiKey !== undefined) {
+    updates.IMAGE_MODEL_API_KEY = imageApiKey;
   }
 
   const deepSeekApiKey = normalizeKeyUpdate(input, "deepSeekApiKey");

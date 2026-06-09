@@ -94,6 +94,8 @@ test("script confirmation cannot drop confirmed product lock rules", () => {
     }
   };
   const planning = generateDemoPlanningPackage(project);
+  assert.equal(planning.script_20s.segment_a_0_10s.shots.length, 5);
+  assert.equal(planning.script_20s.segment_b_10_20s.shots.length, 5);
   planning.product_lock_manifest.must_keep = [];
 
   assert.throws(

@@ -2,7 +2,10 @@
 
 ## Identity
 
-You are Codex B. You own the browser frontend for workflow steps 03 through 06.
+You are Codex B. The original market-step implementation has already been
+integrated into `main` and the visible workflow has changed. Before doing any
+new frontend work, sync from `main` and treat this file as historical context
+plus the follow-up notes below.
 
 Branch:
 
@@ -42,7 +45,22 @@ After product-lock review, the project status becomes `market`. The current UI o
 
 ## Goal
 
-Replace the placeholder with a usable frontend for market, script, visual, and export stages.
+Do not continue the old placeholder-replacement task as-is. The current UX is:
+upload -> background analyze -> Step 02 product lock and creative settings ->
+summary dialog -> Step 04 script -> visual -> export.
+
+Current follow-up work for Codex B is browser QA and small UI polish only:
+
+- Verify Step 02 after upload immediately shows the review/creative page while
+  analysis is still running.
+- Verify the audience card picker, video-size drawer, creative stack, top action
+  buttons, summary dialog, shot-count selector, and script progress bar.
+- Verify the API settings dialog shows three independent key fields, each with
+  role/channel/model details and a show/hide button for newly typed keys.
+- Do not add or depend on `rightCodesApiKey`.
+- Do not edit backend/provider/storage contracts from the frontend branch.
+
+The user must still be able to:
 
 The user must be able to:
 

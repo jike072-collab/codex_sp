@@ -35,6 +35,7 @@ main
 9. [完成] 拆分识图与生图 API Key 配置，保持三个 provider 独立。
 10. [完成] 与前端三接口设置保持一致，识图、脚本和生图 Key 独立保存。
 11. [完成] 整合故事版前端闭环，完成存储健壮性审计与浏览器闭环验证。
+12. [进行中] 收口 Step 02 合并创意设置、脚本镜头数选择、Right Code 生图 403 参考图重试、API Key 职责显示与 Codex B 前端 QA 交接。
 
 ## Codex B：完整闭环前端（另一个 Codex）
 
@@ -70,6 +71,8 @@ tasks/codex-frontend-market-step.md
 docs/contracts/market-creative-api.md
 docs/contracts/demo-loop-api.md
 ```
+
+当前前端 follow-up 已变更为 QA/微调：同步 `main`，不要继续旧的 market placeholder 任务，不要重新引入 `rightCodesApiKey`，只在 `studio-v2/public/**` 内核对 Step 02 合并流程、尺寸抽屉、总结弹窗、脚本镜头数选择、进度条和三 Key 设置弹窗。
 
 ## 尚未启动
 

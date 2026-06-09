@@ -43,7 +43,7 @@ function marketDefaults(project) {
     targetCountry: clean(saved.targetCountry) || setup.targetCountry,
     audience: clean(saved.audience) || setup.audience,
     creativeTheme: clean(saved.creativeTheme) || setup.creativeTheme,
-    coreMessage: clean(saved.coreMessage),
+    coreMessage: clean(saved.coreMessage) || setup.coreMessage,
     tone: clean(saved.tone) || setup.tone,
     outputAspectRatio: setup.outputAspectRatio
   };

@@ -79,6 +79,9 @@ test("provider settings persist locally without returning API keys", async () =>
   assert.equal(updated.body.providers.text.configured, true);
   assert.equal(updated.body.providers.image.configured, true);
   assert.equal(JSON.stringify(updated.body).includes("secret"), false);
+  assert.equal(updated.body.providers.image.role, "生图 Key");
+  assert.equal(updated.body.providers.image.channel, "画图 (/draw)");
+  assert.equal(updated.body.providers.image.keyPreview, "已保存 · 末尾 cret");
 
   let stored = await readFile(envPath, "utf8");
   assert.match(stored, /VISION_MODEL_API_KEY=vision-secret/);
@@ -96,15 +99,14 @@ test("provider settings persist locally without returning API keys", async () =>
   assert.match(stored, /VISION_MODEL_API_KEY=new-vision-secret/);
   assert.match(stored, /IMAGE_MODEL_API_KEY=image-secret/);
 
-  const mixedClientUpdated = await request("/api/settings/providers", {
+  const independentKeysUpdated = await request("/api/settings/providers", {
     method: "PUT",
     body: JSON.stringify({
-      rightCodesApiKey: "cached-page-key",
       visionApiKey: "independent-vision-key",
       imageApiKey: "independent-image-key"
     })
   });
-  assert.equal(mixedClientUpdated.response.status, 200);
+  assert.equal(independentKeysUpdated.response.status, 200);
   stored = await readFile(envPath, "utf8");
   assert.match(stored, /VISION_MODEL_API_KEY=independent-vision-key/);
   assert.match(stored, /IMAGE_MODEL_API_KEY=independent-image-key/);
@@ -116,19 +118,6 @@ test("provider settings persist locally without returning API keys", async () =>
   assert.equal(visionCleared.body.providers.vision.configured, false);
   assert.equal(visionCleared.body.providers.text.configured, true);
   assert.equal(visionCleared.body.providers.image.configured, true);
-
-  const legacyUpdated = await request("/api/settings/providers", {
-    method: "PUT",
-    body: JSON.stringify({
-      rightCodesApiKey: "legacy-right-codes-secret"
-    })
-  });
-  assert.equal(legacyUpdated.body.providers.vision.configured, true);
-  assert.equal(legacyUpdated.body.providers.text.configured, true);
-  assert.equal(legacyUpdated.body.providers.image.configured, true);
-  stored = await readFile(envPath, "utf8");
-  assert.match(stored, /VISION_MODEL_API_KEY=legacy-right-codes-secret/);
-  assert.match(stored, /IMAGE_MODEL_API_KEY=legacy-right-codes-secret/);
 
   const allCleared = await request("/api/settings/providers", {
     method: "PUT",

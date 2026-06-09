@@ -10,10 +10,13 @@ import {
   ProviderError
 } from "./provider-utils.mjs";
 
-async function referenceImages(project) {
+async function referenceImages(
+  project,
+  { readFileImpl = readFile, uploadsRootPath = uploadsRoot } = {}
+) {
   return Promise.all((project.assets || []).map(async (asset) => {
-    const bytes = await readFile(join(uploadsRoot, project.id, asset.storedName));
-    return `data:${asset.mimeType};base64,${bytes.toString("base64")}`;
+    const bytes = await readFileImpl(join(uploadsRootPath, project.id, asset.storedName));
+    return bytes.toString("base64");
   }));
 }
 
@@ -23,10 +26,41 @@ function sizeFor(item, env) {
     : env.KEYFRAME_IMAGE_SIZE || "1024x1536";
 }
 
+async function requestGeneratedImage({
+  apiUrl,
+  apiKey,
+  timeoutMs,
+  fetchImpl,
+  model,
+  item,
+  images,
+  env
+}) {
+  return postProviderJson({
+    url: apiUrl,
+    apiKey,
+    timeoutMs,
+    providerLabel: "Right Code 图片模型",
+    errorCode: "IMAGE_PROVIDER_ERROR",
+    fetchImpl,
+    body: {
+      model,
+      prompt: `${item.prompt}\nAvoid: ${item.negative_prompt}`,
+      image: images,
+      size: sizeFor(item, env),
+      response_format: "url"
+    }
+  });
+}
+
 export async function generateProjectVisuals(
   project,
   generatedAt = new Date().toISOString(),
-  { fetchImpl = fetch } = {}
+  {
+    fetchImpl = fetch,
+    readFileImpl = readFile,
+    uploadsRootPath = uploadsRoot
+  } = {}
 ) {
   generateVisualPackage(project, generatedAt);
 
@@ -38,24 +72,42 @@ export async function generateProjectVisuals(
   const apiUrl = env.IMAGE_API_URL
     || "https://www.right.codes/draw/v1/images/generations";
   const model = env.IMAGE_MODEL || "gpt-image-2";
-  const images = await referenceImages(project);
+  const images = await referenceImages(project, { readFileImpl, uploadsRootPath });
+  let useReferenceImages = Boolean(images.length);
 
   for (const item of project.imagePackage.image_generation) {
-    const payload = await postProviderJson({
-      url: apiUrl,
-      apiKey,
-      timeoutMs: positiveInteger(env.IMAGE_TIMEOUT_MS, 300000),
-      providerLabel: "Right Code 图片模型",
-      errorCode: "IMAGE_PROVIDER_ERROR",
-      fetchImpl,
-      body: {
+    const timeoutMs = positiveInteger(env.IMAGE_TIMEOUT_MS, 300000);
+    let referenceMode = useReferenceImages ? "reference_images" : "prompt_only";
+    let payload;
+    try {
+      payload = await requestGeneratedImage({
+        apiUrl,
+        apiKey,
+        timeoutMs,
+        fetchImpl,
         model,
-        prompt: `${item.prompt}\nAvoid: ${item.negative_prompt}`,
-        image: images,
-        size: sizeFor(item, env),
-        response_format: "url"
+        item,
+        images: useReferenceImages ? images : [],
+        env
+      });
+    } catch (error) {
+      if (!(error instanceof ProviderError) || error.providerStatus !== 403 || !useReferenceImages) {
+        throw error;
       }
-    });
+      useReferenceImages = false;
+      referenceMode = "prompt_only_after_reference_403";
+      payload = await requestGeneratedImage({
+        apiUrl,
+        apiKey,
+        timeoutMs,
+        fetchImpl,
+        model,
+        item,
+        images: [],
+        env
+      });
+    }
+
     const url = payload?.data?.[0]?.url;
     if (!url) {
       throw new ProviderError("Right Code 图片模型响应中没有图片 URL。", {
@@ -66,7 +118,8 @@ export async function generateProjectVisuals(
       provider: "right_codes",
       model,
       url,
-      size: sizeFor(item, env)
+      size: sizeFor(item, env),
+      referenceMode
     };
   }
 

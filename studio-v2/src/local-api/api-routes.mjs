@@ -144,7 +144,10 @@ export async function handleApi(request, response, url) {
   }
 
   if (request.method === "POST" && action === "script/generate") {
-    await generateProjectScript(project);
+    const body = await readJsonBody(request, 64 * 1024);
+    await generateProjectScript(project, undefined, {
+      shotsPerSegment: body.shotsPerSegment
+    });
     await saveProject(project);
     return sendJson(response, 200, { project });
   }

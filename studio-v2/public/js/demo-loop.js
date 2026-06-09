@@ -101,10 +101,10 @@ function renderSegmentEditor(segmentKey, segment) {
 
 function renderGenerateScript(project) {
   return `
-    <div class="future-content">
+    <div class="future-content script-start-panel">
       <p class="section-index">STEP 04</p>
       <h2>市场创意已确认</h2>
-      <p>目标市场、受众和创意方向已经保存。现在可以生成本地演示脚本。</p>
+      <p>目标市场、受众和创意方向已经保存。选择每个 10 秒段落的镜头数，然后生成 20 秒脚本。</p>
       <div class="confirmed-card">
         <span>✓</span>
         <div>
@@ -112,8 +112,20 @@ function renderGenerateScript(project) {
           <small>${project.marketConfirmedAt ? `保存时间：${formatTime(project.marketConfirmedAt)}` : "市场 brief 已保存。"}</small>
         </div>
       </div>
+      <div class="shot-count-picker" role="radiogroup" aria-label="每 10 秒镜头数">
+        ${[3, 4, 5].map((count) => `
+          <label class="choice-card inline">
+            <input type="radio" name="shotsPerSegment" value="${count}" ${count === 5 ? "checked" : ""}>
+            <span><strong>${count} 个镜头</strong><small>每 10 秒一组</small></span>
+          </label>
+        `).join("")}
+      </div>
+      <div class="script-progress" id="scriptProgress" hidden>
+        <span></span>
+        <p>正在生成两个 10 秒脚本段落，请稍候...</p>
+      </div>
       <div class="button-row">
-        <button class="ghost-button" type="button" data-action="edit-market">返回编辑市场创意</button>
+        <button class="ghost-button" type="button" data-action="edit-market">返回第二步调整</button>
         <button class="primary-button" id="generateScriptButton" type="button" data-action="generate-script">生成演示脚本</button>
       </div>
     </div>
@@ -142,7 +154,7 @@ function renderScriptEditor(project) {
       </div>
       ${SEGMENTS.map(([segmentKey]) => renderSegmentEditor(segmentKey, script[segmentKey] || {})).join("")}
       <div class="stage-actions">
-        <button class="text-button" type="button" data-action="edit-market">返回市场创意</button>
+        <button class="text-button" type="button" data-action="edit-market">返回第二步调整</button>
         <div class="action-cluster">
           <p id="scriptHint">确认后直接生成故事版图片。</p>
           <button class="primary-button" id="confirmAndGenerateButton" type="button"

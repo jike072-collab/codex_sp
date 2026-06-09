@@ -65,7 +65,7 @@
         <ol class="stepper" id="stepper">
           <li data-step="assets"><b>01</b><span>商品素材</span></li>
           <li data-step="review"><b>02</b><span>产品锁定</span></li>
-          <li data-step="market"><b>03</b><span>市场创意</span></li>
+          <li class="workflow-skipped-step" data-step="market" aria-hidden="true"><b>03</b><span>创意确认</span></li>
           <li data-step="script"><b>04</b><span>广告脚本</span></li>
           <li data-step="visual"><b>05</b><span>视觉资产</span></li>
           <li data-step="export"><b>06</b><span>交付导出</span></li>
@@ -102,13 +102,17 @@
               <div class="section-heading">
                 <div>
                   <p class="section-index">STEP 02</p>
-                  <h2>确认产品锁定</h2>
-                  <p>这些信息会约束后续脚本、故事板和关键帧。请把不准确的识别结果直接改掉。</p>
+                  <h2>产品锁定与创意设置</h2>
+                  <p>识别完成后在这里确认鞋款身份，同时选择受众、尺寸和创意方向。</p>
                 </div>
                 <span class="requirement" id="analysisMode">待审核</span>
               </div>
 
               <form id="reviewForm">
+                <div class="review-top-actions">
+                  <button class="text-button" id="backToAssetsButton" type="button">返回素材</button>
+                  <button class="primary-button" type="submit">确认产品锁定</button>
+                </div>
                 <div class="form-section">
                   <h3>投放设置</h3>
                   <div class="setup-grid">
@@ -116,33 +120,51 @@
                       <span>目标国家</span>
                       <select name="targetCountry" id="countryOptions" required></select>
                     </label>
-                    <label>
+                    <div>
                       <span>目标人群</span>
-                      <input name="audience" required>
-                    </label>
+                      <input name="audience" type="hidden" required>
+                      <div class="audience-picker" id="audienceOptions"></div>
+                    </div>
                     <div>
                       <span class="field-label">视频尺寸</span>
-                      <div class="aspect-picker" id="aspectOptions"></div>
+                      <input name="output_aspect_ratio" type="hidden" value="9:16">
+                      <button class="aspect-summary-button" id="openAspectDrawerButton" type="button">
+                        <span id="aspectSummaryIcon" class="aspect-icon" style="--ratio:9 / 16"></span>
+                        <strong id="aspectSummaryValue">9:16</strong>
+                        <small id="aspectSummaryLabel">竖屏短视频</small>
+                      </button>
                     </div>
                   </div>
                 </div>
 
                 <div class="form-section">
                   <h3>创意方向</h3>
-                  <div class="creative-setup">
-                    <div>
+                  <div class="creative-stack">
+                    <details open>
+                      <summary>创意主题</summary>
                       <span class="field-label">创意主题</span>
                       <div class="choice-grid compact" id="creativeThemeOptions"></div>
-                    </div>
-                    <div>
+                    </details>
+                    <details open>
+                      <summary>语气</summary>
                       <span class="field-label">语气</span>
                       <div class="tone-grid compact" id="toneOptions"></div>
-                    </div>
+                    </details>
                   </div>
                 </div>
 
                 <div class="form-section">
-                  <h3>识别结果</h3>
+                  <h3>核心信息</h3>
+                  <label>
+                    <span>一句话主张</span>
+                    <textarea class="message-box compact-message" name="coreMessage"
+                      placeholder="留空时会根据鞋款识别结果自动生成"></textarea>
+                  </label>
+                  <small class="inline-help">不确定可以先留空，确认时会自动补一条适合当前鞋子的主张。</small>
+                </div>
+
+                <details class="optional-review-details">
+                  <summary>查看产品锁定细节</summary>
                   <div class="auto-analysis-panel" id="autoAnalysisSummary"></div>
                   <div class="lock-summary">
                     <div>
@@ -154,7 +176,7 @@
                       <p id="mustNotChangePreview"></p>
                     </div>
                   </div>
-                </div>
+                </details>
 
                 <div class="hidden" aria-hidden="true">
                   <input name="shoe_type">
@@ -172,10 +194,6 @@
 
                 <div class="quality-note" id="qualityNote"></div>
 
-                <div class="stage-actions">
-                  <button class="text-button" id="backToAssetsButton" type="button">返回素材</button>
-                  <button class="primary-button" type="submit">确认产品锁定</button>
-                </div>
               </form>
             </div>
 
@@ -290,9 +308,13 @@
       <div class="api-key-fields">
         <label class="api-key-field">
           <span>识图 API Key</span>
-          <input name="visionApiKey" type="password" autocomplete="new-password"
-            placeholder="留空表示不修改">
-          <small>Right Code · Gemini 2.5 Flash，仅用于商品识图。</small>
+          <div class="api-key-input-row">
+            <input name="visionApiKey" type="password" autocomplete="new-password"
+              placeholder="留空表示不修改">
+            <button class="secret-toggle-button" type="button" data-toggle-secret="visionApiKey"
+              aria-label="显示或隐藏识图 API Key">眼</button>
+          </div>
+          <small>负责：Right Code 识图 Key · Gemini (/gemini) · gemini-2.5-flash。</small>
         </label>
         <label class="clear-provider-control">
           <input name="clearVisionApiKey" type="checkbox">
@@ -301,9 +323,13 @@
 
         <label class="api-key-field">
           <span>脚本 API Key</span>
-          <input name="deepSeekApiKey" type="password" autocomplete="new-password"
-            placeholder="留空表示不修改">
-          <small>DeepSeek 官方接口，仅用于广告脚本生成。</small>
+          <div class="api-key-input-row">
+            <input name="deepSeekApiKey" type="password" autocomplete="new-password"
+              placeholder="留空表示不修改">
+            <button class="secret-toggle-button" type="button" data-toggle-secret="deepSeekApiKey"
+              aria-label="显示或隐藏脚本 API Key">眼</button>
+          </div>
+          <small>负责：DeepSeek 脚本 Key · Chat Completions · deepseek-v4-pro。</small>
         </label>
         <label class="clear-provider-control">
           <input name="clearDeepSeekApiKey" type="checkbox">
@@ -312,9 +338,13 @@
 
         <label class="api-key-field">
           <span>图片 API Key</span>
-          <input name="imageApiKey" type="password" autocomplete="new-password"
-            placeholder="留空表示不修改">
-          <small>Right Code · gpt-image-2，仅用于图片生成。</small>
+          <div class="api-key-input-row">
+            <input name="imageApiKey" type="password" autocomplete="new-password"
+              placeholder="留空表示不修改">
+            <button class="secret-toggle-button" type="button" data-toggle-secret="imageApiKey"
+              aria-label="显示或隐藏图片 API Key">眼</button>
+          </div>
+          <small>负责：Right Code 生图 Key · 画图 (/draw) · gpt-image-2。</small>
         </label>
         <label class="clear-provider-control">
           <input name="clearImageApiKey" type="checkbox">
@@ -325,6 +355,29 @@
       <p class="api-note" id="apiSettingsNote">留空不会覆盖当前配置；勾选清除会删除对应的本地 Key。</p>
       <button class="primary-button large" id="saveApiSettingsButton" type="submit">保存 API 设置</button>
     </form>
+  </dialog>
+
+  <dialog class="drawer-dialog" id="aspectDrawer">
+    <form class="drawer-card" method="dialog">
+      <div class="drawer-heading">
+        <div>
+          <p class="kicker">OUTPUT SIZE</p>
+          <h2>选择视频尺寸</h2>
+        </div>
+        <button class="dialog-close" type="submit" aria-label="关闭">×</button>
+      </div>
+      <div class="aspect-drawer-grid" id="aspectDrawerOptions"></div>
+    </form>
+  </dialog>
+
+  <dialog id="briefSummaryDialog">
+    <div class="dialog-card summary-dialog-card">
+      <button class="dialog-close" id="closeBriefSummaryButton" type="button" aria-label="关闭">×</button>
+      <p class="kicker">READY FOR SCRIPT</p>
+      <h2>创意方向已整理好</h2>
+      <div id="briefSummaryContent"></div>
+      <button class="primary-button large" id="summaryGenerateScriptButton" type="button">生成脚本</button>
+    </div>
   </dialog>
 
   <div class="toast" id="toast"></div>

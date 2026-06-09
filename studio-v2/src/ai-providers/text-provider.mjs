@@ -19,16 +19,17 @@ import {
 export async function generateProjectScript(
   project,
   generatedAt = new Date().toISOString(),
-  { fetchImpl = fetch } = {}
+  { fetchImpl = fetch, shotsPerSegment = 5 } = {}
 ) {
+  const options = { shotsPerSegment };
   const env = await loadEnv();
   const apiKey = env.TEXT_MODEL_API_KEY;
   if (!hasUsableApiKey(apiKey)) {
-    return generateProjectDemoScript(project, generatedAt);
+    return generateProjectDemoScript(project, generatedAt, options);
   }
 
   // This also enforces the same review and market prerequisites as demo mode.
-  generateDemoPlanningPackage(project);
+  generateDemoPlanningPackage(project, options);
 
   const apiUrl = env.TEXT_API_URL || "https://api.deepseek.com/chat/completions";
   const model = env.TEXT_MODEL || "deepseek-v4-pro";
@@ -51,6 +52,7 @@ export async function generateProjectScript(
           role: "user",
           content: JSON.stringify({
             task: "Generate the complete planning package JSON for this reviewed shoe project.",
+            shots_per_10s_segment: options.shotsPerSegment || 5,
             vision_analysis: project.visionAnalysis,
             market_brief: project.marketBrief
           })
