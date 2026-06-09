@@ -189,17 +189,17 @@ Requirements:
 
 Behavior:
 
-- Always generate the deterministic visual prompt and Flow Omni package first.
+- Always generate two deterministic storyboard prompt entries first.
+- The storyboard aspect ratio uses `marketBrief.outputAspectRatio`, selected by
+  the user in Step 02.
 - When `IMAGE_MODEL_API_KEY` is configured and the provider is not `manual`,
-  call the configured image provider once for each of the four prompt entries.
+  call the configured image provider once for each of the two storyboard entries.
 - Without a usable image key, keep prompt-only demo behavior.
-- Create exactly four `image_generation` entries:
-  - `0-10s_storyboard_board`, `16:9`
-  - `0-10s_video_keyframe`, `9:16`
-  - `10-20s_storyboard_board`, `16:9`
-  - `10-20s_video_keyframe`, `9:16`
+- Create exactly two `image_generation` entries:
+  - `0-10s_storyboard_board`, selected aspect ratio
+  - `10-20s_storyboard_board`, selected aspect ratio
 - Every prompt includes the confirmed product `must_keep` and `must_not_change` rules.
-- Create exactly two `manualOmniPackages`, one for each segment.
+- Do not create separate keyframe images or Flow Omni packages for V1.
 - Set `visualGeneratedAt`.
 - Enter `export`.
 
@@ -213,15 +213,7 @@ Persisted fields:
     "image_generation": [],
     "qc_checklist": []
   },
-  "manualOmniPackages": [
-    {
-      "segment_id": "0-10s",
-      "upload_references": [],
-      "script": {},
-      "flow_omni_prompt": "",
-      "caption_note": ""
-    }
-  ]
+  "manualOmniPackages": []
 }
 ```
 
@@ -248,7 +240,7 @@ GET /api/projects/:projectId/export
 Requirements:
 
 - Project status is `export`.
-- Planning, visual, and Omni packages exist.
+- Planning package and two storyboard prompt or image entries exist.
 
 Response:
 
@@ -283,6 +275,22 @@ Export shape:
   "marketBrief": {},
   "planningPackage": {},
   "imagePackage": {},
+  "storyboardDeliverables": [
+    {
+      "segment_id": "0-10s",
+      "aspect_ratio": "9:16",
+      "storyboard": {},
+      "script": {},
+      "script_copy": ""
+    },
+    {
+      "segment_id": "10-20s",
+      "aspect_ratio": "9:16",
+      "storyboard": {},
+      "script": {},
+      "script_copy": ""
+    }
+  ],
   "manualOmniPackages": [],
   "qcChecklist": []
 }
@@ -296,5 +304,7 @@ Local filesystem paths, stored filenames, hashes, and API credentials must not a
 
 - `script` with no `planningPackage`: show Generate Script.
 - `script` with `planningPackage`: show editable script.
-- `visual`: show Generate Visual Prompts.
-- `export`: show prompts, Omni packages, copy actions, and JSON download.
+- `visual`: show the action to generate two storyboard images.
+- `export` without generated images: show generation progress or a retryable error.
+- `export` with generated images: show two clickable storyboard images, the matching
+  0-10s and 10-20s script copy actions, and JSON download.

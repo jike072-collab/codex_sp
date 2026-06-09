@@ -214,7 +214,7 @@ test("DeepSeek adapter requests JSON and validates the generated 20-second scrip
   });
 });
 
-test("Right Code image adapter generates four referenced image requests", async () => {
+test("Right Code image adapter generates two referenced storyboard requests", async () => {
   await withProviderEnv({
     IMAGE_MODEL_API_KEY: "test-right-code-key",
     IMAGE_API_URL: "https://example.test/draw/v1/images/generations",
@@ -222,6 +222,7 @@ test("Right Code image adapter generates four referenced image requests", async 
     IMAGE_MODEL_PROVIDER: "right_codes"
   }, async () => {
     const project = reviewedProject();
+    project.marketBrief.outputAspectRatio = "4:5";
     project.assets = [{
       storedName: "shoe.png",
       mimeType: "image/png"
@@ -252,18 +253,18 @@ test("Right Code image adapter generates four referenced image requests", async 
       }
     });
 
-    assert.equal(requests.length, 4);
+    assert.equal(requests.length, 2);
     assert.equal(requests[0].model, "gpt-image-2");
     assert.equal(typeof requests[0].prompt, "string");
     assert.deepEqual(requests[0].image, [referenceBytes.toString("base64")]);
     assert.equal(requests[0].image[0].startsWith("data:image/"), false);
-    assert.equal(requests[0].size, "1536x1024");
+    assert.equal(requests[0].size, "1024x1280");
+    assert.equal(requests[1].size, "1024x1280");
     assert.equal(requests[0].response_format, "url");
-    assert.equal(requests[1].size, "1024x1536");
     assert.equal(project.imagePackage.mode, "api");
     assert.equal(
-      project.imagePackage.image_generation[3].generated_image.url,
-      "https://images.test/4.png"
+      project.imagePackage.image_generation[1].generated_image.url,
+      "https://images.test/2.png"
     );
   });
 });
@@ -304,7 +305,7 @@ test("Right Code image adapter retries prompt-only when references are forbidden
       }
     });
 
-    assert.equal(requests.length, 5);
+    assert.equal(requests.length, 3);
     assert.equal(
       project.imagePackage.image_generation[0].generated_image.referenceMode,
       "prompt_only_after_reference_403"

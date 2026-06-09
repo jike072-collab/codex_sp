@@ -17,7 +17,8 @@ const validBrief = {
   audience: " 日常运动与通勤人群 ",
   creativeTheme: "city-motion",
   coreMessage: " 轻快、稳定，适合每天出发 ",
-  tone: "energetic"
+  tone: "energetic",
+  outputAspectRatio: "9:16"
 };
 
 test("normalizeMarketBrief trims and preserves the documented contract", () => {
@@ -26,7 +27,8 @@ test("normalizeMarketBrief trims and preserves the documented contract", () => {
     audience: "日常运动与通勤人群",
     creativeTheme: "city-motion",
     coreMessage: "轻快、稳定，适合每天出发",
-    tone: "energetic"
+    tone: "energetic",
+    outputAspectRatio: "9:16"
   });
 });
 

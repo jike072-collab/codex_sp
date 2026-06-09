@@ -414,6 +414,7 @@ export function marketBriefFromReviewForm() {
     audience,
     creativeTheme,
     coreMessage,
-    tone
+    tone,
+    outputAspectRatio: form.elements.output_aspect_ratio?.value || setup.outputAspectRatio
   };
 }

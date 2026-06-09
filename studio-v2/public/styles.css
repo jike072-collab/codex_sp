@@ -843,6 +843,51 @@ input[readonly], textarea[readonly] { color: #5c625a; background: #f4f4ef; }
   object-fit: contain;
 }
 
+.clickable-preview {
+  color: inherit;
+  text-decoration: none;
+  cursor: zoom-in;
+}
+
+.deliverable-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.deliverable-card {
+  overflow: hidden;
+  padding: 18px;
+  background: #fcfcf8;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.deliverable-card .generated-image-preview {
+  margin-bottom: 14px;
+}
+
+.deliverable-card pre {
+  max-height: 300px;
+  margin: 0 0 14px;
+  padding: 14px;
+  overflow: auto;
+  color: #30352d;
+  font: 11px/1.65 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-top: 0;
+}
+
+.visual-error-card .error-message {
+  padding: 14px;
+  color: #842e25;
+  line-height: 1.6;
+  background: #fff0ed;
+  border: 1px solid #e4b8b0;
+  border-radius: 8px;
+}
+
 .generated-image-card pre {
   max-height: 190px;
   margin: 0;

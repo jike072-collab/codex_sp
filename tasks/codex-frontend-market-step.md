@@ -57,10 +57,16 @@ Current follow-up work for Codex B is browser QA and small UI polish only:
   buttons, summary dialog, shot-count selector, and script progress bar.
 - Verify the API settings dialog shows three independent key fields, each with
   role/channel/model details and a show/hide button for newly typed keys.
+- Verify the selected Step 02 aspect ratio is shown on the final delivery page
+  and both storyboard images use that same ratio.
+- Verify image generation immediately opens the final delivery progress view.
+- Verify failed image generation shows the provider error and a retry button.
+- Verify each generated storyboard image opens in a new tab when clicked.
+- Verify final delivery contains only two storyboard images and the matching
+  0-10s and 10-20s script copy actions.
+- Verify no keyframe, storage-location selector, or Flow Omni section remains.
 - Do not add or depend on `rightCodesApiKey`.
 - Do not edit backend/provider/storage contracts from the frontend branch.
-
-The user must still be able to:
 
 The user must be able to:
 
@@ -78,8 +84,8 @@ Then the user must be able to:
 1. Generate a deterministic demo script.
 2. Edit all shot text fields.
 3. Confirm the edited script.
-4. Generate four visual prompts and two Flow Omni packages.
-5. Copy each Flow Omni package.
+4. Generate two segment-specific storyboard images.
+5. Copy each matching 10-second script.
 6. Download the JSON delivery package.
 7. Reopen a project and resume from its persisted stage.
 
@@ -94,7 +100,8 @@ Use these exact field names:
     "audience": "日常运动与通勤人群",
     "creativeTheme": "city-motion",
     "coreMessage": "轻快、稳定，适合每天出发",
-    "tone": "energetic"
+    "tone": "energetic",
+    "outputAspectRatio": "9:16"
   }
 }
 ```

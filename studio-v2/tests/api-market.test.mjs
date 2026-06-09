@@ -46,7 +46,8 @@ const marketBrief = {
   audience: "日常运动与通勤人群",
   creativeTheme: "city-motion",
   coreMessage: "轻快、稳定，适合每天出发",
-  tone: "energetic"
+  tone: "energetic",
+  outputAspectRatio: "9:16"
 };
 
 async function request(path, options = {}) {
@@ -166,4 +167,3 @@ test("invalid JSON returns a client error rather than 500", async () => {
   assert.equal(response.status, 400);
   assert.equal(body.code, "INVALID_JSON");
 });
-

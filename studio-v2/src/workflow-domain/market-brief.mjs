@@ -16,6 +16,15 @@ export const CREATIVE_TONES = Object.freeze([
   "bold"
 ]);
 
+export const OUTPUT_ASPECT_RATIOS = Object.freeze([
+  "9:16",
+  "16:9",
+  "1:1",
+  "4:5",
+  "3:4",
+  "2:3"
+]);
+
 function requiredString(value, fieldName) {
   const normalized = cleanString(value);
   if (!normalized) {
@@ -43,7 +52,10 @@ export function normalizeMarketBrief(input) {
     audience: requiredString(input?.audience, "audience"),
     creativeTheme: allowedValue(input?.creativeTheme, "creativeTheme", CREATIVE_THEMES),
     coreMessage: requiredString(input?.coreMessage, "coreMessage"),
-    tone: allowedValue(input?.tone, "tone", CREATIVE_TONES)
+    tone: allowedValue(input?.tone, "tone", CREATIVE_TONES),
+    outputAspectRatio: input?.outputAspectRatio
+      ? allowedValue(input.outputAspectRatio, "outputAspectRatio", OUTPUT_ASPECT_RATIOS)
+      : "9:16"
   };
 }
 
@@ -63,4 +75,3 @@ export function confirmMarketBrief(project, input, confirmedAt = new Date().toIS
   transitionProject(project, "script");
   return project;
 }
-

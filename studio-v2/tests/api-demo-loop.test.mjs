@@ -16,7 +16,8 @@ const marketBrief = {
   audience: "日常运动与通勤人群",
   creativeTheme: "city-motion",
   coreMessage: "轻快、稳定，适合每天出发",
-  tone: "energetic"
+  tone: "energetic",
+  outputAspectRatio: "9:16"
 };
 
 async function jsonRequest(path, options = {}) {
@@ -151,8 +152,8 @@ test("no-key demo mode completes the full persisted export loop", async () => {
   });
   assert.equal(visual.response.status, 200);
   assert.equal(visual.body.project.status, "export");
-  assert.equal(visual.body.project.imagePackage.image_generation.length, 4);
-  assert.equal(visual.body.project.manualOmniPackages.length, 2);
+  assert.equal(visual.body.project.imagePackage.image_generation.length, 2);
+  assert.equal(visual.body.project.manualOmniPackages.length, 0);
 
   const mustKeep = visual.body.project.visionAnalysis.product_lock_manifest.must_keep;
   const mustNotChange = visual.body.project.visionAnalysis.product_lock_manifest.must_not_change;
@@ -174,7 +175,7 @@ test("no-key demo mode completes the full persisted export loop", async () => {
   const summary = projectList.body.projects.find((item) => item.id === projectId);
   assert.equal(summary.hasPlanningPackage, true);
   assert.equal(summary.hasImagePackage, true);
-  assert.equal(summary.omniPackageCount, 2);
+  assert.equal(summary.omniPackageCount, 0);
   assert.equal("planningPackage" in summary, false);
   assert.equal("imagePackage" in summary, false);
 
@@ -186,8 +187,9 @@ test("no-key demo mode completes the full persisted export loop", async () => {
   );
   const delivery = await exportResponse.json();
   assert.equal(delivery.schemaVersion, 1);
-  assert.equal(delivery.manualOmniPackages.length, 2);
-  assert.equal(delivery.imagePackage.image_generation.length, 4);
+  assert.equal(delivery.manualOmniPackages.length, 0);
+  assert.equal(delivery.imagePackage.image_generation.length, 2);
+  assert.equal(delivery.storyboardDeliverables.length, 2);
   assert.equal(delivery.sourceAssets[0].name, "shoe.png");
   assert.equal("storedName" in delivery.sourceAssets[0], false);
   assert.equal("hash" in delivery.sourceAssets[0], false);

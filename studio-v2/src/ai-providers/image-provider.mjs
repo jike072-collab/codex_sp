@@ -21,9 +21,17 @@ async function referenceImages(
 }
 
 function sizeFor(item, env) {
-  return item.aspect_ratio === "16:9"
-    ? env.STORYBOARD_IMAGE_SIZE || "1536x1024"
-    : env.KEYFRAME_IMAGE_SIZE || "1024x1536";
+  const configured = env[`IMAGE_SIZE_${String(item.aspect_ratio || "").replace(":", "_")}`];
+  if (configured) return configured;
+  const sizes = {
+    "9:16": "1024x1536",
+    "16:9": "1536x1024",
+    "1:1": "1024x1024",
+    "4:5": "1024x1280",
+    "3:4": "1024x1365",
+    "2:3": "1024x1536"
+  };
+  return sizes[item.aspect_ratio] || env.STORYBOARD_IMAGE_SIZE || "1024x1536";
 }
 
 async function requestGeneratedImage({

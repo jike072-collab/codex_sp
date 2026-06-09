@@ -25,7 +25,7 @@ function segment(segment_id, start) {
   };
 }
 
-test("visual generation creates four prompts and two Omni packages", () => {
+test("visual generation creates two selected-aspect storyboards", () => {
   const project = {
     id: "project-1",
     name: "Project",
@@ -36,7 +36,7 @@ test("visual generation creates four prompts and two Omni packages", () => {
     updatedAt: "2026-06-06T00:00:00.000Z",
     assets: [],
     visionAnalysis: {},
-    marketBrief: {},
+    marketBrief: { outputAspectRatio: "4:5" },
     scriptConfirmedAt: "2026-06-06T00:00:00.000Z",
     planningPackage: {
       product_lock_manifest: {
@@ -54,15 +54,18 @@ test("visual generation creates four prompts and two Omni packages", () => {
   generateVisualPackage(project, "2026-06-06T01:00:00.000Z");
 
   assert.equal(project.status, "export");
-  assert.equal(project.imagePackage.image_generation.length, 4);
-  assert.equal(project.manualOmniPackages.length, 2);
+  assert.equal(project.imagePackage.image_generation.length, 2);
+  assert.equal(project.manualOmniPackages.length, 0);
+  assert.equal(project.imagePackage.storyboard_plan.selected_aspect_ratio, "4:5");
   for (const item of project.imagePackage.image_generation) {
+    assert.equal(item.aspect_ratio, "4:5");
+    assert.equal(item.type, "storyboard_board");
     assert.match(item.prompt, /exact silhouette/);
     assert.match(item.prompt, /do not change color/);
   }
 
   const delivery = buildExportPackage(project, "2026-06-06T02:00:00.000Z");
   assert.equal(delivery.exportedAt, "2026-06-06T02:00:00.000Z");
-  assert.equal(delivery.manualOmniPackages.length, 2);
+  assert.equal(delivery.manualOmniPackages.length, 0);
+  assert.equal(delivery.storyboardDeliverables.length, 2);
 });
-

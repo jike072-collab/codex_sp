@@ -2,11 +2,11 @@ import { DomainError } from "./domain-error.mjs";
 import { assertProjectStage, transitionProject } from "./project-workflow.mjs";
 
 const QC_CHECKLIST = Object.freeze([
-  "Shoe colors stay consistent with confirmed references.",
-  "Shoe silhouette, midsole, and outsole structure stay consistent.",
+  "Each storyboard covers only its own 10-second segment.",
+  "Storyboard aspect ratio follows the selected output size.",
+  "Shoe colors, silhouette, midsole, and outsole stay consistent.",
   "No fake logo or changed side pattern is introduced.",
-  "Storyboard and keyframe prompts match their confirmed 10-second script.",
-  "Localized captions remain short and are added in post-production."
+  "Each storyboard includes shot timing, picture, sound, voiceover, and subtitle notes."
 ]);
 
 function productRules(lock) {
@@ -14,119 +14,115 @@ function productRules(lock) {
   const mustNotChange = (lock.must_not_change || [])
     .map((item) => `DO NOT CHANGE: ${item}`)
     .join(" | ");
-  return `${mustKeep} | ${mustNotChange}`;
+  return `${mustKeep} | ${mustNotChange}`.trim();
 }
 
-function asset(asset_id, segment_id, type, aspect_ratio, prompt, negative_prompt) {
-  return {
-    asset_id,
-    segment_id,
-    type,
-    aspect_ratio,
-    prompt,
-    negative_prompt,
-    reference_policy: "Use all uploaded shoe product views as strict product identity references."
-  };
+function shotLine(shot, index) {
+  return [
+    `Shot ${index + 1}: ${shot.start_sec}-${shot.end_sec}s`,
+    `Picture: ${shot.visual}`,
+    `Action: ${shot.action}`,
+    `Camera: ${shot.camera}`,
+    `Selling point: ${shot.selling_point}`,
+    `Voiceover/subtitle: ${shot.localized_caption_or_vo}`,
+    `Sound: ${shot.sound}`,
+    `Transition: ${shot.transition}`
+  ].join(" | ");
 }
 
-function omniPackage(segment, rules) {
-  const isFirst = segment.segment_id === "0-10s";
+function scriptCopy(segment) {
+  return [
+    `${segment.segment_id}｜${segment.theme}`,
+    ...segment.shots.map((shot, index) => [
+      `${index + 1}. ${shot.start_sec}-${shot.end_sec}s`,
+      `画面：${shot.visual}`,
+      `动作：${shot.action}`,
+      `镜头：${shot.camera}`,
+      `卖点：${shot.selling_point}`,
+      `音效：${shot.sound}`,
+      `口播：${shot.localized_caption_or_vo}`,
+      `字幕：${shot.localized_caption_or_vo}`,
+      `转场：${shot.transition}`
+    ].join("\n"))
+  ].join("\n\n");
+}
+
+function storyboardPrompt({ project, segment, aspectRatio, rules }) {
+  const lock = project.planningPackage.product_lock_manifest || {};
+  const colors = [
+    ...(lock.main_colors || []),
+    ...(lock.supporting_colors || [])
+  ].filter(Boolean).join(", ");
+  const memory = [
+    project.marketBrief?.coreMessage,
+    ...(lock.must_keep || []).slice(0, 3)
+  ].filter(Boolean).join(" | ");
+  const shotRows = segment.shots.map(shotLine).join("\n");
+
+  return [
+    `Create one ${aspectRatio} commercial storyboard board for ONLY the ${segment.segment_id} shoe ad segment.`,
+    "Do not include scenes from the other 10-second segment.",
+    "Visual layout reference: clean Chinese commercial storyboard sheet, bold black title, white background, thin grey table lines, numbered shot blocks, product reference strip, and structured rows similar to a desktop-shooting storyboard.",
+    "Required board sections:",
+    `1) Header: ${project.name} | ${segment.segment_id} storyboard | selected output ${aspectRatio}.`,
+    `2) Product lock zone: shoe type, colors (${colors || "confirmed colors"}), material, sole, must-keep and must-not-change notes.`,
+    "3) Shot table: one block per shot with timing, picture, action, camera, selling point, sound, voiceover, subtitle, and transition.",
+    "4) Final memory strip: large keywords for the audience to remember.",
+    "5) Small color palette and production notes area.",
+    `Confirmed segment script rows:\n${shotRows}`,
+    `Final memory keywords: ${memory || "clear shoe identity | comfort | movement"}.`,
+    `Product identity rules: ${rules}`,
+    "Use generated storyboard thumbnails inside each shot block, plus concise readable labels. Keep all text short, high-contrast, and arranged like a practical production board.",
+    "The shoe reference must remain accurate; do not invent a new shoe, logo, outsole, or colorway."
+  ].join("\n");
+}
+
+function storyboardAsset(project, segment, aspectRatio, rules) {
   return {
+    asset_id: `${segment.segment_id}_storyboard_board`,
     segment_id: segment.segment_id,
-    upload_references: [
-      `${segment.segment_id} confirmed script`,
-      `${segment.segment_id}_storyboard_board prompt or generated image`,
-      `${segment.segment_id}_video_keyframe prompt or generated image`,
-      "shoe product reference images"
-    ],
-    script: structuredClone(segment),
-    flow_omni_prompt: [
-      `Generate a 10-second 9:16 ecommerce shoe video for segment ${segment.segment_id}.`,
-      isFirst
-        ? "Use a strong product-first hook, then establish product identity and movement."
-        : "Show visible product proof, controlled movement, and finish on a clear full-shoe hero frame.",
-      `Follow the confirmed shot order and timing exactly. ${rules}`,
-      "Do not generate readable captions inside the video frames; localized captions will be added in post-production."
-    ].join(" "),
-    caption_note: "Add localized captions in post-production, not inside generated video frames."
+    type: "storyboard_board",
+    aspect_ratio: aspectRatio,
+    prompt: storyboardPrompt({ project, segment, aspectRatio, rules }),
+    negative_prompt: "wrong shoe, changed color, fake logo, distorted sole, unreadable layout, missing shots, includes other time segment, keyframe-only image, single hero photo",
+    reference_policy: "Use all uploaded shoe product views as strict product identity references.",
+    script_copy: scriptCopy(segment)
   };
 }
 
 export function generateVisualPackage(project, generatedAt = new Date().toISOString()) {
-  assertProjectStage(project, "visual", "生成视觉提示词");
+  assertProjectStage(project, "visual", "生成故事版图片");
   if (!project.planningPackage || !project.scriptConfirmedAt) {
-    throw new DomainError("请先确认广告脚本，再生成视觉提示词。", {
+    throw new DomainError("请先确认广告脚本，再生成故事版图片。", {
       code: "SCRIPT_CONFIRMATION_REQUIRED"
     });
   }
 
   const planning = project.planningPackage;
-  const lock = planning.product_lock_manifest;
-  const rules = productRules(lock);
+  const rules = productRules(planning.product_lock_manifest || {});
+  const aspectRatio = project.marketBrief?.outputAspectRatio || "9:16";
   const segmentA = planning.script_20s.segment_a_0_10s;
   const segmentB = planning.script_20s.segment_b_10_20s;
-
   const imageGeneration = [
-    asset(
-      "0-10s_storyboard_board",
-      "0-10s",
-      "storyboard_board",
-      "16:9",
-      `Create a 16:9 commercial storyboard production board for the confirmed 0-10s script. Show shot timing, action, camera, selling point, caption note, and sound note for every shot. ${rules}`,
-      "wrong shoe, changed color, fake logo, distorted sole, missing shots, unreadable layout"
-    ),
-    asset(
-      "0-10s_video_keyframe",
-      "0-10s",
-      "video_keyframe",
-      "9:16",
-      `Create a clean 9:16 cinematic keyframe for the confirmed 0-10s product-first hook. No table, poster typography, or captions. Keep the shoe as the clear hero. ${rules}`,
-      "text, captions, tables, poster layout, wrong shoe, changed color, fake logo"
-    ),
-    asset(
-      "10-20s_storyboard_board",
-      "10-20s",
-      "storyboard_board",
-      "16:9",
-      `Create a 16:9 commercial storyboard production board for the confirmed 10-20s proof and hero-close script. Show shot timing, action, camera, selling point, caption note, sound note, and the final full-shoe frame. ${rules}`,
-      "wrong shoe, changed color, fake logo, distorted sole, missing final hero, unreadable layout"
-    ),
-    asset(
-      "10-20s_video_keyframe",
-      "10-20s",
-      "video_keyframe",
-      "9:16",
-      `Create a clean 9:16 cinematic keyframe for the confirmed 10-20s proof and final hero moment. Show the complete shoe clearly with no captions or poster typography. ${rules}`,
-      "text, captions, tables, poster layout, cropped shoe, changed color, fake logo"
-    )
+    storyboardAsset(project, segmentA, aspectRatio, rules),
+    storyboardAsset(project, segmentB, aspectRatio, rules)
   ];
 
   project.imagePackage = {
     mode: "demo",
     storyboard_plan: {
-      total_images: 4,
-      segments: [
-        {
-          segment_id: "0-10s",
-          storyboard_goal: "Product-first hook, identity, and first movement.",
-          keyframe_goal: "Clean vertical product-first hook frame."
-        },
-        {
-          segment_id: "10-20s",
-          storyboard_goal: "Visible product proof and clear ecommerce close.",
-          keyframe_goal: "Clean vertical final proof and full-shoe hero frame."
-        }
-      ]
+      total_images: 2,
+      selected_aspect_ratio: aspectRatio,
+      segments: imageGeneration.map((item) => ({
+        segment_id: item.segment_id,
+        storyboard_goal: `One ${aspectRatio} storyboard board for ${item.segment_id}.`
+      }))
     },
     image_generation: imageGeneration,
     qc_checklist: [...QC_CHECKLIST]
   };
-  project.manualOmniPackages = [
-    omniPackage(segmentA, rules),
-    omniPackage(segmentB, rules)
-  ];
+  project.manualOmniPackages = [];
   project.visualGeneratedAt = generatedAt;
   transitionProject(project, "export");
   return project;
 }
-

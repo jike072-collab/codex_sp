@@ -2,7 +2,8 @@ export const state = {
   projects: [],
   project: null,
   viewStatus: null,
-  busy: false
+  busy: false,
+  visualGenerationError: ""
 };
 
 export const el = (id) => document.getElementById(id);
@@ -81,7 +82,7 @@ export function projectSetup(project = state.project) {
   const saved = project?.marketBrief || {};
   const preferences = readProjectPreferences(project);
   const targetCountry = saved.targetCountry || preferences.targetCountry || project?.targetCountry || "Thailand";
-  const outputAspectRatio = preferences.outputAspectRatio || "9:16";
+  const outputAspectRatio = saved.outputAspectRatio || preferences.outputAspectRatio || "9:16";
   const creativeTheme = saved.creativeTheme || preferences.creativeTheme || "city-motion";
   const tone = saved.tone || preferences.tone || "energetic";
   const audience = saved.audience || preferences.audience || project?.audience || audienceOptions[0][1];

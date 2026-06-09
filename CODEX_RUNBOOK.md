@@ -17,7 +17,7 @@ create project
 -> save market brief
 -> generate demo script
 -> confirm edited script
--> generate visual prompts and Flow Omni packages
+-> generate two storyboard images using the Step 02 aspect ratio
 -> download JSON export
 ```
 

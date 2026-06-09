@@ -26,6 +26,7 @@ export async function openProject(projectId) {
   const data = await api(`/api/projects/${encodeURIComponent(projectId)}`);
   state.project = data.project;
   state.viewStatus = data.project.status;
+  state.visualGenerationError = "";
   el("emptyScreen").classList.add("hidden");
   el("workspace").classList.remove("hidden");
   renderWorkspace();
@@ -302,13 +303,14 @@ export async function confirmScriptAndGenerateVisual() {
   );
   let scriptConfirmed = false;
   try {
+    state.visualGenerationError = "";
     const confirmed = await api(`/api/projects/${encodeURIComponent(state.project.id)}/script/confirm`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ planningPackage })
     });
     state.project = confirmed.project;
-    state.viewStatus = "visual";
+    state.viewStatus = "export";
     scriptConfirmed = true;
     renderWorkspace();
     await loadProjects();
@@ -319,13 +321,15 @@ export async function confirmScriptAndGenerateVisual() {
       body: JSON.stringify({})
     });
     state.project = visual.project;
-    state.viewStatus = "visual";
+    state.viewStatus = "export";
+    state.visualGenerationError = "";
     renderWorkspace();
     await loadProjects();
     showToast("故事版图片已生成。");
   } catch (error) {
     if (scriptConfirmed) {
-      state.viewStatus = "visual";
+      state.viewStatus = "export";
+      state.visualGenerationError = error.message;
       renderWorkspace();
       showToast(`脚本已确认，图片生成失败：${error.message}`);
     } else {
@@ -344,17 +348,24 @@ export async function confirmScriptAndGenerateVisual() {
 export async function generateVisual() {
   setWorkflowBusy(true, "generateVisualButton", "正在生成故事版图片...", "生成故事版图片");
   try {
+    state.visualGenerationError = "";
+    state.viewStatus = "export";
+    renderWorkspace();
     const data = await api(`/api/projects/${encodeURIComponent(state.project.id)}/visual/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({})
     });
     state.project = data.project;
-    state.viewStatus = "visual";
+    state.viewStatus = "export";
+    state.visualGenerationError = "";
     renderWorkspace();
     await loadProjects();
     showToast("故事版图片已生成。");
   } catch (error) {
+    state.visualGenerationError = error.message;
+    state.viewStatus = "export";
+    renderWorkspace();
     showToast(error.message);
   } finally {
     setWorkflowBusy(false, "generateVisualButton", "正在生成故事版图片...", "生成故事版图片");

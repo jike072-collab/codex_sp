@@ -18,7 +18,8 @@ Request:
     "audience": "日常运动与通勤人群",
     "creativeTheme": "city-motion",
     "coreMessage": "轻快、稳定，适合每天出发",
-    "tone": "energetic"
+    "tone": "energetic",
+    "outputAspectRatio": "9:16"
   }
 }
 ```
@@ -28,7 +29,9 @@ Rules:
 - The project must exist.
 - The current project status must be `market`.
 - A confirmed `visionAnalysis` and `reviewConfirmedAt` must exist.
-- All five market brief fields are required non-empty strings.
+- The original five market brief fields are required non-empty strings.
+- `outputAspectRatio` is submitted by Step 02. Older saved projects that omit it
+  default to `9:16`.
 - `creativeTheme` must be one of:
   - `city-motion`
   - `daily-comfort`
@@ -39,6 +42,13 @@ Rules:
   - `clean`
   - `warm`
   - `bold`
+- `outputAspectRatio` must be one of:
+  - `9:16`
+  - `16:9`
+  - `1:1`
+  - `4:5`
+  - `3:4`
+  - `2:3`
 
 Success:
 
@@ -58,7 +68,8 @@ Success:
       "audience": "日常运动与通勤人群",
       "creativeTheme": "city-motion",
       "coreMessage": "轻快、稳定，适合每天出发",
-      "tone": "energetic"
+      "tone": "energetic",
+      "outputAspectRatio": "9:16"
     },
     "marketConfirmedAt": "2026-06-06T00:00:00.000Z"
   }
@@ -85,7 +96,8 @@ Once a market brief has been saved, the project includes:
     "audience": "日常运动与通勤人群",
     "creativeTheme": "city-motion",
     "coreMessage": "轻快、稳定，适合每天出发",
-    "tone": "energetic"
+    "tone": "energetic",
+    "outputAspectRatio": "9:16"
   },
   "marketConfirmedAt": "2026-06-06T00:00:00.000Z"
 }

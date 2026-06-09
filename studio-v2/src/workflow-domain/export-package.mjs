@@ -1,13 +1,28 @@
 import { DomainError } from "./domain-error.mjs";
 import { assertProjectStage } from "./project-workflow.mjs";
 
+function storyboardDeliverables(project) {
+  const script = project.planningPackage?.script_20s || {};
+  const segmentById = {
+    "0-10s": script.segment_a_0_10s,
+    "10-20s": script.segment_b_10_20s
+  };
+  return (project.imagePackage?.image_generation || []).map((item) => ({
+    segment_id: item.segment_id,
+    aspect_ratio: item.aspect_ratio,
+    storyboard: structuredClone(item),
+    script: structuredClone(segmentById[item.segment_id]),
+    script_copy: item.script_copy || ""
+  }));
+}
+
 export function buildExportPackage(project, exportedAt = new Date().toISOString()) {
   assertProjectStage(project, "export", "导出交付包");
   if (
     !project.planningPackage ||
     !project.imagePackage ||
-    !Array.isArray(project.manualOmniPackages) ||
-    project.manualOmniPackages.length !== 2
+    !Array.isArray(project.imagePackage.image_generation) ||
+    project.imagePackage.image_generation.length !== 2
   ) {
     throw new DomainError("项目交付内容不完整，无法导出。", {
       code: "EXPORT_NOT_READY"
@@ -35,8 +50,8 @@ export function buildExportPackage(project, exportedAt = new Date().toISOString(
     marketBrief: structuredClone(project.marketBrief),
     planningPackage: structuredClone(project.planningPackage),
     imagePackage: structuredClone(project.imagePackage),
-    manualOmniPackages: structuredClone(project.manualOmniPackages),
+    storyboardDeliverables: storyboardDeliverables(project),
+    manualOmniPackages: [],
     qcChecklist: [...(project.imagePackage.qc_checklist || [])]
   };
 }
-

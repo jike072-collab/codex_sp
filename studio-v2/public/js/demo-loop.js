@@ -11,8 +11,8 @@ const SHOT_FIELDS = [
   ["action", "动作"],
   ["camera", "镜头"],
   ["selling_point", "卖点"],
-  ["localized_caption_or_vo", "本地化字幕/旁白"],
-  ["sound", "声音"],
+  ["localized_caption_or_vo", "口播/字幕"],
+  ["sound", "音效"],
   ["transition", "转场"]
 ];
 
@@ -36,6 +36,13 @@ function prettyJson(value) {
   return JSON.stringify(value || {}, null, 2);
 }
 
+function marketTitle(project) {
+  const brief = project.marketBrief || {};
+  const country = countryNames[brief.targetCountry] || brief.targetCountry || "目标市场";
+  const theme = THEME_LABELS[brief.creativeTheme] || brief.creativeTheme || "创意方向";
+  return `${country} · ${theme}`;
+}
+
 function shotSummaryText(shot) {
   return SHOT_FIELDS.map(([field, label]) => `${label}：${shot[field] || ""}`).join("\n");
 }
@@ -54,11 +61,29 @@ function parseShotSummary(value, previousShot) {
   return nextShot;
 }
 
-function marketTitle(project) {
-  const brief = project.marketBrief || {};
-  const country = countryNames[brief.targetCountry] || brief.targetCountry || "目标市场";
-  const theme = THEME_LABELS[brief.creativeTheme] || brief.creativeTheme || "创意方向";
-  return `${country} · ${theme}`;
+function segmentCopy(segment) {
+  const shots = Array.isArray(segment?.shots) ? segment.shots : [];
+  return [
+    `${segment.segment_id}｜${segment.theme}`,
+    ...shots.map((shot, index) => [
+      `${index + 1}. ${shot.start_sec}-${shot.end_sec}s`,
+      `画面：${shot.visual}`,
+      `动作：${shot.action}`,
+      `镜头：${shot.camera}`,
+      `卖点：${shot.selling_point}`,
+      `音效：${shot.sound}`,
+      `口播：${shot.localized_caption_or_vo}`,
+      `字幕：${shot.localized_caption_or_vo}`,
+      `转场：${shot.transition}`
+    ].join("\n"))
+  ].join("\n\n");
+}
+
+function scriptSegmentById(project, segmentId) {
+  const script = project.planningPackage?.script_20s || {};
+  return segmentId === "0-10s"
+    ? script.segment_a_0_10s
+    : script.segment_b_10_20s;
 }
 
 function renderShotEditor(segmentKey, shot, shotIndex) {
@@ -104,7 +129,7 @@ function renderGenerateScript(project) {
     <div class="future-content script-start-panel">
       <p class="section-index">STEP 04</p>
       <h2>市场创意已确认</h2>
-      <p>目标市场、受众和创意方向已经保存。选择每个 10 秒段落的镜头数，然后生成 20 秒脚本。</p>
+      <p>选择每个 10 秒段落的镜头数，然后生成 20 秒脚本。后续会按两个 10 秒段落分别生成故事板。</p>
       <div class="confirmed-card">
         <span>✓</span>
         <div>
@@ -140,7 +165,7 @@ function renderScriptEditor(project) {
       <div>
         <p class="section-index">STEP 04</p>
         <h2>编辑广告脚本</h2>
-        <p>快速扫一遍 20 秒脚本。确认后进入故事版图片阶段。</p>
+        <p>脚本结构按“画面、动作、镜头、卖点、口播/字幕、音效、转场”整理。确认后会直接进入最终交付页并生成两张故事板。</p>
       </div>
       <span class="requirement">20 秒</span>
     </div>
@@ -156,9 +181,9 @@ function renderScriptEditor(project) {
       <div class="stage-actions">
         <button class="text-button" type="button" data-action="edit-market">返回第二步调整</button>
         <div class="action-cluster">
-          <p id="scriptHint">确认后直接生成故事版图片。</p>
+          <p id="scriptHint">确认后生成两个分段故事板。</p>
           <button class="primary-button" id="confirmAndGenerateButton" type="button"
-            data-action="confirm-and-generate-visual">确认脚本并生成故事版图片</button>
+            data-action="confirm-and-generate-visual">确认脚本并生成故事板图片</button>
         </div>
       </div>
     </form>
@@ -210,16 +235,11 @@ export function validatePlanningPackage(planning) {
 export function renderVisualStage(project = state.project) {
   const container = el("visualStageContent");
   if (!container || !project) return;
-  const imageItems = project.imagePackage?.image_generation || [];
-  if (imageItems.length) {
-    container.innerHTML = renderGeneratedVisuals(project, imageItems);
-    return;
-  }
   container.innerHTML = `
     <div class="future-content">
       <p class="section-index">STEP 05</p>
-      <h2>等待故事版图片</h2>
-      <p>脚本已经确认。也可以在这里补生成故事版图、关键帧提示词和两段 Flow Omni 手动包。</p>
+      <h2>故事板图片</h2>
+      <p>此步骤只生成两个分段故事板。生成时会直接进入最终交付页显示进度。</p>
       <div class="confirmed-card">
         <span>✓</span>
         <div>
@@ -227,65 +247,73 @@ export function renderVisualStage(project = state.project) {
           <small>${project.scriptConfirmedAt ? `确认时间：${formatTime(project.scriptConfirmedAt)}` : "脚本已保存。"}</small>
         </div>
       </div>
-      <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">生成故事版图片</button>
+      <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">生成故事板图片</button>
     </div>
   `;
 }
 
-function renderGeneratedVisuals(project, imageItems) {
+function renderExportProgress(project) {
   return `
-    <div class="section-heading">
-      <div>
-        <p class="section-index">STEP 05</p>
-        <h2>故事版图片</h2>
-        <p>这里查看已经生成的故事版图、关键帧和对应提示词。</p>
+    <div class="future-content script-start-panel">
+      <p class="section-index">FINAL DELIVERY</p>
+      <h2>正在生成故事板图片</h2>
+      <p>会生成两个故事板：0-10 秒和 10-20 秒。尺寸使用你在第二步选择的 ${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")}。</p>
+      <div class="script-progress active">
+        <span></span>
+        <p>正在调用图片模型生成故事板，请稍候...</p>
       </div>
-      <span class="requirement">${escapeHtml(imageItems.length)} 张/组</span>
-    </div>
-    <section class="form-section storage-settings">
-      <h3>图片储存设置</h3>
-      <div class="form-grid two">
-        <label>
-          <span>保存位置</span>
-          <select>
-            <option>本地项目目录</option>
-            <option>稍后手动保存</option>
-          </select>
-        </label>
-        <label>
-          <span>文件命名</span>
-          <input value="${escapeHtml(project.name)} · 分镜图片" readonly>
-        </label>
-      </div>
-    </section>
-    <div class="generated-image-grid">
-      ${imageItems.map((item, index) => `
-        <article class="generated-image-card">
-          <div class="generated-image-preview">
-            ${item.generated_image?.url
-              ? `<img src="${escapeHtml(item.generated_image.url)}" alt="${escapeHtml(item.asset_id)}">`
-              : `<span>${escapeHtml(item.aspect_ratio || "")}</span>`}
-          </div>
-          <div class="copy-header">
-            <strong>${escapeHtml(item.asset_id)}</strong>
-            <button class="ghost-button small" type="button" data-copy-target="visualPrompt${index}">复制提示词</button>
-          </div>
-          <pre id="visualPrompt${index}">${escapeHtml(prettyJson(item))}</pre>
-        </article>
-      `).join("")}
     </div>
   `;
 }
 
-function copyBlock(id, label, content) {
+function renderExportError(project) {
   return `
-    <div class="copy-block">
+    <div class="future-content script-start-panel visual-error-card">
+      <p class="section-index">FINAL DELIVERY</p>
+      <h2>故事板图片生成失败</h2>
+      <p>脚本已经保存，尺寸仍使用第二步选择的 ${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")}。请检查图片模型 Key 或模型权限后重试。</p>
+      <div class="error-message">${escapeHtml(state.visualGenerationError)}</div>
+      <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">重新生成故事板图片</button>
+    </div>
+  `;
+}
+
+function renderStoryboardImage(item) {
+  if (!item.generated_image?.url) {
+    return `<div class="generated-image-preview"><span>${escapeHtml(item.aspect_ratio || "")}</span></div>`;
+  }
+  return `
+    <a class="generated-image-preview clickable-preview"
+      href="${escapeHtml(item.generated_image.url)}" target="_blank" rel="noreferrer">
+      <img src="${escapeHtml(item.generated_image.url)}" alt="${escapeHtml(item.asset_id)}">
+    </a>
+  `;
+}
+
+function renderDeliverable(project, item, index) {
+  const segment = scriptSegmentById(project, item.segment_id) || {};
+  const scriptText = item.script_copy || segmentCopy(segment);
+  return `
+    <article class="deliverable-card">
+      <div class="segment-heading">
+        <div>
+          <p class="section-index">${escapeHtml(item.segment_id)}</p>
+          <h3>${escapeHtml(item.segment_id)} 故事板 · ${escapeHtml(item.aspect_ratio)}</h3>
+        </div>
+        <span class="requirement">10 秒脚本</span>
+      </div>
+      ${renderStoryboardImage(item)}
       <div class="copy-header">
-        <strong>${escapeHtml(label)}</strong>
-        <button class="ghost-button small" type="button" data-copy-target="${escapeHtml(id)}">复制</button>
+        <strong>对应脚本</strong>
+        <button class="ghost-button small" type="button" data-copy-target="segmentScript${index}">复制脚本</button>
       </div>
-      <pre id="${escapeHtml(id)}">${escapeHtml(content)}</pre>
-    </div>
+      <pre id="segmentScript${index}">${escapeHtml(scriptText)}</pre>
+      <div class="copy-header">
+        <strong>故事板 Prompt</strong>
+        <button class="ghost-button small" type="button" data-copy-target="storyboardPrompt${index}">复制 Prompt</button>
+      </div>
+      <pre id="storyboardPrompt${index}">${escapeHtml(item.prompt || "")}</pre>
+    </article>
   `;
 }
 
@@ -294,39 +322,27 @@ export function renderExportStage(project = state.project) {
   if (!container || !project) return;
 
   const imageItems = project.imagePackage?.image_generation || [];
-  const omniPackages = project.manualOmniPackages || [];
+  if (!imageItems.length) {
+    container.innerHTML = state.visualGenerationError
+      ? renderExportError(project)
+      : renderExportProgress(project);
+    return;
+  }
   container.innerHTML = `
     <div class="section-heading">
       <div>
-        <p class="section-index">STEP 06</p>
-        <h2>交付导出</h2>
-        <p>故事版图、关键帧提示词和 Flow Omni 手动包已经生成，可以复制使用或下载完整 JSON 包。</p>
+        <p class="section-index">FINAL DELIVERY</p>
+        <h2>最终交付</h2>
+        <p>这里只保留你拿去生成视频需要的内容：两张故事板图片，以及各自对应的 10 秒脚本。</p>
       </div>
-      <span class="requirement">${escapeHtml(imageItems.length)} 条提示词</span>
+      <span class="requirement">${escapeHtml(imageItems.length)} 张故事板 · ${escapeHtml(project.marketBrief?.outputAspectRatio || imageItems[0]?.aspect_ratio || "")}</span>
     </div>
     <div class="export-actions">
       <button class="primary-button" type="button" data-action="download-export">下载 JSON 交付包</button>
     </div>
-    <section class="form-section">
-      <h3>故事版与关键帧包</h3>
-      <div class="package-grid">
-        ${imageItems.map((item, index) => copyBlock(
-          `promptBlock${index}`,
-          `${item.asset_id} · ${item.aspect_ratio}`,
-          prettyJson(item)
-        )).join("")}
-      </div>
-    </section>
-    <section class="form-section">
-      <h3>Flow Omni 手动包</h3>
-      <div class="package-grid">
-        ${omniPackages.map((item, index) => copyBlock(
-          `omniBlock${index}`,
-          `Segment ${item.segment_id}`,
-          prettyJson(item)
-        )).join("")}
-      </div>
-    </section>
+    <div class="deliverable-grid">
+      ${imageItems.map((item, index) => renderDeliverable(project, item, index)).join("")}
+    </div>
   `;
 }
 
