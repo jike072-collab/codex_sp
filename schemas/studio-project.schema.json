@@ -105,8 +105,8 @@
     },
     "manualOmniPackages": {
       "type": "array",
-      "items": { "$ref": "#/$defs/manualOmniPackage" },
-      "maxItems": 2
+      "items": false,
+      "maxItems": 0
     },
     "visualGeneratedAt": {
       "type": ["string", "null"],
@@ -121,7 +121,8 @@
         "audience",
         "creativeTheme",
         "coreMessage",
-        "tone"
+        "tone",
+        "outputAspectRatio"
       ],
       "properties": {
         "targetCountry": { "type": "string", "minLength": 1 },
@@ -137,6 +138,9 @@
         "coreMessage": { "type": "string", "minLength": 1 },
         "tone": {
           "enum": ["energetic", "clean", "warm", "bold"]
+        },
+        "outputAspectRatio": {
+          "enum": ["9:16", "16:9", "1:1", "4:5", "3:4", "2:3"]
         }
       },
       "additionalProperties": false
@@ -231,11 +235,12 @@
       "properties": {
         "asset_id": { "type": "string", "minLength": 1 },
         "segment_id": { "enum": ["0-10s", "10-20s"] },
-        "type": { "enum": ["storyboard_board", "video_keyframe"] },
-        "aspect_ratio": { "enum": ["16:9", "9:16"] },
+        "type": { "const": "storyboard_board" },
+        "aspect_ratio": { "enum": ["9:16", "16:9", "1:1", "4:5", "3:4", "2:3"] },
         "prompt": { "type": "string", "minLength": 1 },
         "negative_prompt": { "type": "string", "minLength": 1 },
         "reference_policy": { "type": "string", "minLength": 1 },
+        "script_copy": { "type": "string" },
         "generated_image": {
           "type": "object",
           "required": ["provider", "model", "url", "size"],
@@ -243,7 +248,8 @@
             "provider": { "type": "string", "minLength": 1 },
             "model": { "type": "string", "minLength": 1 },
             "url": { "type": "string", "minLength": 1 },
-            "size": { "type": "string", "minLength": 1 }
+            "size": { "type": "string", "minLength": 1 },
+            "referenceMode": { "type": "string", "minLength": 1 }
           },
           "additionalProperties": false
         }
@@ -262,34 +268,14 @@
         "storyboard_plan": { "type": "object" },
         "image_generation": {
           "type": "array",
-          "minItems": 4,
-          "maxItems": 4,
+          "minItems": 2,
+          "maxItems": 2,
           "items": { "$ref": "#/$defs/imageGenerationItem" }
         },
         "qc_checklist": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
         }
-      }
-    },
-    "manualOmniPackage": {
-      "type": "object",
-      "required": [
-        "segment_id",
-        "upload_references",
-        "script",
-        "flow_omni_prompt",
-        "caption_note"
-      ],
-      "properties": {
-        "segment_id": { "enum": ["0-10s", "10-20s"] },
-        "upload_references": {
-          "type": "array",
-          "items": { "type": "string", "minLength": 1 }
-        },
-        "script": { "$ref": "#/$defs/scriptSegment" },
-        "flow_omni_prompt": { "type": "string", "minLength": 1 },
-        "caption_note": { "type": "string", "minLength": 1 }
       }
     }
   },

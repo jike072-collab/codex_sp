@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The project is a local-first production tool that turns product reference images into reviewed advertising assets and an exportable Flow Omni package. Human review remains explicit at important workflow stages, and secrets, uploaded assets, project state, and generated output remain local.
+The project is a local-first production tool that turns product reference images into reviewed advertising assets and an exportable first-version delivery package. Human review remains explicit at important workflow stages, and secrets, uploaded assets, project state, and generated output remain local.
 
 This document defines module boundaries for ongoing work. The current `studio-v2` implementation may colocate several modules in the same files; new work should preserve these boundaries so they can be separated without changing behavior.
 

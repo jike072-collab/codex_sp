@@ -79,8 +79,8 @@ Responsibilities:
 
 - Render workflow stages from persisted `project.status`.
 - Implement market creative form against the frozen market contract.
-- Implement script generation, editable script confirmation, visual prompt
-  display, Flow Omni package copying, and JSON export download against the
+- Implement script generation, editable script confirmation, two-storyboard
+  delivery display, script copy actions, and JSON export download against the
   frozen demo-loop contract.
 - Preserve the existing visual language and avoid framework/dependency changes.
 - Verify the affected browser workflow.
@@ -144,8 +144,8 @@ Browser smoke checks:
 - `script`: generate button calls `/script/generate`; editable shot fields
   render; confirmation calls `/script/confirm`; success enters `visual`.
 - `visual`: generate button calls `/visual/generate`; success enters `export`.
-- `export`: four visual prompts, two Flow Omni packages, copy controls, and
-  JSON download are visible.
+- `export`: exactly two selected-aspect storyboard images, matching 0-10s and
+  10-20s script copy controls, and JSON download are visible.
 
 ### Final closed-loop verification
 
@@ -181,8 +181,8 @@ If one Codex finishes while the other is still working:
 2. Market creative: Codex A owns API/domain; Codex B owns form UI.
 3. Demo script: Codex A owns deterministic generator and confirm validation;
    Codex B owns generation button and editable script UI.
-4. Visual prompt package: Codex A owns deterministic package generation; Codex B
-   owns prompt and Flow Omni display/copy UI.
+4. Storyboard package: Codex A owns deterministic package generation; Codex B
+   owns two-storyboard display, image preview, and script copy UI.
 5. JSON export: Codex A owns export endpoint; Codex B owns download entrypoint.
 6. Integration: Codex A merges and reruns the full closed-loop verification.
 

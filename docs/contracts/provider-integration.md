@@ -49,9 +49,10 @@ and confirmed product-lock validation before it can be persisted.
 - Failure code: `IMAGE_PROVIDER_ERROR`
 
 The provider receives all uploaded product views as plain base64 reference
-strings in the `image` array, without a `data:<mime>;base64,` prefix. Four
-requests are made, one per persisted prompt. Successful results are stored as
-optional `generated_image` metadata on each image-generation item.
+strings in the `image` array, without a `data:<mime>;base64,` prefix. Two
+requests are made, one for each selected-aspect storyboard image. Successful
+results are stored as optional `generated_image` metadata on each
+image-generation item.
 
 If Right Code returns HTTP `403` while reference images are included, the image
 adapter retries the same `/draw/v1/images/generations` request once without

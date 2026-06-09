@@ -61,7 +61,8 @@ Current follow-up work for Codex B is browser QA and small UI polish only:
   and both storyboard images use that same ratio.
 - Verify image generation immediately opens the final delivery progress view.
 - Verify failed image generation shows the provider error and a retry button.
-- Verify each generated storyboard image opens in a new tab when clicked.
+- Verify each generated storyboard image opens in the in-page preview dialog
+  when clicked.
 - Verify final delivery contains only two storyboard images and the matching
   0-10s and 10-20s script copy actions.
 - Verify no keyframe, storage-location selector, or Flow Omni section remains.

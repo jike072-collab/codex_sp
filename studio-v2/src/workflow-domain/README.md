@@ -26,6 +26,6 @@ Current modules:
 - `market-brief.mjs`: market brief validation and confirmation
 - `demo-script.mjs`: deterministic no-key planning package generation
 - `script-review.mjs`: editable script validation and confirmation
-- `visual-package.mjs`: deterministic visual prompts and Flow Omni packages
+- `visual-package.mjs`: deterministic two-storyboard delivery package
 - `export-package.mjs`: safe delivery JSON without local filesystem details
 - `value-normalizers.mjs`: shared deterministic value normalization

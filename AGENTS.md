@@ -18,6 +18,6 @@ Read these files before editing:
 6. Run the narrowest relevant checks and report exact results.
 7. Hand off with changed files, behavior, interfaces, checks, and known risks.
 
-The active product is `studio-v2/`. Treat the root `scripts/`, `web/`, and historical output shapes as legacy references unless a task explicitly owns them.
+The active product is `studio-v2/`. Root legacy `scripts/` and `web/` entrypoints have been removed; do not recreate or extend them for first-version work.
 
 Never commit `.env`, API keys, uploaded product images, generated outputs, logs, PID files, or `studio-v2/data/`.
