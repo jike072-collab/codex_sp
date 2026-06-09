@@ -3,7 +3,10 @@ export const state = {
   project: null,
   viewStatus: null,
   busy: false,
-  visualGenerationError: ""
+  visualGenerationError: "",
+  deletingProjectIds: new Set(),
+  projectSelectionMode: false,
+  selectedProjectIds: new Set()
 };
 
 export const el = (id) => document.getElementById(id);
@@ -86,6 +89,7 @@ export function projectSetup(project = state.project) {
   const creativeTheme = saved.creativeTheme || preferences.creativeTheme || "city-motion";
   const tone = saved.tone || preferences.tone || "energetic";
   const audience = saved.audience || preferences.audience || project?.audience || audienceOptions[0][1];
+  const shotsPerSegment = Number(preferences.shotsPerSegment || 5);
   return {
     targetCountry: marketCountryOptions.some(([value]) => value === targetCountry)
       ? targetCountry
@@ -98,7 +102,8 @@ export function projectSetup(project = state.project) {
     creativeTheme: creativeThemeOptions.some(([value]) => value === creativeTheme)
       ? creativeTheme
       : "city-motion",
-    tone: toneOptions.some(([value]) => value === tone) ? tone : "energetic"
+    tone: toneOptions.some(([value]) => value === tone) ? tone : "energetic",
+    shotsPerSegment: [3, 4, 5].includes(shotsPerSegment) ? shotsPerSegment : 5
   };
 }
 

@@ -23,6 +23,7 @@
       </button>
 
       <div class="sidebar-label">最近项目</div>
+      <div class="project-bulk-actions" id="projectBulkActions"></div>
       <nav class="project-list" id="projectList"></nav>
 
       <div class="local-note">
@@ -115,61 +116,44 @@
               <form id="reviewForm">
                 <div class="form-section review-settings-panel">
                   <h3>投放与创意设置</h3>
-                  <div class="review-drawer-grid">
-                    <details class="review-drawer">
-                      <summary>
-                        <span>国家</span>
-                        <strong id="countrySummaryValue">泰国</strong>
-                      </summary>
+                  <div class="review-inline-grid">
+                    <label class="review-inline-field">
+                      <span>目标国家</span>
                       <select name="targetCountry" id="countryOptions" required></select>
-                    </details>
+                    </label>
 
-                    <details class="review-drawer">
-                      <summary>
-                        <span>人群</span>
-                        <strong id="audienceSummaryValue">日常运动与通勤人群</strong>
-                      </summary>
+                    <div class="review-inline-field review-inline-wide">
+                      <span>目标人群</span>
                       <input name="audience" type="hidden" required>
                       <div class="audience-picker" id="audienceOptions"></div>
-                    </details>
+                    </div>
 
-                    <details class="review-drawer">
-                      <summary>
-                        <span>尺寸</span>
-                        <strong id="aspectSummaryValue">9:16</strong>
-                      </summary>
-                      <input name="output_aspect_ratio" type="hidden" value="9:16">
-                      <button class="aspect-summary-button" id="openAspectDrawerButton" type="button">
-                        <span id="aspectSummaryIcon" class="aspect-icon" style="--ratio:9 / 16"></span>
-                        <small id="aspectSummaryLabel">竖屏短视频</small>
-                      </button>
-                    </details>
+                    <div class="review-inline-field review-inline-wide">
+                      <span>视频尺寸</span>
+                      <div class="aspect-picker" id="aspectInlineOptions"></div>
+                    </div>
 
-                    <details class="review-drawer">
-                      <summary>
-                        <span>主题</span>
-                        <strong id="themeSummaryValue">城市动线</strong>
-                      </summary>
+                    <div class="review-inline-field review-inline-wide">
+                      <span>创意主题</span>
                       <div class="choice-grid compact" id="creativeThemeOptions"></div>
-                    </details>
+                    </div>
 
-                    <details class="review-drawer">
-                      <summary>
-                        <span>语气</span>
-                        <strong id="toneSummaryValue">有活力</strong>
-                      </summary>
+                    <div class="review-inline-field">
+                      <span>语气</span>
                       <div class="tone-grid compact" id="toneOptions"></div>
-                    </details>
+                    </div>
 
-                    <details class="review-drawer review-drawer-wide">
-                      <summary>
-                        <span>一句话主张</span>
-                        <strong id="coreMessageSummaryValue">确认时自动生成</strong>
-                      </summary>
+                    <div class="review-inline-field">
+                      <span>每段镜头数</span>
+                      <div class="shot-count-picker compact" id="reviewShotCountOptions"></div>
+                    </div>
+
+                    <label class="review-inline-field review-inline-wide">
+                      <span>一句话主张</span>
                       <textarea class="message-box compact-message" name="coreMessage"
                       placeholder="留空时会根据鞋款识别结果自动生成"></textarea>
                       <small class="inline-help">不确定可以先留空，确认时会自动补一条适合当前鞋子的主张。</small>
-                    </details>
+                    </label>
                   </div>
                 </div>
 
@@ -367,23 +351,10 @@
     </form>
   </dialog>
 
-  <dialog class="drawer-dialog" id="aspectDrawer">
-    <form class="drawer-card" method="dialog">
-      <div class="drawer-heading">
-        <div>
-          <p class="kicker">OUTPUT SIZE</p>
-          <h2>选择视频尺寸</h2>
-        </div>
-        <button class="dialog-close" type="submit" aria-label="关闭">×</button>
-      </div>
-      <div class="aspect-drawer-grid" id="aspectDrawerOptions"></div>
-    </form>
-  </dialog>
-
   <dialog id="briefSummaryDialog">
     <div class="dialog-card summary-dialog-card">
       <button class="dialog-close" id="closeBriefSummaryButton" type="button" aria-label="关闭">×</button>
-      <p class="kicker">READY FOR SCRIPT</p>
+      <p class="kicker">脚本准备</p>
       <h2>创意方向已整理好</h2>
       <div id="briefSummaryContent"></div>
       <button class="primary-button large" id="summaryGenerateScriptButton" type="button">生成脚本</button>

@@ -43,19 +43,43 @@ function isStageReached(step) {
 
 export function renderProjectList() {
   const container = el("projectList");
+  const bulkActions = el("projectBulkActions");
+  if (bulkActions) {
+    const selectedCount = state.selectedProjectIds.size;
+    bulkActions.innerHTML = state.projectSelectionMode
+      ? `
+        <button class="sidebar-tool-button danger" type="button" data-project-bulk-delete
+          ${selectedCount ? "" : "disabled"}>删除所选 ${selectedCount}</button>
+        <button class="sidebar-tool-button" type="button" data-project-bulk-cancel>取消</button>
+      `
+      : `
+        <button class="sidebar-tool-button" type="button" data-project-bulk-start
+          ${state.projects.length > 1 ? "" : "disabled"}>批量清理旧项目</button>
+      `;
+  }
   if (!state.projects.length) {
     container.innerHTML = `<div class="project-link"><small>还没有项目</small></div>`;
     return;
   }
   container.innerHTML = state.projects.map((project) => `
     <div class="project-item ${project.id === state.project?.id ? "active" : ""}">
+      ${state.projectSelectionMode ? `
+        <label class="project-select">
+          <input type="checkbox" data-project-select-id="${escapeHtml(project.id)}"
+            ${state.selectedProjectIds.has(project.id) ? "checked" : ""}>
+          <span class="sr-only">选择 ${escapeHtml(project.name)}</span>
+        </label>
+      ` : ""}
       <button class="project-link"
         data-project-id="${escapeHtml(project.id)}" type="button">
         <strong>${escapeHtml(project.name)}</strong>
         <small>${statusLabel(project.status)} · ${formatTime(project.updatedAt)}</small>
       </button>
       <button class="project-delete" data-delete-project-id="${escapeHtml(project.id)}"
-        type="button" aria-label="删除 ${escapeHtml(project.name)}">×</button>
+        type="button" ${state.deletingProjectIds.has(project.id) ? "disabled" : ""}
+        aria-label="删除 ${escapeHtml(project.name)}">
+        ${state.deletingProjectIds.has(project.id) ? "删除中" : "删除"}
+      </button>
     </div>
   `).join("");
 }
@@ -230,7 +254,7 @@ function audienceLabels(selectedValue) {
 
 function aspectOptionHtml(selectedValue) {
   return aspectRatioOptions.map(([value, label]) => `
-    <label class="aspect-option drawer-aspect-option" title="${escapeHtml(label)}">
+    <label class="aspect-option" title="${escapeHtml(label)}">
       <input type="radio" name="output_aspect_ratio"
         value="${escapeHtml(value)}" ${value === selectedValue ? "checked" : ""}>
       <span class="aspect-icon" style="--ratio:${escapeHtml(value.replace(":", " / "))}"></span>
@@ -251,41 +275,11 @@ export function updateAspectSummary(value) {
   if (el("aspectSummaryLabel")) el("aspectSummaryLabel").textContent = label;
 }
 
-function selectedOptionLabel(options, value) {
-  return options.find(([itemValue]) => itemValue === value)?.[1] || value || "";
-}
-
 export function syncReviewSummaries() {
   const form = el("reviewForm");
   if (!form) return;
-  const countryValue = form.elements.targetCountry?.value || "Thailand";
-  const audienceValue = form.elements.audience?.value || "";
   const aspectValue = form.elements.output_aspect_ratio?.value || "9:16";
-  const themeValue = form.elements.creativeTheme?.value || "city-motion";
-  const toneValue = form.elements.tone?.value || "energetic";
-  const coreValue = form.elements.coreMessage?.value.trim() || "确认时自动生成";
-  if (el("countrySummaryValue")) {
-    el("countrySummaryValue").textContent = countryNames[countryValue] || countryValue;
-  }
-  if (el("audienceSummaryValue")) {
-    el("audienceSummaryValue").textContent = audienceValue;
-  }
-  if (el("themeSummaryValue")) {
-    el("themeSummaryValue").textContent = selectedOptionLabel(creativeThemeOptions, themeValue);
-  }
-  if (el("toneSummaryValue")) {
-    el("toneSummaryValue").textContent = selectedOptionLabel(toneOptions, toneValue);
-  }
-  if (el("coreMessageSummaryValue")) {
-    el("coreMessageSummaryValue").textContent = coreValue;
-  }
   updateAspectSummary(aspectValue);
-}
-
-export function renderAspectDrawer(selectedValue) {
-  const container = el("aspectDrawerOptions");
-  if (!container) return;
-  container.innerHTML = aspectOptionHtml(selectedValue);
 }
 
 function renderAutoAnalysisSummary(analysis) {
@@ -340,9 +334,17 @@ export function fillReviewForm(analysis) {
   form.elements.audience.value = setup.audience;
   el("audienceOptions").innerHTML = audienceLabels(setup.audience);
   updateAspectSummary(setup.outputAspectRatio);
-  renderAspectDrawer(setup.outputAspectRatio);
+  if (el("aspectInlineOptions")) el("aspectInlineOptions").innerHTML = aspectOptionHtml(setup.outputAspectRatio);
   el("creativeThemeOptions").innerHTML = optionLabels(creativeThemeOptions, setup.creativeTheme);
   el("toneOptions").innerHTML = optionLabels(toneOptions, setup.tone);
+  if (el("reviewShotCountOptions")) {
+    el("reviewShotCountOptions").innerHTML = [3, 4, 5].map((count) => `
+      <label class="choice-card inline shot-count-choice">
+        <input type="radio" name="shotsPerSegment" value="${count}" ${count === setup.shotsPerSegment ? "checked" : ""}>
+        <span><strong>${count} 个</strong><small>每 10 秒</small></span>
+      </label>
+    `).join("");
+  }
   if (form.elements.coreMessage && !form.elements.coreMessage.value) {
     form.elements.coreMessage.value = setup.coreMessage;
   }
@@ -372,18 +374,21 @@ export function analysisFromForm() {
   const outputAspectRatio = form.elements.output_aspect_ratio?.value || "9:16";
   const creativeTheme = form.elements.creativeTheme?.value || "city-motion";
   const tone = form.elements.tone?.value || "energetic";
-  const coreMessage = form.elements.coreMessage?.value.trim() || autoCoreMessage(previous, audience);
+  const rawCoreMessage = form.elements.coreMessage?.value.trim() || "";
+  const shotsPerSegment = Number(form.elements.shotsPerSegment?.value || 5);
   const toeAndLace = lines(form.elements.toe_and_lace.value);
   const sole = lines(form.elements.sole_structure.value);
   const sideAndHeel = lines(form.elements.side_and_heel.value);
-  saveProjectPreferences(state.project, {
+  const preferences = {
     targetCountry,
     audience,
     outputAspectRatio,
     creativeTheme,
     tone,
-    coreMessage
-  });
+    shotsPerSegment: [3, 4, 5].includes(shotsPerSegment) ? shotsPerSegment : 5
+  };
+  if (rawCoreMessage) preferences.coreMessage = rawCoreMessage;
+  saveProjectPreferences(state.project, preferences);
   const briefCountry = el("briefCountry");
   const briefAudience = el("briefAudience");
   const briefAspect = el("briefAspect");
@@ -436,17 +441,19 @@ export function marketBriefFromReviewForm() {
   const audience = form.elements.audience?.value || setup.audience;
   const creativeTheme = form.elements.creativeTheme?.value || setup.creativeTheme;
   const tone = form.elements.tone?.value || setup.tone;
-  const coreMessage = form.elements.coreMessage?.value.trim()
-    || autoCoreMessage(state.project?.visionAnalysis, audience);
-  form.elements.coreMessage.value = coreMessage;
-  saveProjectPreferences(state.project, {
+  const rawCoreMessage = form.elements.coreMessage?.value.trim() || "";
+  const coreMessage = rawCoreMessage || autoCoreMessage(state.project?.visionAnalysis, audience);
+  const shotsPerSegment = Number(form.elements.shotsPerSegment?.value || setup.shotsPerSegment);
+  const preferences = {
     targetCountry,
     audience,
     outputAspectRatio: form.elements.output_aspect_ratio?.value || setup.outputAspectRatio,
     creativeTheme,
     tone,
-    coreMessage
-  });
+    shotsPerSegment: [3, 4, 5].includes(shotsPerSegment) ? shotsPerSegment : 5
+  };
+  if (rawCoreMessage) preferences.coreMessage = rawCoreMessage;
+  saveProjectPreferences(state.project, preferences);
   return {
     targetCountry,
     audience,
