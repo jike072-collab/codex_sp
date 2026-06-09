@@ -89,6 +89,43 @@ function wireEvents() {
   });
 
   el("workspace").addEventListener("click", (event) => {
+    const menuButton = event.target.closest("[data-review-menu]");
+    if (menuButton) {
+      const name = menuButton.dataset.reviewMenu;
+      const panel = document.querySelector(`[data-review-panel="${name}"]`);
+      const willOpen = panel?.classList.contains("hidden");
+      document.querySelectorAll("[data-review-panel]").forEach((item) => item.classList.add("hidden"));
+      document.querySelectorAll("[data-review-menu]").forEach((item) => item.setAttribute("aria-expanded", "false"));
+      if (panel && willOpen) {
+        panel.classList.remove("hidden");
+        menuButton.setAttribute("aria-expanded", "true");
+      }
+      return;
+    }
+
+    const reviewOption = event.target.closest("[data-review-select]");
+    if (reviewOption) {
+      const form = el("reviewForm");
+      const name = reviewOption.dataset.reviewSelect;
+      if (form.elements[name]) {
+        form.elements[name].value = reviewOption.dataset.value || "";
+        const root = reviewOption.closest("[data-review-menu-root]");
+        const chip = root?.querySelector(".review-chip strong");
+        if (chip) chip.textContent = reviewOption.dataset.label || reviewOption.dataset.value || "";
+        root?.querySelectorAll(".review-option").forEach((item) => item.classList.remove("selected"));
+        reviewOption.classList.add("selected");
+      }
+      document.querySelectorAll("[data-review-panel]").forEach((item) => item.classList.add("hidden"));
+      document.querySelectorAll("[data-review-menu]").forEach((item) => item.setAttribute("aria-expanded", "false"));
+      syncReviewSummaries();
+      return;
+    }
+
+    if (!event.target.closest("[data-review-menu-root]")) {
+      document.querySelectorAll("[data-review-panel]").forEach((item) => item.classList.add("hidden"));
+      document.querySelectorAll("[data-review-menu]").forEach((item) => item.setAttribute("aria-expanded", "false"));
+    }
+
     const deleteAssetButton = event.target.closest("[data-delete-asset-id]");
     if (deleteAssetButton) {
       deleteAsset(deleteAssetButton.dataset.deleteAssetId).catch((error) => showToast(error.message));
@@ -100,13 +137,6 @@ function wireEvents() {
       el("imagePreviewTitle").textContent = previewButton.dataset.previewTitle || "故事板预览";
       el("imagePreviewContent").src = previewButton.dataset.previewImage;
       el("imagePreviewDialog").showModal();
-      return;
-    }
-
-    const audienceChoice = event.target.closest("input[name='audience_choice']");
-    if (audienceChoice) {
-      el("reviewForm").elements.audience.value = audienceChoice.value;
-      syncReviewSummaries();
       return;
     }
 
@@ -157,6 +187,10 @@ function wireEvents() {
       startProjectBatchDelete();
       return;
     }
+    if (event.target.closest("[data-project-select-all]")) {
+      toggleProjectSelection("__all__", true);
+      return;
+    }
     if (event.target.closest("[data-project-bulk-cancel]")) {
       cancelProjectBatchDelete();
       return;
@@ -200,7 +234,14 @@ async function boot() {
   wireEvents();
   try {
     await loadProjects();
-    if (state.projects.length) await openProject(state.projects[0].id);
+    for (const project of state.projects) {
+      try {
+        await openProject(project.id);
+        return;
+      } catch (error) {
+        console.warn("Skipping project that could not be opened.", project.id, error);
+      }
+    }
   } catch (error) {
     showToast(`本地服务连接失败：${error.message}`);
   }

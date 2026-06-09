@@ -46,9 +46,6 @@ export async function openProject(projectId) {
 
 export async function deleteProject(projectId) {
   if (state.deletingProjectIds.has(projectId)) return;
-  const project = state.projects.find((item) => item.id === projectId);
-  const label = project?.name || "这个项目";
-  if (!window.confirm(`删除“${label}”？`)) return;
 
   state.deletingProjectIds.add(projectId);
   renderProjectList();
@@ -90,6 +87,15 @@ export function cancelProjectBatchDelete() {
 }
 
 export function toggleProjectSelection(projectId, selected) {
+  if (projectId === "__all__") {
+    const shouldClear = state.selectedProjectIds.size === state.projects.length;
+    state.selectedProjectIds.clear();
+    if (!shouldClear) {
+      state.projects.forEach((project) => state.selectedProjectIds.add(project.id));
+    }
+    renderProjectList();
+    return;
+  }
   if (selected) state.selectedProjectIds.add(projectId);
   else state.selectedProjectIds.delete(projectId);
   renderProjectList();

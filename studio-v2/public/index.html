@@ -116,45 +116,19 @@
               <form id="reviewForm">
                 <div class="form-section review-settings-panel">
                   <h3>投放与创意设置</h3>
-                  <div class="review-inline-grid">
-                    <label class="review-inline-field">
-                      <span>目标国家</span>
-                      <select name="targetCountry" id="countryOptions" required></select>
-                    </label>
-
-                    <div class="review-inline-field review-inline-wide">
-                      <span>目标人群</span>
-                      <input name="audience" type="hidden" required>
-                      <div class="audience-picker" id="audienceOptions"></div>
-                    </div>
-
-                    <div class="review-inline-field review-inline-wide">
-                      <span>视频尺寸</span>
-                      <div class="aspect-picker" id="aspectInlineOptions"></div>
-                    </div>
-
-                    <div class="review-inline-field review-inline-wide">
-                      <span>创意主题</span>
-                      <div class="choice-grid compact" id="creativeThemeOptions"></div>
-                    </div>
-
-                    <div class="review-inline-field">
-                      <span>语气</span>
-                      <div class="tone-grid compact" id="toneOptions"></div>
-                    </div>
-
-                    <div class="review-inline-field">
-                      <span>每段镜头数</span>
-                      <div class="shot-count-picker compact" id="reviewShotCountOptions"></div>
-                    </div>
-
-                    <label class="review-inline-field review-inline-wide">
-                      <span>一句话主张</span>
-                      <textarea class="message-box compact-message" name="coreMessage"
-                      placeholder="留空时会根据鞋款识别结果自动生成"></textarea>
-                      <small class="inline-help">不确定可以先留空，确认时会自动补一条适合当前鞋子的主张。</small>
-                    </label>
-                  </div>
+                  <input name="targetCountry" type="hidden" required>
+                  <input name="audience" type="hidden" required>
+                  <input name="output_aspect_ratio" type="hidden" required>
+                  <input name="creativeTheme" type="hidden" required>
+                  <input name="tone" type="hidden" required>
+                  <input name="shotsPerSegment" type="hidden" required>
+                  <div class="review-control-box" id="reviewControlBox"></div>
+                  <label class="review-message-field">
+                    <span>一句话主张</span>
+                    <textarea class="message-box compact-message" name="coreMessage"
+                    placeholder="留空时会根据鞋款识别结果自动生成"></textarea>
+                    <small class="inline-help">不确定可以先留空，确认时会自动补一条适合当前鞋子的主张。</small>
+                  </label>
                 </div>
 
                 <details class="optional-review-details">

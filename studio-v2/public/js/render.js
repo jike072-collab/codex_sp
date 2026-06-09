@@ -46,10 +46,13 @@ export function renderProjectList() {
   const bulkActions = el("projectBulkActions");
   if (bulkActions) {
     const selectedCount = state.selectedProjectIds.size;
+    const allCount = state.projects.length;
     bulkActions.innerHTML = state.projectSelectionMode
       ? `
+        <button class="sidebar-tool-button" type="button" data-project-select-all
+          ${allCount ? "" : "disabled"}>${selectedCount === allCount ? "清空" : "全选"}</button>
         <button class="sidebar-tool-button danger" type="button" data-project-bulk-delete
-          ${selectedCount ? "" : "disabled"}>删除所选 ${selectedCount}</button>
+          ${selectedCount ? "" : "disabled"}>删除 ${selectedCount}</button>
         <button class="sidebar-tool-button" type="button" data-project-bulk-cancel>取消</button>
       `
       : `
@@ -78,7 +81,7 @@ export function renderProjectList() {
       <button class="project-delete" data-delete-project-id="${escapeHtml(project.id)}"
         type="button" ${state.deletingProjectIds.has(project.id) ? "disabled" : ""}
         aria-label="删除 ${escapeHtml(project.name)}">
-        ${state.deletingProjectIds.has(project.id) ? "删除中" : "删除"}
+        ${state.deletingProjectIds.has(project.id) ? "…" : "×"}
       </button>
     </div>
   `).join("");
@@ -155,7 +158,7 @@ export function renderAssets() {
       <div class="asset-card-actions">
         <button class="asset-icon-button danger" type="button"
           data-delete-asset-id="${escapeHtml(asset.id)}" aria-label="删除 ${escapeHtml(asset.name)}"
-          ${canUpload ? "" : "disabled"}>删除</button>
+          ${canUpload ? "" : "disabled"}>×</button>
       </div>
       <img src="${escapeHtml(asset.url)}" alt="${escapeHtml(asset.name)}">
       <span>${escapeHtml(asset.name)}</span>
@@ -237,31 +240,6 @@ function optionLabels(options, selectedValue) {
   `).join("");
 }
 
-function audienceLabels(selectedValue) {
-  return audienceOptions.map(([value, label, description]) => `
-    <label class="choice-card audience-card">
-      <input type="radio" name="audience_choice"
-        value="${escapeHtml(label)}" ${label === selectedValue ? "checked" : ""}>
-      <span>
-        <strong>${escapeHtml(label)}</strong>
-        <small>${escapeHtml(description)}</small>
-      </span>
-    </label>
-  `).join("");
-}
-
-function aspectOptionHtml(selectedValue) {
-  return aspectRatioOptions.map(([value, label]) => `
-    <label class="aspect-option" title="${escapeHtml(label)}">
-      <input type="radio" name="output_aspect_ratio"
-        value="${escapeHtml(value)}" ${value === selectedValue ? "checked" : ""}>
-      <span class="aspect-icon" style="--ratio:${escapeHtml(value.replace(":", " / "))}"></span>
-      <b>${escapeHtml(value)}</b>
-      <small>${escapeHtml(label)}</small>
-    </label>
-  `).join("");
-}
-
 export function updateAspectSummary(value) {
   const option = aspectRatioOptions.find(([item]) => item === value) || aspectRatioOptions[0];
   const [ratio, label] = option;
@@ -271,6 +249,87 @@ export function updateAspectSummary(value) {
   if (icon) icon.style.setProperty("--ratio", ratio.replace(":", " / "));
   if (el("aspectSummaryValue")) el("aspectSummaryValue").textContent = ratio;
   if (el("aspectSummaryLabel")) el("aspectSummaryLabel").textContent = label;
+}
+
+function labelFor(options, value, fallback = "") {
+  return options.find(([item]) => item === value)?.[1] || fallback || value || "";
+}
+
+function compactOptionsHtml(name, options, selectedValue, { valueAsLabel = false, withIcons = false } = {}) {
+  return options.map(([value, label, description]) => {
+    const selected = String(value) === String(selectedValue);
+    const icon = withIcons
+      ? `<span class="aspect-icon" style="--ratio:${escapeHtml(String(value).replace(":", " / "))}"></span>`
+      : "";
+    return `
+      <button class="review-option ${selected ? "selected" : ""}" type="button"
+        data-review-select="${escapeHtml(name)}"
+        data-value="${escapeHtml(value)}"
+        data-label="${escapeHtml(valueAsLabel ? value : label)}">
+        ${icon}
+        <strong>${escapeHtml(valueAsLabel ? value : label)}</strong>
+        ${description ? `<small>${escapeHtml(description)}</small>` : ""}
+      </button>
+    `;
+  }).join("");
+}
+
+function renderReviewControls(setup) {
+  const container = el("reviewControlBox");
+  if (!container) return;
+  const countryLabel = countryNames[setup.targetCountry] || setup.targetCountry;
+  const themeLabel = labelFor(creativeThemeOptions, setup.creativeTheme);
+  const toneLabel = labelFor(toneOptions, setup.tone);
+  const groups = [
+    {
+      name: "targetCountry",
+      label: "国家",
+      value: countryLabel,
+      options: compactOptionsHtml("targetCountry", marketCountryOptions, setup.targetCountry)
+    },
+    {
+      name: "audience",
+      label: "人群",
+      value: setup.audience,
+      options: compactOptionsHtml("audience", audienceOptions.map(([value, label, description]) => [label, label, description]), setup.audience)
+    },
+    {
+      name: "output_aspect_ratio",
+      label: "尺寸",
+      value: setup.outputAspectRatio,
+      options: compactOptionsHtml("output_aspect_ratio", aspectRatioOptions, setup.outputAspectRatio, { valueAsLabel: true, withIcons: true })
+    },
+    {
+      name: "creativeTheme",
+      label: "主题",
+      value: themeLabel,
+      options: compactOptionsHtml("creativeTheme", creativeThemeOptions, setup.creativeTheme)
+    },
+    {
+      name: "tone",
+      label: "语气",
+      value: toneLabel,
+      options: compactOptionsHtml("tone", toneOptions, setup.tone)
+    },
+    {
+      name: "shotsPerSegment",
+      label: "镜头",
+      value: `${setup.shotsPerSegment} 个`,
+      options: compactOptionsHtml("shotsPerSegment", [[3, "3 个", "每 10 秒"], [4, "4 个", "每 10 秒"], [5, "5 个", "每 10 秒"]], setup.shotsPerSegment)
+    }
+  ];
+  container.innerHTML = groups.map((group) => `
+    <div class="review-menu" data-review-menu-root="${escapeHtml(group.name)}">
+      <button class="review-chip" type="button" data-review-menu="${escapeHtml(group.name)}" aria-expanded="false">
+        <span>${escapeHtml(group.label)}</span>
+        <strong>${escapeHtml(group.value)}</strong>
+        <b>⌄</b>
+      </button>
+      <div class="review-popover hidden" data-review-panel="${escapeHtml(group.name)}">
+        ${group.options}
+      </div>
+    </div>
+  `).join("");
 }
 
 export function syncReviewSummaries() {
@@ -325,24 +384,14 @@ export function fillReviewForm(analysis) {
   ].filter(Boolean).join("\n");
   form.elements.must_keep.value = listText(lock.must_keep);
   form.elements.must_not_change.value = listText(lock.must_not_change);
-  el("countryOptions").innerHTML = marketCountryOptions.map(([value, label]) => `
-    <option value="${escapeHtml(value)}">${escapeHtml(label)}</option>
-  `).join("");
   form.elements.targetCountry.value = setup.targetCountry;
   form.elements.audience.value = setup.audience;
-  el("audienceOptions").innerHTML = audienceLabels(setup.audience);
+  form.elements.output_aspect_ratio.value = setup.outputAspectRatio;
+  form.elements.creativeTheme.value = setup.creativeTheme;
+  form.elements.tone.value = setup.tone;
+  form.elements.shotsPerSegment.value = setup.shotsPerSegment;
   updateAspectSummary(setup.outputAspectRatio);
-  if (el("aspectInlineOptions")) el("aspectInlineOptions").innerHTML = aspectOptionHtml(setup.outputAspectRatio);
-  el("creativeThemeOptions").innerHTML = optionLabels(creativeThemeOptions, setup.creativeTheme);
-  el("toneOptions").innerHTML = optionLabels(toneOptions, setup.tone);
-  if (el("reviewShotCountOptions")) {
-    el("reviewShotCountOptions").innerHTML = [3, 4, 5].map((count) => `
-      <label class="choice-card inline shot-count-choice">
-        <input type="radio" name="shotsPerSegment" value="${count}" ${count === setup.shotsPerSegment ? "checked" : ""}>
-        <span><strong>${count} 个</strong><small>每 10 秒</small></span>
-      </label>
-    `).join("");
-  }
+  renderReviewControls(setup);
   if (form.elements.coreMessage && !form.elements.coreMessage.value) {
     form.elements.coreMessage.value = setup.coreMessage;
   }
