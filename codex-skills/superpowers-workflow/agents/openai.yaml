@@ -1,0 +1,7 @@
+interface:
+  display_name: "Superpowers Workflow"
+  short_description: "Structured repo-first software execution"
+  default_prompt: "Use $superpowers-workflow to plan, execute, and verify this software task with a repo-first workflow."
+
+policy:
+  allow_implicit_invocation: true
