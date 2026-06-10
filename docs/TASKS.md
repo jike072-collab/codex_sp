@@ -4,6 +4,8 @@ Active V2 follow-up assignments are recorded in:
 
 - `tasks/codex-backend-image-concurrency.md`
 - `tasks/codex-frontend-ui-v2-density-followup.md`
+- `tasks/codex-backend-p0-storyboard-state.md`
+- `tasks/codex-frontend-p0-workbench-review.md`
 
 Completed previous-round assignments remain in:
 

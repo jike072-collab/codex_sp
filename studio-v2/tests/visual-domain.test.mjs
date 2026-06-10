@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import { buildExportPackage, getExportReadiness } from "../src/workflow-domain/export-package.mjs";
 import {
+  completeVisualGeneration,
   generateVisualPackage,
   recordVisualGenerationFailure
 } from "../src/workflow-domain/visual-package.mjs";
@@ -56,7 +57,7 @@ test("visual generation creates storyboard sheets with selected-aspect internal 
 
   generateVisualPackage(project, "2026-06-06T01:00:00.000Z");
 
-  assert.equal(project.status, "export");
+  assert.equal(project.status, "visual");
   assert.equal(project.imagePackage.image_generation.length, 2);
   assert.equal(project.manualOmniPackages.length, 0);
   assert.equal(project.imagePackage.storyboard_plan.selected_aspect_ratio, "4:5");
@@ -74,6 +75,7 @@ test("visual generation creates storyboard sheets with selected-aspect internal 
       default_size: "1536x1024"
     });
     assert.equal(item.type, "storyboard_board");
+    assert.equal(item.status, "waiting");
     assert.match(item.prompt, /overall canvas is a storyboard delivery sheet/);
     assert.match(item.prompt, /internal shot thumbnail\/panel must be composed as a 4:5 video frame/);
     assert.doesNotMatch(item.prompt, /Create one 4:5 commercial storyboard board/);
@@ -81,6 +83,15 @@ test("visual generation creates storyboard sheets with selected-aspect internal 
     assert.match(item.prompt, /do not change color/);
   }
 
+  assert.throws(() => buildExportPackage(project), {
+    code: "EXPORT_NOT_READY"
+  });
+  project.imagePackage.image_generation.forEach((item, index) => {
+    item.status = "done";
+    item.generated_image = { url: `/uploads/project-1/storyboard-${index + 1}.png` };
+  });
+  completeVisualGeneration(project, "2026-06-06T01:30:00.000Z");
+  assert.equal(project.status, "export");
   const delivery = buildExportPackage(project, "2026-06-06T02:00:00.000Z");
   assert.equal(delivery.exportedAt, "2026-06-06T02:00:00.000Z");
   assert.equal(delivery.manualOmniPackages.length, 0);
@@ -123,7 +134,7 @@ test("visual generation can replace stale export assets", () => {
 
   generateVisualPackage(project, "2026-06-06T03:00:00.000Z");
 
-  assert.equal(project.status, "export");
+  assert.equal(project.status, "visual");
   assert.equal(project.imagePackage.image_generation.length, 2);
   assert.deepEqual(
     project.imagePackage.image_generation.map((item) => item.aspect_ratio),
@@ -133,6 +144,12 @@ test("visual generation can replace stale export assets", () => {
     project.imagePackage.image_generation.map((item) => item.type),
     ["storyboard_board", "storyboard_board"]
   );
+  project.imagePackage.image_generation.forEach((item, index) => {
+    item.status = "done";
+    item.generated_image = { url: `/uploads/project-2/storyboard-${index + 1}.png` };
+  });
+  completeVisualGeneration(project, "2026-06-06T03:30:00.000Z");
+  assert.equal(project.status, "export");
 });
 
 test("legacy export-era packages are treated as not ready until the current storyboard shape exists", () => {

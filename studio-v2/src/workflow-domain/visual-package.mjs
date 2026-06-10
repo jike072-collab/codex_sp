@@ -92,6 +92,7 @@ function storyboardAsset(project, segment, frameAspectRatio, rules) {
     asset_id: `${segment.segment_id}_storyboard_board`,
     segment_id: segment.segment_id,
     type: "storyboard_board",
+    status: "waiting",
     aspect_ratio: frameAspectRatio,
     storyboard_sheet: { ...STORYBOARD_SHEET },
     prompt: storyboardPrompt({ project, segment, frameAspectRatio, rules }),
@@ -137,13 +138,25 @@ export function generateVisualPackage(project, generatedAt = new Date().toISOStr
     qc_checklist: [...QC_CHECKLIST]
   };
   project.manualOmniPackages = [];
+  project.status = "visual";
+  project.visualGeneratedAt = null;
+  project.visualGenerationFailure = null;
+  return project;
+}
+
+export function completeVisualGeneration(project, generatedAt = new Date().toISOString()) {
+  assertProjectStage(project, "visual", "完成故事板生成");
+  const items = project.imagePackage?.image_generation || [];
+  const complete = items.length === 2
+    && items.every((item) => item.status === "done" && item.generated_image?.url);
+  if (!complete) {
+    throw new DomainError("两张故事板尚未全部生成完成，不能进入最终交付。", {
+      code: "STORYBOARD_GENERATION_INCOMPLETE"
+    });
+  }
   project.visualGeneratedAt = generatedAt;
   project.visualGenerationFailure = null;
-  if (project.status === "visual") {
-    transitionProject(project, "export");
-  } else {
-    project.status = "export";
-  }
+  transitionProject(project, "export");
   return project;
 }
 

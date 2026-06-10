@@ -63,7 +63,7 @@ after(async () => {
   }
 });
 
-test("no-key demo mode completes the full persisted export loop", async () => {
+test("no-key mode keeps storyboard generation in Step 4 and blocks export", async () => {
   const created = await jsonRequest("/api/projects", {
     method: "POST",
     body: JSON.stringify({
@@ -150,22 +150,20 @@ test("no-key demo mode completes the full persisted export loop", async () => {
   const visual = await jsonRequest(`/api/projects/${projectId}/visual/generate`, {
     method: "POST"
   });
-  assert.equal(visual.response.status, 200);
-  assert.equal(visual.body.project.status, "export");
-  assert.equal(visual.body.project.imagePackage.image_generation.length, 2);
-  assert.equal(visual.body.project.manualOmniPackages.length, 0);
-
-  const mustKeep = visual.body.project.visionAnalysis.product_lock_manifest.must_keep;
-  const mustNotChange = visual.body.project.visionAnalysis.product_lock_manifest.must_not_change;
-  for (const item of visual.body.project.imagePackage.image_generation) {
-    for (const rule of [...mustKeep, ...mustNotChange]) {
-      assert.match(item.prompt, new RegExp(rule.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-    }
-  }
+  assert.equal(visual.response.status, 502);
+  assert.equal(visual.body.code, "IMAGE_PROVIDER_NOT_CONFIGURED");
 
   const reopened = await jsonRequest(`/api/projects/${projectId}`);
   assert.equal(reopened.response.status, 200);
-  assert.equal(reopened.body.project.status, "export");
+  assert.equal(reopened.body.project.status, "visual");
+  assert.equal(
+    reopened.body.project.visualGenerationFailure.code,
+    "IMAGE_PROVIDER_NOT_CONFIGURED"
+  );
+  assert.deepEqual(
+    reopened.body.project.imagePackage.image_generation.map((item) => item.status),
+    ["waiting", "waiting"]
+  );
   assert.equal(
     reopened.body.project.planningPackage.script_20s.segment_a_0_10s.shots[0].visual,
     "User edited product-first opening shot."
@@ -175,27 +173,14 @@ test("no-key demo mode completes the full persisted export loop", async () => {
   const summary = projectList.body.projects.find((item) => item.id === projectId);
   assert.equal(summary.hasPlanningPackage, true);
   assert.equal(summary.hasImagePackage, true);
-  assert.equal(summary.exportReady, true);
+  assert.equal(summary.exportReady, false);
   assert.equal(summary.visualNeedsRegeneration, false);
   assert.equal(summary.omniPackageCount, 0);
   assert.equal("planningPackage" in summary, false);
   assert.equal("imagePackage" in summary, false);
 
   const exportResponse = await fetch(`${baseUrl}/api/projects/${projectId}/export`);
-  assert.equal(exportResponse.status, 200);
-  assert.equal(
-    exportResponse.headers.get("content-disposition"),
-    `attachment; filename="shoe-ad-${projectId}.json"`
-  );
-  const delivery = await exportResponse.json();
-  assert.equal(delivery.schemaVersion, 1);
-  assert.equal(delivery.manualOmniPackages.length, 0);
-  assert.equal(delivery.imagePackage.image_generation.length, 2);
-  assert.equal(delivery.storyboardDeliverables.length, 2);
-  assert.equal(delivery.sourceAssets[0].name, "shoe.png");
-  assert.equal("storedName" in delivery.sourceAssets[0], false);
-  assert.equal("hash" in delivery.sourceAssets[0], false);
-  assert.equal(JSON.stringify(delivery).includes(dataRoot), false);
+  assert.equal(exportResponse.status, 400);
 });
 
 test("script confirmation rejects a broken timeline", async () => {

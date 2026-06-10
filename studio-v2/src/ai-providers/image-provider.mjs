@@ -3,7 +3,10 @@ import { join } from "node:path";
 
 import { loadEnv, uploadsRoot } from "../config.mjs";
 import { storeGeneratedProjectImage } from "../storage/project-repository.mjs";
-import { generateVisualPackage } from "../workflow-domain/visual-package.mjs";
+import {
+  completeVisualGeneration,
+  generateVisualPackage
+} from "../workflow-domain/visual-package.mjs";
 import {
   hasUsableApiKey,
   positiveInteger,
@@ -221,29 +224,47 @@ export async function generateProjectVisuals(
   const env = await loadEnv();
   const apiKey = env.IMAGE_MODEL_API_KEY;
   const provider = String(env.IMAGE_MODEL_PROVIDER || "right_codes").trim().toLowerCase();
-  if (provider === "manual" || !hasUsableApiKey(apiKey)) return project;
+  if (provider === "manual" || !hasUsableApiKey(apiKey)) {
+    throw new ProviderError("故事板必须使用已配置的 img2img 图片模型生成，请先配置图片模型 API Key。", {
+      code: "IMAGE_PROVIDER_NOT_CONFIGURED"
+    });
+  }
 
   const apiUrl = env.IMAGE_API_URL
     || "https://www.right.codes/draw/v1/images/generations";
   const model = env.IMAGE_MODEL || "gpt-image-2";
   const images = await referenceImages(project, { readFileImpl, uploadsRootPath });
   const results = await Promise.allSettled(
-    project.imagePackage.image_generation.map((item) => generateStoryboardItem({
-      project,
-      item,
-      previous: previousImages.get(`${item.asset_id}|${item.aspect_ratio}`),
-      images,
-      apiUrl,
-      apiKey,
-      model,
-      env,
-      fetchImpl,
-      downloadFetchImpl,
-      storeGeneratedImageImpl
-    }))
+    project.imagePackage.image_generation.map(async (item) => {
+      item.status = "running";
+      delete item.error;
+      try {
+        await generateStoryboardItem({
+          project,
+          item,
+          previous: previousImages.get(`${item.asset_id}|${item.aspect_ratio}`),
+          images,
+          apiUrl,
+          apiKey,
+          model,
+          env,
+          fetchImpl,
+          downloadFetchImpl,
+          storeGeneratedImageImpl
+        });
+        item.status = "done";
+      } catch (error) {
+        item.status = "failed";
+        item.error = {
+          code: error?.code || "IMAGE_PROVIDER_ERROR",
+          message: error?.message || "故事板生成失败。"
+        };
+        throw error;
+      }
+    })
   );
   const failures = results.filter((result) => result.status === "rejected");
   project.imagePackage.mode = failures.length ? "partial" : "api";
   if (failures.length) throw failures[0].reason;
-  return project;
+  return completeVisualGeneration(project, generatedAt);
 }
