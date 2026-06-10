@@ -19,8 +19,17 @@ Primary reference:
 - `docs/UI-V2-BRIEF.md`
 - User-supplied image:
   `C:/Users/Administrator/Desktop/91fd278a-ac1e-46d4-b622-013494be30ac.png`
+- Newer AI beautification references:
+  - `C:/Users/Administrator/Downloads/ChatGPT Image 2026年6月10日 14_40_49 (1).png`
+  - `C:/Users/Administrator/Downloads/ChatGPT Image 2026年6月10日 14_40_50 (2).png`
+  - `C:/Users/Administrator/Downloads/ChatGPT Image 2026年6月10日 14_40_51 (3).png`
+  - `C:/Users/Administrator/Downloads/ChatGPT Image 2026年6月10日 14_40_52 (4).png`
+  - `C:/Users/Administrator/Downloads/ChatGPT Image 2026年6月10日 14_40_53 (5).png`
 
-The image is an AI-generated inspiration, not a pixel-perfect spec.
+The images are AI-generated inspiration, not pixel-perfect specs. Borrow their
+layout, hierarchy, spacing, sidebar/header treatment, right inspector, card
+style, and button rhythm. Do not copy fake storyboard images, fake shoe assets,
+or export/download features that conflict with the product requirements.
 
 ## Ownership
 
@@ -73,6 +82,9 @@ Minimum scope:
 - Step 03 two-column script layout with compact per-shot cards and top actions.
 - Step 04 independent `0-10s` and `10-20s` loading/result cards with partial
   success and targeted retry.
+- Step 05 final delivery may borrow the completion/checklist layout from the
+  export mockup, but must still show only two storyboard images and two scripts
+  with copy controls.
 - Unified card, button, input, dialog, toast, and progress styles.
 - Motion polish using CSS/vanilla JS only:
   - hover lift
@@ -95,6 +107,9 @@ Minimum scope:
   `docs/UI-V2-BRIEF.md`.
 - Do not migrate the app to Next.js, React, Tailwind, shadcn/ui, or Zustand just
   because they appear in the reference document. Reuse the current architecture.
+- Do not implement ZIP, CSV, JSON, Markdown package, or "export all files"
+  controls from the mockup images.
+- Do not use AI-generated placeholder storyboards as real outputs.
 
 ## Verification
 

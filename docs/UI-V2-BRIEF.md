@@ -5,6 +5,11 @@ The user supplied:
 
 - `C:/Users/Administrator/Desktop/91fd278a-ac1e-46d4-b622-013494be30ac.png`
 - `C:/Users/Administrator/Downloads/Shoe_Ad_Studio_工作台_UI动画_前后端任务拆分文档_clean.docx`
+- `C:/Users/Administrator/Downloads/ChatGPT Image 2026年6月10日 14_40_49 (1).png`
+- `C:/Users/Administrator/Downloads/ChatGPT Image 2026年6月10日 14_40_50 (2).png`
+- `C:/Users/Administrator/Downloads/ChatGPT Image 2026年6月10日 14_40_51 (3).png`
+- `C:/Users/Administrator/Downloads/ChatGPT Image 2026年6月10日 14_40_52 (4).png`
+- `C:/Users/Administrator/Downloads/ChatGPT Image 2026年6月10日 14_40_53 (5).png`
 
 The PNG is an AI-generated visual reference. Borrow the strong visual ideas,
 but do not copy it literally and do not add fake shoe assets. The DOCX body was
@@ -16,6 +21,12 @@ When the document conflicts with the working application, current product
 decisions win. In particular, UI V2 must not require a React/Next.js rewrite,
 must not restore JSON/ZIP delivery, and must not add prompt-only image
 generation.
+
+The five `ChatGPT Image ...` files are newer AI beautification references. They
+are useful for layout, card hierarchy, sidebar treatment, right-inspector
+structure, and interaction affordances. They are not data/content references:
+do not copy their fake storyboard shoe images, fake file exports, or any UI
+content that conflicts with the current workflow.
 
 ## Product Goal
 
@@ -47,6 +58,40 @@ Use the reference image as inspiration for these patterns:
 
 Do not use heavy shadows everywhere. The design should feel precise and calm,
 not noisy.
+
+## New AI Beautification References
+
+Borrow these visual ideas from the five newer images:
+
+- Keep the dark left sidebar consistently premium: stronger logo mark, large
+  lime create button, compact project cards, selected-state glow, local/API
+  status at the bottom, and no horizontal scrollbar.
+- Use the top workspace pattern from the references: project label/name/status
+  on the left, saved-local state and project settings on the right, and the
+  five-step progress rail below.
+- Use a two-column desktop layout across steps: wide main task card on the left
+  and a narrower right inspector for quality, checklist, tips, and progress.
+- Use large rounded white cards with thin soft borders, quiet dividers, and
+  lime only for the active step, primary action, checks, and progress rings.
+- Step action buttons should feel like the references: secondary outline button
+  paired with a bright lime primary button, aligned at the bottom or sticky top
+  when the page is tall.
+- Right inspector panels should show a clear numeric/ring status when useful,
+  followed by short checklist rows and one compact tips card.
+
+Do not copy these unsuitable parts:
+
+- The storyboard images in the references are placeholders and are visually
+  inconsistent with our actual generated outputs. Use real generated local
+  storyboard images only.
+- The export reference showing ZIP, CSV, "export all files", or file packages
+  conflicts with the current requirement. UI V2 export/delivery must remain two
+  storyboard images plus two scripts/copy controls only.
+- Do not add fake shoe thumbnails or fake upload assets. Guidance cards can use
+  neutral placeholders or existing uploaded images only.
+- Do not add features that are only present in the mockups but absent from the
+  product contract, such as cloud sync, account state, or unrelated file
+  download formats.
 
 ## Design Tokens
 
@@ -123,9 +168,14 @@ generation, or the old single `rightCodesApiKey`.
 ### Step 01 Upload
 
 - Make upload the first polished showcase.
+- The upload page may follow the newer reference with a large centered upload
+  zone, illustrated neutral upload icon/glow, one primary upload button, and a
+  right inspector with readiness percentage/checklist.
 - Add six suggested angle cards:
   `主视图`, `侧视图`, `后跟视图`, `鞋底视图`, `细节特写`, `穿着场景`.
 - These are guidance cards, not required upload slots.
+- Angle cards should be compact and image-led where an uploaded image is
+  available; otherwise use neutral placeholders, not fake product images.
 - Show upload count/readiness and an AI quality score/checklist in the right
   panel. Derive it from existing local data; do not invent a paid analysis call.
 - Keep existing upload and delete behavior.
@@ -135,6 +185,9 @@ generation, or the old single `rightCodesApiKey`.
 ### Step 02 Product Settings
 
 - Keep the compact popover controls from V1, but restyle them to match UI V2.
+- Follow the new settings reference for the main layout: six compact setting
+  cards in the main card, each with a simple icon, label, current value, and
+  chevron.
 - Country, audience, size, theme, tone, and shot count should appear together in
   one compact settings region rather than separate drawers.
 - Clicking a setting should open its control immediately; it must not require a
@@ -149,6 +202,9 @@ generation, or the old single `rightCodesApiKey`.
 ### Step 03 Script
 
 - Keep two 10-second script columns where space allows.
+- The newer script reference can be used for density: each `0-10s` and `10-20s`
+  block should show a compact row/grid of shot cards so the user can understand
+  the full sequence without excessive scrolling.
 - Top actions remain sticky and clear.
 - Progress should look like UI V2, not a basic browser bar.
 - The selected shot count controls how many shots are generated in each
@@ -161,6 +217,9 @@ generation, or the old single `rightCodesApiKey`.
 ### Step 04 Storyboard
 
 - Communicate img2img-only generation.
+- The newer storyboard reference can be used for layout only: two large result
+  cards side by side, each labeled `0-10s` or `10-20s`, with matching title,
+  short description, metadata chips, and edit/retry controls.
 - Show partial success clearly: `0/2`, `1/2`, or `2/2`.
 - Do not hide successfully stored local images if the other image fails.
 - Use skeleton/shimmer loading rather than a large blocking spinner.
@@ -176,6 +235,9 @@ generation, or the old single `rightCodesApiKey`.
   - two matching scripts
   - copy controls
 - No JSON package button.
+- The export reference can inspire the right-side completion checklist and
+  progress ring, but not its file list. Do not add ZIP, CSV, Markdown package,
+  "export all files", or unrelated download rows.
 
 ## Shared Components And States
 
