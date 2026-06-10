@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { loadEnv, uploadsRoot } from "../config.mjs";
+import { storeGeneratedProjectImage } from "../storage/project-repository.mjs";
 import { generateVisualPackage } from "../workflow-domain/visual-package.mjs";
 import {
   hasUsableApiKey,
@@ -61,15 +62,89 @@ async function requestGeneratedImage({
   });
 }
 
+function detectedImageType(bytes, declaredType = "") {
+  const normalized = String(declaredType).split(";")[0].trim().toLowerCase();
+  if (["image/png", "image/jpeg", "image/webp"].includes(normalized)) return normalized;
+  if (bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) {
+    return "image/png";
+  }
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (
+    bytes.subarray(0, 4).toString("ascii") === "RIFF"
+    && bytes.subarray(8, 12).toString("ascii") === "WEBP"
+  ) {
+    return "image/webp";
+  }
+  return "";
+}
+
+function imageResult(payload) {
+  const first = payload?.data?.[0] || payload?.images?.[0] || payload?.result || payload || {};
+  const base64 = first.b64_json || first.base64 || first.image_base64
+    || payload?.b64_json || payload?.base64 || payload?.image_base64;
+  const url = first.url || first.image_url || first.output_url
+    || payload?.url || payload?.image_url || payload?.output_url;
+  if (base64) return { base64: String(base64) };
+  if (url) return { url: String(url) };
+  if (typeof first.image === "string") {
+    return first.image.startsWith("http") || first.image.startsWith("data:")
+      ? { url: first.image }
+      : { base64: first.image };
+  }
+  return null;
+}
+
+async function storeImageResult(
+  projectId,
+  result,
+  {
+    downloadFetchImpl,
+    storeGeneratedImageImpl,
+    timeoutMs
+  }
+) {
+  let bytes;
+  let declaredType = "";
+  if (result.base64) {
+    bytes = Buffer.from(result.base64.replace(/^data:image\/[^;]+;base64,/i, ""), "base64");
+    declaredType = result.base64.match(/^data:(image\/[^;]+);base64,/i)?.[1] || "";
+  } else if (result.url?.startsWith("data:")) {
+    const match = result.url.match(/^data:(image\/[^;]+);base64,(.+)$/is);
+    if (!match) throw new Error("生成图片 data URL 格式无效。");
+    declaredType = match[1];
+    bytes = Buffer.from(match[2], "base64");
+  } else {
+    const response = await downloadFetchImpl(result.url, {
+      signal: AbortSignal.timeout(timeoutMs)
+    });
+    if (!response.ok) throw new Error(`生成图片下载失败（HTTP ${response.status}）。`);
+    declaredType = response.headers.get("content-type") || "";
+    bytes = Buffer.from(await response.arrayBuffer());
+  }
+
+  const mimeType = detectedImageType(bytes, declaredType);
+  if (!mimeType) throw new Error("供应商返回的内容不是支持的 PNG、JPEG 或 WebP 图片。");
+  return storeGeneratedImageImpl(projectId, bytes, mimeType);
+}
+
+function previousGeneratedImages(project) {
+  return new Map((project.imagePackage?.image_generation || [])
+    .filter((item) => item.generated_image?.url)
+    .map((item) => [`${item.asset_id}|${item.aspect_ratio}`, item.generated_image]));
+}
+
 export async function generateProjectVisuals(
   project,
   generatedAt = new Date().toISOString(),
   {
     fetchImpl = fetch,
+    downloadFetchImpl = fetch,
     readFileImpl = readFile,
-    uploadsRootPath = uploadsRoot
+    uploadsRootPath = uploadsRoot,
+    storeGeneratedImageImpl = storeGeneratedProjectImage
   } = {}
 ) {
+  const previousImages = previousGeneratedImages(project);
   generateVisualPackage(project, generatedAt);
 
   const env = await loadEnv();
@@ -85,6 +160,25 @@ export async function generateProjectVisuals(
 
   for (const item of project.imagePackage.image_generation) {
     const timeoutMs = positiveInteger(env.IMAGE_TIMEOUT_MS, 300000);
+    const previous = previousImages.get(`${item.asset_id}|${item.aspect_ratio}`);
+    if (previous?.url?.startsWith(`/uploads/${project.id}/`)) {
+      item.generated_image = previous;
+      continue;
+    }
+    if (previous?.url) {
+      try {
+        const stored = await storeImageResult(project.id, { url: previous.url }, {
+          downloadFetchImpl,
+          storeGeneratedImageImpl,
+          timeoutMs
+        });
+        item.generated_image = { ...previous, ...stored, sourceUrl: previous.url };
+        continue;
+      } catch {
+        // Expired provider URLs are regenerated below.
+      }
+    }
+
     let referenceMode = useReferenceImages ? "reference_images" : "prompt_only";
     let payload;
     try {
@@ -116,16 +210,31 @@ export async function generateProjectVisuals(
       });
     }
 
-    const url = payload?.data?.[0]?.url;
-    if (!url) {
-      throw new ProviderError("Right Code 图片模型响应中没有图片 URL。", {
+    const result = imageResult(payload);
+    if (!result) {
+      throw new ProviderError("Right Code 图片模型响应中没有可识别的图片数据。", {
         code: "IMAGE_PROVIDER_ERROR"
+      });
+    }
+    let stored;
+    try {
+      stored = await storeImageResult(project.id, result, {
+        downloadFetchImpl,
+        storeGeneratedImageImpl,
+        timeoutMs
+      });
+    } catch (error) {
+      throw new ProviderError(`Right Code 图片已生成，但保存到本地失败：${error.message}`, {
+        code: "IMAGE_PROVIDER_DOWNLOAD_ERROR",
+        possiblyBilled: true,
+        cause: error
       });
     }
     item.generated_image = {
       provider: "right_codes",
       model,
-      url,
+      ...stored,
+      ...(result.url && !result.url.startsWith("data:") ? { sourceUrl: result.url } : {}),
       size: sizeFor(item, env),
       referenceMode
     };

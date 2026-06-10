@@ -228,6 +228,32 @@ export function validatePlanningPackage(planning) {
 export function renderVisualStage(project = state.project) {
   const container = el("visualStageContent");
   if (!container || !project) return;
+  const completedItems = locallyStoredStoryboardItems(project);
+  const failure = project.visualGenerationFailure;
+  if (failure) {
+    container.innerHTML = `
+      <div class="section-heading">
+        <div>
+          <p class="section-index">STEP 05</p>
+          <h2>故事板生成未完成</h2>
+          <p>已完成 ${completedItems.length}/2 张。已成功的图片会保留，继续生成时只处理缺失或已失效的图片。</p>
+        </div>
+        <span class="requirement">${completedItems.length}/2</span>
+      </div>
+      ${completedItems.length ? `
+        <div class="deliverable-grid partial-deliverable-grid">
+          ${completedItems.map((item, index) => renderDeliverable(project, item, index)).join("")}
+        </div>
+      ` : ""}
+      <div class="visual-error-card">
+        <p class="error-message">${escapeHtml(failure.message || state.visualGenerationError || "图片生成失败。")}</p>
+        <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">
+          继续生成缺失图片
+        </button>
+      </div>
+    `;
+    return;
+  }
   container.innerHTML = `
     <div class="future-content">
       <p class="section-index">STEP 05</p>
@@ -272,6 +298,11 @@ function selectedStoryboardItems(project) {
     .filter(Boolean);
 }
 
+function locallyStoredStoryboardItems(project) {
+  return selectedStoryboardItems(project)
+    .filter((item) => item.generated_image?.url?.startsWith("/uploads/"));
+}
+
 function renderExportMismatch(project) {
   const selectedRatio = project.marketBrief?.outputAspectRatio || "9:16";
   return `
@@ -285,13 +316,14 @@ function renderExportMismatch(project) {
 }
 
 function renderExportError(project) {
+  const completedItems = locallyStoredStoryboardItems(project);
   return `
     <div class="future-content script-start-panel visual-error-card">
       <p class="section-index">FINAL DELIVERY</p>
-      <h2>故事板图片生成失败</h2>
-      <p>脚本已经保存，尺寸仍使用第二步选择的 ${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")}。请检查图片模型 Key 或模型权限后重试。</p>
+      <h2>故事板生成未完成</h2>
+      <p>已完成 ${completedItems.length}/2 张。尺寸仍使用第二步选择的 ${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")}，继续时只生成缺失图片。</p>
       <div class="error-message">${escapeHtml(state.visualGenerationError)}</div>
-      <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">重新生成故事板图片</button>
+      <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">继续生成缺失图片</button>
     </div>
   `;
 }

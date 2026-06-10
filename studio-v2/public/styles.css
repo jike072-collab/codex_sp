@@ -1224,6 +1224,8 @@ input[readonly], textarea[readonly] { color: #5c625a; background: #f4f4ef; }
   border: 1px solid #e4b8b0;
   border-radius: 8px;
 }
+.visual-error-card > .primary-button { margin-top: 14px; }
+.partial-deliverable-grid { margin-bottom: 18px; }
 
 .generated-image-card pre {
   max-height: 190px;

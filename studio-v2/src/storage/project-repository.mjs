@@ -200,3 +200,27 @@ export async function removeProjectAsset(project, assetId) {
   await rm(target, { force: true });
   return true;
 }
+
+export async function storeGeneratedProjectImage(projectId, bytes, mimeType = "image/png") {
+  if (!Buffer.isBuffer(bytes) || !bytes.length) {
+    throw new Error("生成图片内容为空。");
+  }
+  const extensions = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp"
+  };
+  const extension = extensions[mimeType];
+  if (!extension) throw new Error(`不支持的生成图片格式：${mimeType}`);
+
+  const uploadDir = safeProjectUploadPath(projectId);
+  await mkdir(uploadDir, { recursive: true });
+  const storedName = `storyboard-${randomUUID()}${extension}`;
+  await writeFile(join(uploadDir, storedName), bytes);
+  return {
+    url: `/uploads/${projectId}/${storedName}`,
+    storedName,
+    mimeType,
+    size: bytes.length
+  };
+}

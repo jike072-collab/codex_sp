@@ -24,6 +24,11 @@ const providerEnvKeys = [
   "IMAGE_MODEL_PROVIDER"
 ];
 
+const tinyPngBytes = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+  "base64"
+);
+
 async function withProviderEnv(values, callback) {
   const previous = Object.fromEntries(
     providerEnvKeys.map((key) => [key, process.env[key]])
@@ -255,6 +260,7 @@ test("Right Code image adapter generates two referenced storyboard requests", as
     );
 
     const requests = [];
+    let storedImages = 0;
     const referenceBytes = Buffer.from("synthetic-shoe-reference");
     await generateProjectVisuals(project, "2026-06-06T01:20:00.000Z", {
       uploadsRootPath: "C:\\synthetic-uploads",
@@ -270,7 +276,17 @@ test("Right Code image adapter generates two referenced storyboard requests", as
         return new Response(JSON.stringify({
           data: [{ url: `https://images.test/${requests.length}.png` }]
         }), { status: 200 });
-      }
+      },
+      downloadFetchImpl: async () => new Response(tinyPngBytes, {
+        status: 200,
+        headers: { "Content-Type": "image/png" }
+      }),
+      storeGeneratedImageImpl: async (projectId, bytes, mimeType) => ({
+        url: `/uploads/${projectId}/storyboard-${++storedImages}.png`,
+        storedName: `storyboard-${storedImages}.png`,
+        mimeType,
+        size: bytes.length
+      })
     });
 
     assert.equal(requests.length, 2);
@@ -284,7 +300,11 @@ test("Right Code image adapter generates two referenced storyboard requests", as
     assert.equal(project.imagePackage.mode, "api");
     assert.equal(
       project.imagePackage.image_generation[1].generated_image.url,
-      "https://images.test/2.png"
+      "/uploads/provider-project/storyboard-2.png"
+    );
+    assert.equal(
+      project.imagePackage.image_generation[0].generated_image.sourceUrl,
+      "https://images.test/1.png"
     );
   });
 });
@@ -306,6 +326,7 @@ test("Right Code image adapter retries prompt-only when references are forbidden
     );
 
     const requests = [];
+    let storedImages = 0;
     await generateProjectVisuals(project, "2026-06-06T01:20:00.000Z", {
       uploadsRootPath: "C:\\synthetic-uploads",
       readFileImpl: async () => Buffer.from("synthetic-shoe-reference"),
@@ -322,7 +343,17 @@ test("Right Code image adapter retries prompt-only when references are forbidden
         return new Response(JSON.stringify({
           data: [{ url: `https://images.test/retry-${requests.length}.png` }]
         }), { status: 200 });
-      }
+      },
+      downloadFetchImpl: async () => new Response(tinyPngBytes, {
+        status: 200,
+        headers: { "Content-Type": "image/png" }
+      }),
+      storeGeneratedImageImpl: async (projectId, bytes, mimeType) => ({
+        url: `/uploads/${projectId}/retry-${++storedImages}.png`,
+        storedName: `retry-${storedImages}.png`,
+        mimeType,
+        size: bytes.length
+      })
     });
 
     assert.equal(requests.length, 3);
@@ -333,6 +364,114 @@ test("Right Code image adapter retries prompt-only when references are forbidden
     assert.equal(
       project.imagePackage.image_generation[1].generated_image.referenceMode,
       "prompt_only"
+    );
+  });
+});
+
+test("Right Code image adapter stores base64 image responses locally", async () => {
+  await withProviderEnv({
+    IMAGE_MODEL_API_KEY: "test-right-code-key",
+    IMAGE_API_URL: "https://example.test/draw/v1/images/generations",
+    IMAGE_MODEL: "gpt-image-2",
+    IMAGE_MODEL_PROVIDER: "right_codes"
+  }, async () => {
+    const project = reviewedProject();
+    project.assets = [];
+    generateProjectDemoScript(project, "2026-06-06T01:00:00.000Z");
+    confirmPlanningPackage(
+      project,
+      structuredClone(project.planningPackage),
+      "2026-06-06T01:10:00.000Z"
+    );
+
+    let storedImages = 0;
+    await generateProjectVisuals(project, "2026-06-06T01:20:00.000Z", {
+      fetchImpl: async () => new Response(JSON.stringify({
+        data: [{ b64_json: tinyPngBytes.toString("base64") }]
+      }), { status: 200 }),
+      downloadFetchImpl: async () => {
+        throw new Error("base64 responses must not be downloaded");
+      },
+      storeGeneratedImageImpl: async (projectId, bytes, mimeType) => {
+        assert.deepEqual(bytes, tinyPngBytes);
+        assert.equal(mimeType, "image/png");
+        storedImages += 1;
+        return {
+          url: `/uploads/${projectId}/base64-${storedImages}.png`,
+          storedName: `base64-${storedImages}.png`,
+          mimeType,
+          size: bytes.length
+        };
+      }
+    });
+
+    assert.equal(storedImages, 2);
+    assert.equal(
+      project.imagePackage.image_generation[0].generated_image.url,
+      "/uploads/provider-project/base64-1.png"
+    );
+  });
+});
+
+test("visual retry preserves a completed local image and only generates the missing one", async () => {
+  await withProviderEnv({
+    IMAGE_MODEL_API_KEY: "test-right-code-key",
+    IMAGE_API_URL: "https://example.test/draw/v1/images/generations",
+    IMAGE_MODEL: "gpt-image-2",
+    IMAGE_MODEL_PROVIDER: "right_codes"
+  }, async () => {
+    const project = reviewedProject();
+    project.assets = [];
+    generateProjectDemoScript(project, "2026-06-06T01:00:00.000Z");
+    confirmPlanningPackage(
+      project,
+      structuredClone(project.planningPackage),
+      "2026-06-06T01:10:00.000Z"
+    );
+
+    let providerRequests = 0;
+    let storedImages = 0;
+    const dependencies = {
+      fetchImpl: async () => {
+        providerRequests += 1;
+        if (providerRequests === 2) {
+          return new Response("", { status: 524 });
+        }
+        return new Response(JSON.stringify({
+          data: [{ b64_json: tinyPngBytes.toString("base64") }]
+        }), { status: 200 });
+      },
+      storeGeneratedImageImpl: async (projectId, bytes, mimeType) => {
+        storedImages += 1;
+        return {
+          url: `/uploads/${projectId}/partial-${storedImages}.png`,
+          storedName: `partial-${storedImages}.png`,
+          mimeType,
+          size: bytes.length
+        };
+      }
+    };
+
+    await assert.rejects(
+      generateProjectVisuals(project, "2026-06-06T01:20:00.000Z", dependencies),
+      (error) => error.code === "IMAGE_PROVIDER_TIMEOUT"
+    );
+    assert.equal(
+      project.imagePackage.image_generation[0].generated_image.url,
+      "/uploads/provider-project/partial-1.png"
+    );
+    assert.equal(project.imagePackage.image_generation[1].generated_image, undefined);
+
+    await generateProjectVisuals(project, "2026-06-06T01:30:00.000Z", dependencies);
+    assert.equal(providerRequests, 3);
+    assert.equal(storedImages, 2);
+    assert.equal(
+      project.imagePackage.image_generation[0].generated_image.url,
+      "/uploads/provider-project/partial-1.png"
+    );
+    assert.equal(
+      project.imagePackage.image_generation[1].generated_image.url,
+      "/uploads/provider-project/partial-2.png"
     );
   });
 });
