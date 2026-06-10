@@ -193,8 +193,10 @@ Requirements:
 Behavior:
 
 - Always generate two deterministic storyboard prompt entries first.
-- The storyboard aspect ratio uses `marketBrief.outputAspectRatio`, selected by
-  the user in Step 02.
+- The overall generated image is a storyboard sheet/delivery board. It is not
+  forced to the Step 02 video aspect ratio.
+- Step 02 `marketBrief.outputAspectRatio` controls the composition ratio of
+  each internal shot frame/panel inside the storyboard sheet.
 - When `IMAGE_MODEL_API_KEY` is configured and the provider is not `manual`,
   call the configured image provider once for each missing storyboard entry.
   Real provider calls are img2img-only and must include the uploaded shoe
@@ -205,8 +207,8 @@ Behavior:
 - Without a usable image key, keep local no-key demo behavior: create the two
   prompt/storyboard entries without making a paid provider call.
 - Create exactly two `image_generation` entries:
-  - `0-10s_storyboard_board`, selected aspect ratio
-  - `10-20s_storyboard_board`, selected aspect ratio
+  - `0-10s_storyboard_board`, storyboard sheet with internal shot panels at the selected aspect ratio
+  - `10-20s_storyboard_board`, storyboard sheet with internal shot panels at the selected aspect ratio
 - Every prompt includes the confirmed product `must_keep` and `must_not_change` rules.
 - Do not create separate keyframe images or Flow Omni packages for V1.
 - On full success, set `visualGeneratedAt`, clear `visualGenerationFailure`,
@@ -239,7 +241,7 @@ In API image mode, each `image_generation` item also includes:
     "provider": "right_codes",
     "model": "gpt-image-2",
     "url": "https://provider.example/generated.png",
-    "size": "1024x1536",
+    "size": "1536x1024",
     "referenceMode": "reference_images"
   }
 }

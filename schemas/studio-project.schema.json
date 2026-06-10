@@ -257,6 +257,16 @@
         "segment_id": { "enum": ["0-10s", "10-20s"] },
         "type": { "const": "storyboard_board" },
         "aspect_ratio": { "enum": ["9:16", "16:9", "1:1", "4:5", "3:4", "2:3"] },
+        "storyboard_sheet": {
+          "type": "object",
+          "required": ["layout", "aspect_ratio", "default_size"],
+          "properties": {
+            "layout": { "const": "storyboard_sheet" },
+            "aspect_ratio": { "type": "string", "minLength": 1 },
+            "default_size": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
         "prompt": { "type": "string", "minLength": 1 },
         "negative_prompt": { "type": "string", "minLength": 1 },
         "reference_policy": { "type": "string", "minLength": 1 },

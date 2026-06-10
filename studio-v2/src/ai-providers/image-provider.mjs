@@ -22,17 +22,10 @@ async function referenceImages(
 }
 
 function sizeFor(item, env) {
-  const configured = env[`IMAGE_SIZE_${String(item.aspect_ratio || "").replace(":", "_")}`];
-  if (configured) return configured;
-  const sizes = {
-    "9:16": "1024x1536",
-    "16:9": "1536x1024",
-    "1:1": "1024x1024",
-    "4:5": "1024x1280",
-    "3:4": "1024x1365",
-    "2:3": "1024x1536"
-  };
-  return sizes[item.aspect_ratio] || env.STORYBOARD_IMAGE_SIZE || "1024x1536";
+  return env.STORYBOARD_SHEET_SIZE
+    || item.storyboard_sheet?.default_size
+    || env.STORYBOARD_IMAGE_SIZE
+    || "1536x1024";
 }
 
 async function requestGeneratedImage({

@@ -3,11 +3,18 @@ import { assertProjectStage, transitionProject } from "./project-workflow.mjs";
 
 const QC_CHECKLIST = Object.freeze([
   "Each storyboard covers only its own 10-second segment.",
-  "Storyboard aspect ratio follows the selected output size.",
+  "Storyboard sheet is a delivery board, not a cropped video frame.",
+  "Each internal shot panel follows the selected output aspect ratio.",
   "Shoe colors, silhouette, midsole, and outsole stay consistent.",
   "No fake logo or changed side pattern is introduced.",
   "Each storyboard includes shot timing, picture, sound, voiceover, and subtitle notes."
 ]);
+
+const STORYBOARD_SHEET = Object.freeze({
+  layout: "storyboard_sheet",
+  aspect_ratio: "3:2",
+  default_size: "1536x1024"
+});
 
 function productRules(lock) {
   const mustKeep = (lock.must_keep || []).map((item) => `KEEP: ${item}`).join(" | ");
@@ -47,7 +54,7 @@ function scriptCopy(segment) {
   ].join("\n\n");
 }
 
-function storyboardPrompt({ project, segment, aspectRatio, rules }) {
+function storyboardPrompt({ project, segment, frameAspectRatio, rules }) {
   const lock = project.planningPackage.product_lock_manifest || {};
   const colors = [
     ...(lock.main_colors || []),
@@ -60,13 +67,16 @@ function storyboardPrompt({ project, segment, aspectRatio, rules }) {
   const shotRows = segment.shots.map(shotLine).join("\n");
 
   return [
-    `Create one ${aspectRatio} commercial storyboard board for ONLY the ${segment.segment_id} shoe ad segment.`,
+    `Create one landscape commercial storyboard sheet for ONLY the ${segment.segment_id} shoe ad segment.`,
+    "The overall canvas is a storyboard delivery sheet, not a cropped video frame.",
+    `Every internal shot thumbnail/panel must be composed as a ${frameAspectRatio} video frame, matching the selected Step 02 output ratio.`,
+    "Do not make the whole storyboard sheet 9:16, 16:9, 4:5, or any other selected video ratio; apply that ratio only inside each shot panel.",
     "Do not include scenes from the other 10-second segment.",
     "Visual layout reference: clean Chinese commercial storyboard sheet, bold black title, white background, thin grey table lines, numbered shot blocks, product reference strip, and structured rows similar to a desktop-shooting storyboard.",
     "Required board sections:",
-    `1) Header: ${project.name} | ${segment.segment_id} storyboard | selected output ${aspectRatio}.`,
+    `1) Header: ${project.name} | ${segment.segment_id} storyboard | shot panel ratio ${frameAspectRatio}.`,
     `2) Product lock zone: shoe type, colors (${colors || "confirmed colors"}), material, sole, must-keep and must-not-change notes.`,
-    "3) Shot table: one block per shot with timing, picture, action, camera, selling point, sound, voiceover, subtitle, and transition.",
+    `3) Shot table: one block per shot; each picture panel uses ${frameAspectRatio} composition with timing, picture, action, camera, selling point, sound, voiceover, subtitle, and transition.`,
     "4) Final memory strip: large keywords for the audience to remember.",
     "5) Small color palette and production notes area.",
     `Confirmed segment script rows:\n${shotRows}`,
@@ -77,13 +87,14 @@ function storyboardPrompt({ project, segment, aspectRatio, rules }) {
   ].join("\n");
 }
 
-function storyboardAsset(project, segment, aspectRatio, rules) {
+function storyboardAsset(project, segment, frameAspectRatio, rules) {
   return {
     asset_id: `${segment.segment_id}_storyboard_board`,
     segment_id: segment.segment_id,
     type: "storyboard_board",
-    aspect_ratio: aspectRatio,
-    prompt: storyboardPrompt({ project, segment, aspectRatio, rules }),
+    aspect_ratio: frameAspectRatio,
+    storyboard_sheet: { ...STORYBOARD_SHEET },
+    prompt: storyboardPrompt({ project, segment, frameAspectRatio, rules }),
     negative_prompt: "wrong shoe, changed color, fake logo, distorted sole, unreadable layout, missing shots, includes other time segment, keyframe-only image, single hero photo",
     reference_policy: "Use all uploaded shoe product views as strict product identity references.",
     script_copy: scriptCopy(segment)
@@ -102,22 +113,24 @@ export function generateVisualPackage(project, generatedAt = new Date().toISOStr
 
   const planning = project.planningPackage;
   const rules = productRules(planning.product_lock_manifest || {});
-  const aspectRatio = project.marketBrief?.outputAspectRatio || "9:16";
+  const frameAspectRatio = project.marketBrief?.outputAspectRatio || "9:16";
   const segmentA = planning.script_20s.segment_a_0_10s;
   const segmentB = planning.script_20s.segment_b_10_20s;
   const imageGeneration = [
-    storyboardAsset(project, segmentA, aspectRatio, rules),
-    storyboardAsset(project, segmentB, aspectRatio, rules)
+    storyboardAsset(project, segmentA, frameAspectRatio, rules),
+    storyboardAsset(project, segmentB, frameAspectRatio, rules)
   ];
 
   project.imagePackage = {
     mode: "demo",
     storyboard_plan: {
       total_images: 2,
-      selected_aspect_ratio: aspectRatio,
+      selected_aspect_ratio: frameAspectRatio,
+      selected_frame_aspect_ratio: frameAspectRatio,
+      storyboard_sheet: { ...STORYBOARD_SHEET },
       segments: imageGeneration.map((item) => ({
         segment_id: item.segment_id,
-        storyboard_goal: `One ${aspectRatio} storyboard board for ${item.segment_id}.`
+        storyboard_goal: `One storyboard sheet for ${item.segment_id}; internal shot panels use ${frameAspectRatio}.`
       }))
     },
     image_generation: imageGeneration,

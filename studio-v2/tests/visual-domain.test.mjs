@@ -28,7 +28,7 @@ function segment(segment_id, start) {
   };
 }
 
-test("visual generation creates two selected-aspect storyboards", () => {
+test("visual generation creates storyboard sheets with selected-aspect internal frames", () => {
   const project = {
     id: "project-1",
     name: "Project",
@@ -60,9 +60,23 @@ test("visual generation creates two selected-aspect storyboards", () => {
   assert.equal(project.imagePackage.image_generation.length, 2);
   assert.equal(project.manualOmniPackages.length, 0);
   assert.equal(project.imagePackage.storyboard_plan.selected_aspect_ratio, "4:5");
+  assert.equal(project.imagePackage.storyboard_plan.selected_frame_aspect_ratio, "4:5");
+  assert.deepEqual(project.imagePackage.storyboard_plan.storyboard_sheet, {
+    layout: "storyboard_sheet",
+    aspect_ratio: "3:2",
+    default_size: "1536x1024"
+  });
   for (const item of project.imagePackage.image_generation) {
     assert.equal(item.aspect_ratio, "4:5");
+    assert.deepEqual(item.storyboard_sheet, {
+      layout: "storyboard_sheet",
+      aspect_ratio: "3:2",
+      default_size: "1536x1024"
+    });
     assert.equal(item.type, "storyboard_board");
+    assert.match(item.prompt, /overall canvas is a storyboard delivery sheet/);
+    assert.match(item.prompt, /internal shot thumbnail\/panel must be composed as a 4:5 video frame/);
+    assert.doesNotMatch(item.prompt, /Create one 4:5 commercial storyboard board/);
     assert.match(item.prompt, /exact silhouette/);
     assert.match(item.prompt, /do not change color/);
   }

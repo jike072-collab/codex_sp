@@ -51,8 +51,11 @@ and confirmed product-lock validation before it can be persisted.
 
 The provider receives all uploaded product views as plain base64 reference
 strings in the `image` array, without a `data:<mime>;base64,` prefix. Two
-requests are made, one for each selected-aspect storyboard image. Successful
-results are stored as optional `generated_image` metadata on each
+requests are made, one for each storyboard sheet. The provider `size` is the
+outer storyboard sheet canvas size, not the Step 02 video ratio. Step 02
+`marketBrief.outputAspectRatio` is expressed in the prompt and persisted
+`image_generation[].aspect_ratio` as the internal shot-frame composition ratio.
+Successful results are stored as optional `generated_image` metadata on each
 image-generation item.
 
 Real image generation is img2img only. Every storyboard call must include the

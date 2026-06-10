@@ -326,8 +326,10 @@ test("Right Code image adapter generates two referenced storyboard requests", as
     assert.equal(typeof requests[0].prompt, "string");
     assert.deepEqual(requests[0].image, [referenceBytes.toString("base64")]);
     assert.equal(requests[0].image[0].startsWith("data:image/"), false);
-    assert.equal(requests[0].size, "1024x1280");
-    assert.equal(requests[1].size, "1024x1280");
+    assert.equal(requests[0].size, "1536x1024");
+    assert.equal(requests[1].size, "1536x1024");
+    assert.match(requests[0].prompt, /internal shot thumbnail\/panel must be composed as a 4:5 video frame/);
+    assert.doesNotMatch(requests[0].prompt, /Create one 4:5 commercial storyboard board/);
     assert.equal(requests[0].response_format, "url");
     assert.equal(project.imagePackage.mode, "api");
     assert.equal(
