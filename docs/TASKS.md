@@ -1,9 +1,9 @@
 # Parallel Task Board
 
-Active UI V2 assignments are recorded in:
+Active V2 follow-up assignments are recorded in:
 
-- `tasks/codex-backend-ui-v2.md`
-- `tasks/codex-frontend-ui-v2.md`
+- `tasks/codex-backend-image-concurrency.md`
+- `tasks/codex-frontend-ui-v2-density-followup.md`
 
 Completed previous-round assignments remain in:
 
