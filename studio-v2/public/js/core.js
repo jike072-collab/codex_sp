@@ -6,7 +6,8 @@ export const state = {
   visualGenerationError: "",
   deletingProjectIds: new Set(),
   projectSelectionMode: false,
-  selectedProjectIds: new Set()
+  selectedProjectIds: new Set(),
+  providerStatus: {}
 };
 
 export const el = (id) => document.getElementById(id);

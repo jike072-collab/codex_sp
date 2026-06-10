@@ -1,4 +1,4 @@
-import { api, el, showToast } from "./core.js";
+import { api, el, showToast, state } from "./core.js";
 
 const PROVIDER_KINDS = ["vision", "text", "image"];
 
@@ -18,6 +18,7 @@ function setFormBusy(value) {
 }
 
 function renderProviderStatus(providers = {}) {
+  state.providerStatus = providers;
   PROVIDER_KINDS.forEach((kind) => {
     const provider = providers[kind] || {};
     const details = [
@@ -35,6 +36,17 @@ function renderProviderStatus(providers = {}) {
     stateElement.classList.toggle("unconfigured", !provider.configured);
     stateElement.classList.remove("loading");
   });
+  const configuredCount = PROVIDER_KINDS.filter((kind) => providers[kind]?.configured).length;
+  const sidebarState = el("sidebarApiState");
+  const sidebarDetails = el("sidebarApiDetails");
+  if (sidebarState) {
+    sidebarState.textContent = configuredCount ? `API 已配置 ${configuredCount}/3` : "API 未配置";
+  }
+  if (sidebarDetails) {
+    sidebarDetails.textContent = configuredCount
+      ? "识图、脚本、图片供应商状态已同步"
+      : "尚未保存供应商配置";
+  }
 }
 
 function renderLoadingState() {
@@ -44,6 +56,10 @@ function renderLoadingState() {
     stateElement.textContent = "读取中";
     stateElement.className = "provider-state loading";
   });
+  const sidebarState = el("sidebarApiState");
+  const sidebarDetails = el("sidebarApiDetails");
+  if (sidebarState) sidebarState.textContent = "API 状态读取中";
+  if (sidebarDetails) sidebarDetails.textContent = "正在读取供应商配置";
 }
 
 export async function refreshProviderSettings() {
