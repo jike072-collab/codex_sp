@@ -199,6 +199,9 @@ Behavior:
   call the configured image provider once for each missing storyboard entry.
   Real provider calls are img2img-only and must include the uploaded shoe
   reference images.
+- When both storyboard entries are missing, both provider requests must be
+  started before waiting for either provider response. They must not be
+  serialized as first image then second image.
 - Without a usable image key, keep local no-key demo behavior: create the two
   prompt/storyboard entries without making a paid provider call.
 - Create exactly two `image_generation` entries:

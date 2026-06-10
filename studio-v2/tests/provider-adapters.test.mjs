@@ -29,6 +29,30 @@ const tinyPngBytes = Buffer.from(
   "base64"
 );
 
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+async function withTimeout(promise, message) {
+  let timer;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), 1000);
+      })
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function withProviderEnv(values, callback) {
   const previous = Object.fromEntries(
     providerEnvKeys.map((key) => [key, process.env[key]])
@@ -314,6 +338,82 @@ test("Right Code image adapter generates two referenced storyboard requests", as
       project.imagePackage.image_generation[0].generated_image.sourceUrl,
       "https://images.test/1.png"
     );
+  });
+});
+
+test("Right Code image adapter starts both missing storyboard requests before either response resolves", async () => {
+  await withProviderEnv({
+    IMAGE_MODEL_API_KEY: "test-right-code-key",
+    IMAGE_API_URL: "https://example.test/draw/v1/images/generations",
+    IMAGE_MODEL: "gpt-image-2",
+    IMAGE_MODEL_PROVIDER: "right_codes"
+  }, async () => {
+    const project = reviewedProject();
+    project.assets = [{ storedName: "shoe.png", mimeType: "image/png" }];
+    generateProjectDemoScript(project, "2026-06-06T01:00:00.000Z");
+    confirmPlanningPackage(
+      project,
+      structuredClone(project.planningPackage),
+      "2026-06-06T01:10:00.000Z"
+    );
+
+    const requests = [];
+    const releases = [];
+    const bothRequestsArrived = deferred();
+    let releasedResponses = 0;
+    let storedImages = 0;
+
+    const generationPromise = generateProjectVisuals(project, "2026-06-06T01:20:00.000Z", {
+      uploadsRootPath: "C:\\synthetic-uploads",
+      readFileImpl: async () => Buffer.from("synthetic-shoe-reference"),
+      fetchImpl: async (_url, options) => {
+        const body = JSON.parse(options.body);
+        assert.equal(body.image.length, 1);
+        requests.push(body);
+        const release = deferred();
+        releases.push(release);
+        if (requests.length === 2) {
+          bothRequestsArrived.resolve();
+        }
+        await release.promise;
+        releasedResponses += 1;
+        return new Response(JSON.stringify({
+          data: [{ b64_json: tinyPngBytes.toString("base64") }]
+        }), { status: 200 });
+      },
+      storeGeneratedImageImpl: async (projectId, bytes, mimeType) => {
+        storedImages += 1;
+        return {
+          url: `/uploads/${projectId}/concurrent-${storedImages}.png`,
+          storedName: `concurrent-${storedImages}.png`,
+          mimeType,
+          size: bytes.length
+        };
+      }
+    });
+
+    await withTimeout(
+      bothRequestsArrived.promise,
+      "Timed out waiting for both storyboard provider requests to overlap."
+    );
+
+    assert.equal(requests.length, 2);
+    assert.equal(releases.length, 2);
+    assert.equal(releasedResponses, 0);
+    assert.equal(storedImages, 0);
+    assert.notEqual(
+      requests[0].prompt,
+      requests[1].prompt,
+      "Each concurrent request should still target its own storyboard segment."
+    );
+
+    releases[0].resolve();
+    releases[1].resolve();
+    await generationPromise;
+
+    assert.equal(releasedResponses, 2);
+    assert.equal(storedImages, 2);
+    assert.equal(project.imagePackage.mode, "api");
   });
 });
 
