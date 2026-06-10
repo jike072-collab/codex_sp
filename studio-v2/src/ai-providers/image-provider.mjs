@@ -133,6 +133,99 @@ function previousGeneratedImages(project) {
     .map((item) => [`${item.asset_id}|${item.aspect_ratio}`, item.generated_image]));
 }
 
+async function generateStoryboardItem({
+  project,
+  item,
+  previous,
+  images,
+  apiUrl,
+  apiKey,
+  model,
+  env,
+  fetchImpl,
+  downloadFetchImpl,
+  storeGeneratedImageImpl
+}) {
+  const timeoutMs = positiveInteger(env.IMAGE_TIMEOUT_MS, 300000);
+  if (previous?.url?.startsWith(`/uploads/${project.id}/`)) {
+    item.generated_image = previous;
+    return;
+  }
+  if (previous?.url) {
+    try {
+      const stored = await storeImageResult(project.id, { url: previous.url }, {
+        downloadFetchImpl,
+        storeGeneratedImageImpl,
+        timeoutMs
+      });
+      item.generated_image = { ...previous, ...stored, sourceUrl: previous.url };
+      return;
+    } catch {
+      // Expired provider URLs are regenerated below.
+    }
+  }
+
+  const hasReferences = Boolean(images.length);
+  let referenceMode = hasReferences ? "reference_images" : "prompt_only";
+  let payload;
+  try {
+    payload = await requestGeneratedImage({
+      apiUrl,
+      apiKey,
+      timeoutMs,
+      fetchImpl,
+      model,
+      item,
+      images: hasReferences ? images : [],
+      env
+    });
+  } catch (error) {
+    if (!(error instanceof ProviderError) || error.providerStatus !== 403 || !hasReferences) {
+      throw error;
+    }
+    referenceMode = "prompt_only_after_reference_403";
+    payload = await requestGeneratedImage({
+      apiUrl,
+      apiKey,
+      timeoutMs,
+      fetchImpl,
+      model,
+      item,
+      images: [],
+      env
+    });
+  }
+
+  const result = imageResult(payload);
+  if (!result) {
+    throw new ProviderError("Right Code 图片模型响应中没有可识别的图片数据。", {
+      code: "IMAGE_PROVIDER_ERROR"
+    });
+  }
+  let stored;
+  try {
+    stored = await storeImageResult(project.id, result, {
+      downloadFetchImpl,
+      storeGeneratedImageImpl,
+      timeoutMs
+    });
+  } catch (error) {
+    throw new ProviderError(`Right Code 图片已生成，但保存到本地失败：${error.message}`, {
+      code: "IMAGE_PROVIDER_DOWNLOAD_ERROR",
+      possiblyBilled: true,
+      cause: error
+    });
+  }
+  item.generated_image = {
+    provider: "right_codes",
+    model,
+    ...stored,
+    ...(result.url && !result.url.startsWith("data:") ? { sourceUrl: result.url } : {}),
+    size: sizeFor(item, env),
+    referenceMode
+  };
+}
+
 export async function generateProjectVisuals(
   project,
   generatedAt = new Date().toISOString(),
@@ -156,90 +249,23 @@ export async function generateProjectVisuals(
     || "https://www.right.codes/draw/v1/images/generations";
   const model = env.IMAGE_MODEL || "gpt-image-2";
   const images = await referenceImages(project, { readFileImpl, uploadsRootPath });
-  let useReferenceImages = Boolean(images.length);
-
-  for (const item of project.imagePackage.image_generation) {
-    const timeoutMs = positiveInteger(env.IMAGE_TIMEOUT_MS, 300000);
-    const previous = previousImages.get(`${item.asset_id}|${item.aspect_ratio}`);
-    if (previous?.url?.startsWith(`/uploads/${project.id}/`)) {
-      item.generated_image = previous;
-      continue;
-    }
-    if (previous?.url) {
-      try {
-        const stored = await storeImageResult(project.id, { url: previous.url }, {
-          downloadFetchImpl,
-          storeGeneratedImageImpl,
-          timeoutMs
-        });
-        item.generated_image = { ...previous, ...stored, sourceUrl: previous.url };
-        continue;
-      } catch {
-        // Expired provider URLs are regenerated below.
-      }
-    }
-
-    let referenceMode = useReferenceImages ? "reference_images" : "prompt_only";
-    let payload;
-    try {
-      payload = await requestGeneratedImage({
-        apiUrl,
-        apiKey,
-        timeoutMs,
-        fetchImpl,
-        model,
-        item,
-        images: useReferenceImages ? images : [],
-        env
-      });
-    } catch (error) {
-      if (!(error instanceof ProviderError) || error.providerStatus !== 403 || !useReferenceImages) {
-        throw error;
-      }
-      useReferenceImages = false;
-      referenceMode = "prompt_only_after_reference_403";
-      payload = await requestGeneratedImage({
-        apiUrl,
-        apiKey,
-        timeoutMs,
-        fetchImpl,
-        model,
-        item,
-        images: [],
-        env
-      });
-    }
-
-    const result = imageResult(payload);
-    if (!result) {
-      throw new ProviderError("Right Code 图片模型响应中没有可识别的图片数据。", {
-        code: "IMAGE_PROVIDER_ERROR"
-      });
-    }
-    let stored;
-    try {
-      stored = await storeImageResult(project.id, result, {
-        downloadFetchImpl,
-        storeGeneratedImageImpl,
-        timeoutMs
-      });
-    } catch (error) {
-      throw new ProviderError(`Right Code 图片已生成，但保存到本地失败：${error.message}`, {
-        code: "IMAGE_PROVIDER_DOWNLOAD_ERROR",
-        possiblyBilled: true,
-        cause: error
-      });
-    }
-    item.generated_image = {
-      provider: "right_codes",
+  const results = await Promise.allSettled(
+    project.imagePackage.image_generation.map((item) => generateStoryboardItem({
+      project,
+      item,
+      previous: previousImages.get(`${item.asset_id}|${item.aspect_ratio}`),
+      images,
+      apiUrl,
+      apiKey,
       model,
-      ...stored,
-      ...(result.url && !result.url.startsWith("data:") ? { sourceUrl: result.url } : {}),
-      size: sizeFor(item, env),
-      referenceMode
-    };
-  }
-
-  project.imagePackage.mode = "api";
+      env,
+      fetchImpl,
+      downloadFetchImpl,
+      storeGeneratedImageImpl
+    }))
+  );
+  const failures = results.filter((result) => result.status === "rejected");
+  project.imagePackage.mode = failures.length ? "partial" : "api";
+  if (failures.length) throw failures[0].reason;
   return project;
 }

@@ -317,7 +317,7 @@ test("visual generation timeout records a retryable failure state", async () => 
     assert.equal(reopened.body.project.visualGenerationFailure.possiblyBilled, true);
     assert.equal(reopened.body.project.visualGeneratedAt, null);
     assert.equal(reopened.body.project.imagePackage.image_generation.length, 2);
-    assert.equal(providerRequests.length, 1);
+    assert.equal(providerRequests.length, 2);
   } finally {
     await new Promise((resolveClose) => providerServer.close(resolveClose));
     for (const [key, value] of Object.entries(previousEnv)) {

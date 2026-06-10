@@ -261,6 +261,8 @@ test("Right Code image adapter generates two referenced storyboard requests", as
 
     const requests = [];
     let storedImages = 0;
+    let activeRequests = 0;
+    let maxActiveRequests = 0;
     const referenceBytes = Buffer.from("synthetic-shoe-reference");
     await generateProjectVisuals(project, "2026-06-06T01:20:00.000Z", {
       uploadsRootPath: "C:\\synthetic-uploads",
@@ -273,8 +275,13 @@ test("Right Code image adapter generates two referenced storyboard requests", as
         assert.equal(options.headers.Authorization, "Bearer test-right-code-key");
         assert.equal(options.headers["Content-Type"], "application/json");
         requests.push(JSON.parse(options.body));
+        const requestNumber = requests.length;
+        activeRequests += 1;
+        maxActiveRequests = Math.max(maxActiveRequests, activeRequests);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        activeRequests -= 1;
         return new Response(JSON.stringify({
-          data: [{ url: `https://images.test/${requests.length}.png` }]
+          data: [{ url: `https://images.test/${requestNumber}.png` }]
         }), { status: 200 });
       },
       downloadFetchImpl: async () => new Response(tinyPngBytes, {
@@ -290,6 +297,7 @@ test("Right Code image adapter generates two referenced storyboard requests", as
     });
 
     assert.equal(requests.length, 2);
+    assert.equal(maxActiveRequests, 2);
     assert.equal(requests[0].model, "gpt-image-2");
     assert.equal(typeof requests[0].prompt, "string");
     assert.deepEqual(requests[0].image, [referenceBytes.toString("base64")]);
@@ -326,6 +334,7 @@ test("Right Code image adapter retries prompt-only when references are forbidden
     );
 
     const requests = [];
+    const attemptsByPrompt = new Map();
     let storedImages = 0;
     await generateProjectVisuals(project, "2026-06-06T01:20:00.000Z", {
       uploadsRootPath: "C:\\synthetic-uploads",
@@ -333,7 +342,9 @@ test("Right Code image adapter retries prompt-only when references are forbidden
       fetchImpl: async (_url, options) => {
         const body = JSON.parse(options.body);
         requests.push(body);
-        if (requests.length === 1) {
+        const attempts = (attemptsByPrompt.get(body.prompt) || 0) + 1;
+        attemptsByPrompt.set(body.prompt, attempts);
+        if (attempts === 1) {
           assert.equal(body.image.length, 1);
           return new Response(JSON.stringify({
             error: "API Key 不允许访问该渠道，请前往令牌管理界面修改令牌权限"
@@ -356,14 +367,14 @@ test("Right Code image adapter retries prompt-only when references are forbidden
       })
     });
 
-    assert.equal(requests.length, 3);
+    assert.equal(requests.length, 4);
     assert.equal(
       project.imagePackage.image_generation[0].generated_image.referenceMode,
       "prompt_only_after_reference_403"
     );
     assert.equal(
       project.imagePackage.image_generation[1].generated_image.referenceMode,
-      "prompt_only"
+      "prompt_only_after_reference_403"
     );
   });
 });
