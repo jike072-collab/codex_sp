@@ -45,7 +45,8 @@ and confirmed product-lock validation before it can be persisted.
 - Authentication: `Authorization: Bearer <IMAGE_MODEL_API_KEY>`
 - Request fields: `model`, `prompt`, optional `image`, pixel `size`, and
   `response_format: "url"`.
-- No usable key or `IMAGE_MODEL_PROVIDER=manual`: prompt-only demo package
+- No usable key or `IMAGE_MODEL_PROVIDER=manual`: local demo package only; no
+  paid image-generation provider call is made.
 - Failure code: `IMAGE_PROVIDER_ERROR`
 
 The provider receives all uploaded product views as plain base64 reference
@@ -54,13 +55,10 @@ requests are made, one for each selected-aspect storyboard image. Successful
 results are stored as optional `generated_image` metadata on each
 image-generation item.
 
-If Right Code returns HTTP `403` while reference images are included, the image
-adapter retries the same `/draw/v1/images/generations` request once without
-reference images and records `generated_image.referenceMode` as
-`prompt_only_after_reference_403`. This keeps the local demo moving when a token
-can access prompt-only Draw generation but cannot use image references. If the
-prompt-only retry also returns `403`, the error is surfaced to the browser and
-the operator must fix the token's Draw channel/model permissions.
+Real image generation is img2img only. Every storyboard call must include the
+uploaded shoe reference images. If Right Code returns HTTP `403` while reference
+images are included, surface the error and save a retryable visual generation
+failure; do not retry prompt-only generation.
 
 ## Secret And Failure Rules
 

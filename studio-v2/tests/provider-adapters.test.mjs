@@ -317,7 +317,7 @@ test("Right Code image adapter generates two referenced storyboard requests", as
   });
 });
 
-test("Right Code image adapter retries prompt-only when references are forbidden", async () => {
+test("Right Code image adapter does not fall back when references are forbidden", async () => {
   await withProviderEnv({
     IMAGE_MODEL_API_KEY: "test-right-code-key",
     IMAGE_API_URL: "https://example.test/draw/v1/images/generations",
@@ -334,48 +334,29 @@ test("Right Code image adapter retries prompt-only when references are forbidden
     );
 
     const requests = [];
-    const attemptsByPrompt = new Map();
-    let storedImages = 0;
-    await generateProjectVisuals(project, "2026-06-06T01:20:00.000Z", {
-      uploadsRootPath: "C:\\synthetic-uploads",
-      readFileImpl: async () => Buffer.from("synthetic-shoe-reference"),
-      fetchImpl: async (_url, options) => {
-        const body = JSON.parse(options.body);
-        requests.push(body);
-        const attempts = (attemptsByPrompt.get(body.prompt) || 0) + 1;
-        attemptsByPrompt.set(body.prompt, attempts);
-        if (attempts === 1) {
+    await assert.rejects(
+      generateProjectVisuals(project, "2026-06-06T01:20:00.000Z", {
+        uploadsRootPath: "C:\\synthetic-uploads",
+        readFileImpl: async () => Buffer.from("synthetic-shoe-reference"),
+        fetchImpl: async (_url, options) => {
+          const body = JSON.parse(options.body);
+          requests.push(body);
           assert.equal(body.image.length, 1);
           return new Response(JSON.stringify({
             error: "API Key 不允许访问该渠道，请前往令牌管理界面修改令牌权限"
           }), { status: 403 });
         }
-        assert.deepEqual(body.image, []);
-        return new Response(JSON.stringify({
-          data: [{ url: `https://images.test/retry-${requests.length}.png` }]
-        }), { status: 200 });
-      },
-      downloadFetchImpl: async () => new Response(tinyPngBytes, {
-        status: 200,
-        headers: { "Content-Type": "image/png" }
       }),
-      storeGeneratedImageImpl: async (projectId, bytes, mimeType) => ({
-        url: `/uploads/${projectId}/retry-${++storedImages}.png`,
-        storedName: `retry-${storedImages}.png`,
-        mimeType,
-        size: bytes.length
-      })
-    });
+      (error) => {
+        assert.equal(error.code, "IMAGE_PROVIDER_ERROR");
+        assert.equal(error.providerStatus, 403);
+        return true;
+      }
+    );
 
-    assert.equal(requests.length, 4);
-    assert.equal(
-      project.imagePackage.image_generation[0].generated_image.referenceMode,
-      "prompt_only_after_reference_403"
-    );
-    assert.equal(
-      project.imagePackage.image_generation[1].generated_image.referenceMode,
-      "prompt_only_after_reference_403"
-    );
+    assert.equal(requests.length, 2);
+    assert.equal(project.imagePackage.image_generation[0].generated_image, undefined);
+    assert.equal(project.imagePackage.image_generation[1].generated_image, undefined);
   });
 });
 
@@ -387,7 +368,7 @@ test("Right Code image adapter stores base64 image responses locally", async () 
     IMAGE_MODEL_PROVIDER: "right_codes"
   }, async () => {
     const project = reviewedProject();
-    project.assets = [];
+    project.assets = [{ storedName: "shoe.png", mimeType: "image/png" }];
     generateProjectDemoScript(project, "2026-06-06T01:00:00.000Z");
     confirmPlanningPackage(
       project,
@@ -400,6 +381,7 @@ test("Right Code image adapter stores base64 image responses locally", async () 
       fetchImpl: async () => new Response(JSON.stringify({
         data: [{ b64_json: tinyPngBytes.toString("base64") }]
       }), { status: 200 }),
+      readFileImpl: async () => Buffer.from("synthetic-shoe-reference"),
       downloadFetchImpl: async () => {
         throw new Error("base64 responses must not be downloaded");
       },
@@ -432,7 +414,7 @@ test("visual retry preserves a completed local image and only generates the miss
     IMAGE_MODEL_PROVIDER: "right_codes"
   }, async () => {
     const project = reviewedProject();
-    project.assets = [];
+    project.assets = [{ storedName: "shoe.png", mimeType: "image/png" }];
     generateProjectDemoScript(project, "2026-06-06T01:00:00.000Z");
     confirmPlanningPackage(
       project,
@@ -452,6 +434,7 @@ test("visual retry preserves a completed local image and only generates the miss
           data: [{ b64_json: tinyPngBytes.toString("base64") }]
         }), { status: 200 });
       },
+      readFileImpl: async () => Buffer.from("synthetic-shoe-reference"),
       storeGeneratedImageImpl: async (projectId, bytes, mimeType) => {
         storedImages += 1;
         return {

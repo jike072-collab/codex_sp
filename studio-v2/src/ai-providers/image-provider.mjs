@@ -165,36 +165,21 @@ async function generateStoryboardItem({
     }
   }
 
-  const hasReferences = Boolean(images.length);
-  let referenceMode = hasReferences ? "reference_images" : "prompt_only";
-  let payload;
-  try {
-    payload = await requestGeneratedImage({
-      apiUrl,
-      apiKey,
-      timeoutMs,
-      fetchImpl,
-      model,
-      item,
-      images: hasReferences ? images : [],
-      env
-    });
-  } catch (error) {
-    if (!(error instanceof ProviderError) || error.providerStatus !== 403 || !hasReferences) {
-      throw error;
-    }
-    referenceMode = "prompt_only_after_reference_403";
-    payload = await requestGeneratedImage({
-      apiUrl,
-      apiKey,
-      timeoutMs,
-      fetchImpl,
-      model,
-      item,
-      images: [],
-      env
+  if (!images.length) {
+    throw new ProviderError("img2 生图必须包含商品参考图，请先上传鞋图。", {
+      code: "IMAGE_REFERENCE_REQUIRED"
     });
   }
+  const payload = await requestGeneratedImage({
+    apiUrl,
+    apiKey,
+    timeoutMs,
+    fetchImpl,
+    model,
+    item,
+    images,
+    env
+  });
 
   const result = imageResult(payload);
   if (!result) {
@@ -222,7 +207,7 @@ async function generateStoryboardItem({
     ...stored,
     ...(result.url && !result.url.startsWith("data:") ? { sourceUrl: result.url } : {}),
     size: sizeFor(item, env),
-    referenceMode
+    referenceMode: "reference_images"
   };
 }
 

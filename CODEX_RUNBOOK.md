@@ -226,9 +226,9 @@ If one Codex finishes while the other is still working:
 - Right Code vision uses the Gemini channel: `https://right.codes/gemini`.
 - Right Code image generation uses the Draw channel:
   `https://www.right.codes/draw/v1/images/generations`.
-- If Draw rejects reference images with HTTP 403, the backend retries prompt-only
-  generation once. A second 403 means the saved image key does not have the
-  required Draw/model permission.
+- Image generation is img2img only: every real storyboard call must include the
+  uploaded shoe reference images. Do not fall back to prompt-only image
+  generation when references are rejected.
 - Provider settings may display role/channel/model and a local key suffix for
   operator debugging, but full keys remain out of project JSON, exports, logs,
   commits, and final handoff text.
