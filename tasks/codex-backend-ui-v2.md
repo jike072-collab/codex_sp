@@ -79,8 +79,13 @@ generation, storyboard partial failure display, and final delivery.
 
 ## Handoff
 
-When done, push `codex/backend-ui-v2-support` or merge to `main` only after
-review. Report:
+When done, commit all backend/support changes and push
+`codex/backend-ui-v2-support` immediately. Do not leave the work only on the
+local machine. Do not merge to `main` by yourself; the coordinator will review
+the branch with the frontend result and merge the approved work into the final
+`v2` version.
+
+Report:
 
 - branch
 - commit hash

@@ -113,7 +113,12 @@ Capture screenshots at:
 
 ## Handoff
 
-When done, push `codex/frontend-ui-v2` and report:
+When done, commit all frontend changes and push `codex/frontend-ui-v2`
+immediately. Do not leave the work only on the local machine. The coordinator
+will review this branch, run checks, and merge it into the final `v2` version
+only after approval.
+
+Report:
 
 - branch
 - commit hash
