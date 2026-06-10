@@ -25,6 +25,24 @@ Do not spend first-version time on real model integrations, visual redesign,
 batch workflows, accounts, cloud sync, or advanced storage features unless the
 closed loop already works.
 
+## UI V2 Goal
+
+The second version is a visual and interaction upgrade for the same local
+workflow. Read `docs/UI-V2-BRIEF.md` before starting UI V2 work.
+
+UI V2 must preserve the current workflow and contracts while improving:
+
+- layout hierarchy
+- visual consistency
+- upload-stage polish
+- stepper clarity
+- right-side status/readiness presentation
+- motion and click feedback
+- final two-storyboard delivery presentation
+
+Do not reintroduce JSON delivery, Flow Omni packages, prompt-only paid image
+generation, or direct provider calls from the browser frontend.
+
 ## Module Split
 
 ### Codex A: contracts, backend, integration

@@ -1,11 +1,16 @@
 # Parallel Task Board
 
-The latest completed assignments are recorded in:
+Active UI V2 assignments are recorded in:
+
+- `tasks/codex-backend-ui-v2.md`
+- `tasks/codex-frontend-ui-v2.md`
+
+Completed previous-round assignments remain in:
 
 - `tasks/codex-backend-current.md`
 - `tasks/codex-frontend-current.md`
 
-There are no unassigned active tracks. For a new round, Codex A must:
+For every round, Codex A must:
 
 1. Sync and branch from the latest `main`.
 2. Create one task file per Codex with non-overlapping owned paths.
