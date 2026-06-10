@@ -157,6 +157,10 @@ function wireEvents() {
         state.viewStatus = "review";
         renderWorkspace();
       },
+      "view-export": () => {
+        state.viewStatus = "export";
+        renderWorkspace();
+      },
       "confirm-and-generate-visual": () => confirmScriptAndGenerateVisual(),
       "generate-script": () => generateScript(),
       "generate-visual": () => generateVisual()
