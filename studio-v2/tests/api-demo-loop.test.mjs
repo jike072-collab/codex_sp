@@ -175,6 +175,8 @@ test("no-key demo mode completes the full persisted export loop", async () => {
   const summary = projectList.body.projects.find((item) => item.id === projectId);
   assert.equal(summary.hasPlanningPackage, true);
   assert.equal(summary.hasImagePackage, true);
+  assert.equal(summary.exportReady, true);
+  assert.equal(summary.visualNeedsRegeneration, false);
   assert.equal(summary.omniPackageCount, 0);
   assert.equal("planningPackage" in summary, false);
   assert.equal("imagePackage" in summary, false);
@@ -318,6 +320,14 @@ test("visual generation timeout records a retryable failure state", async () => 
     assert.equal(reopened.body.project.visualGeneratedAt, null);
     assert.equal(reopened.body.project.imagePackage.image_generation.length, 2);
     assert.equal(providerRequests.length, 2);
+
+    const projectList = await jsonRequest("/api/projects");
+    const summary = projectList.body.projects.find((item) => item.id === projectId);
+    assert.equal(summary.status, "visual");
+    assert.equal(summary.hasImagePackage, true);
+    assert.equal(summary.exportReady, false);
+    assert.equal(summary.visualGenerationFailure.code, "IMAGE_PROVIDER_TIMEOUT");
+    assert.equal("imagePackage" in summary, false);
   } finally {
     await new Promise((resolveClose) => providerServer.close(resolveClose));
     for (const [key, value] of Object.entries(previousEnv)) {
