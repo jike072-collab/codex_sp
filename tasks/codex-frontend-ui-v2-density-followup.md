@@ -18,6 +18,7 @@ where each major step is visible at a glance on a normal desktop screen.
 Reference images are committed in:
 
 - `docs/reference/ui-v2-followup/current-step01-too-tall.png`
+- `docs/reference/ui-v2-followup/current-storyboard-card-wrong-size.png`
 - `docs/reference/ui-v2-followup/target-step01-upload.png`
 - `docs/reference/ui-v2-followup/target-step02-settings.png`
 - `docs/reference/ui-v2-followup/target-step03-script.png`
@@ -26,6 +27,10 @@ Reference images are committed in:
 
 The target images are visual references only. Do not copy fake shoe/storyboard
 images or add fake data.
+
+`current-storyboard-card-wrong-size.png` shows a current bug: the generated
+storyboard sheet is a tall image, but the UI places it inside a wide fixed
+frame, leaving large blank side areas. That should be fixed.
 
 ## Ownership
 
@@ -91,6 +96,14 @@ Use `target-step04-storyboard.png` as layout inspiration only:
 
 - Show only the two storyboard images in this step, side by side when possible.
 - Do not show the full corresponding script under storyboard images.
+- Storyboard image cards must respect the actual generated storyboard image
+  aspect ratio. Do not force a `9:16`, `16:9`, or wide placeholder container
+  around the whole storyboard sheet.
+- The Step 02 selected aspect ratio applies to the shot frames inside the
+  generated storyboard image, not to the outer storyboard sheet/card itself.
+- Avoid the current bug shown in
+  `docs/reference/ui-v2-followup/current-storyboard-card-wrong-size.png`, where
+  a tall storyboard sheet sits inside a much wider blank frame.
 - Each storyboard card may have compact metadata and actions:
   regenerate, download, edit.
 - Preserve partial success display and retry behavior.
@@ -124,7 +137,8 @@ Browser smoke checks:
 - Step 03 at `1440x900`: both 10-second script blocks are understandable without
   heavy scrolling.
 - Step 04 at `1440x900`: two storyboard cards are visible; no full script block
-  appears under them.
+  appears under them; each storyboard card wraps the actual image dimensions
+  without large blank side padding.
 - Step 05 at `1440x900`: final copy/export content is compact and does not
   reintroduce forbidden JSON/ZIP/CSV controls.
 
