@@ -4,7 +4,7 @@ Status: READY
 
 Route: complex
 
-Base commit: `84e3129` (`Require img2img storyboard generation`)
+Base: latest remote `ui-v2` branch at task start
 
 Branch: `codex/frontend-ui-v2`
 
@@ -61,11 +61,18 @@ Minimum scope:
 - New top project header with save-state pill and settings control.
 - Five-step horizontal workflow header with numbered circles and active line.
 - Main card plus right-side quality/status panel on desktop.
+- Shared design tokens from `docs/UI-V2-BRIEF.md`; avoid one-off colors, radii,
+  shadows, and spacing.
 - Polished Step 01 upload stage:
   - stronger drop zone
   - upload glow/drag state
   - six suggested angle cards
   - readiness/progress display in the right panel
+- Compact Step 02 control group with immediate popover opening, no drawer, and
+  the one-line promise below all controls.
+- Step 03 two-column script layout with compact per-shot cards and top actions.
+- Step 04 independent `0-10s` and `10-20s` loading/result cards with partial
+  success and targeted retry.
 - Unified card, button, input, dialog, toast, and progress styles.
 - Motion polish using CSS/vanilla JS only:
   - hover lift
@@ -83,8 +90,11 @@ Minimum scope:
   that dependency in a separate contract update.
 - Keep text concise and Chinese-first in the browser UI.
 - Existing image URLs and generated local `/uploads/...` URLs must keep working.
-- The current DOCX reference did not expose extractable text; rely on
-  `docs/UI-V2-BRIEF.md` as the filled-in product/design spec.
+- The user supplied readable screenshots of the DOCX. Their applicable visual,
+  interaction, animation, and acceptance requirements are consolidated in
+  `docs/UI-V2-BRIEF.md`.
+- Do not migrate the app to Next.js, React, Tailwind, shadcn/ui, or Zustand just
+  because they appear in the reference document. Reuse the current architecture.
 
 ## Verification
 
@@ -101,7 +111,10 @@ Browser smoke checks:
 - Step 01 upload area supports click, drag, preview, and image delete.
 - Sidebar has no horizontal scrollbar and batch delete still works.
 - Step 02 controls open and save correct hidden form values.
+- Step 02 confirmation fits in the viewport with Chinese-first content and top
+  confirm/back actions.
 - Script page keeps two 10-second blocks readable on desktop.
+- Selected shot count changes the number of shots produced per 10-second block.
 - Visual failure page shows partial count and does not hide successful local
   storyboards.
 - Final page shows two storyboard images and two scripts only.

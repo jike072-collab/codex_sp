@@ -4,7 +4,7 @@ Status: READY
 
 Route: standard
 
-Base commit: `84e3129` (`Require img2img storyboard generation`)
+Base: latest remote `ui-v2` branch at task start
 
 Branch: `codex/backend-ui-v2-support`
 

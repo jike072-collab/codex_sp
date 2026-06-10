@@ -7,10 +7,15 @@ The user supplied:
 - `C:/Users/Administrator/Downloads/Shoe_Ad_Studio_工作台_UI动画_前后端任务拆分文档_clean.docx`
 
 The PNG is an AI-generated visual reference. Borrow the strong visual ideas,
-but do not copy it literally and do not add fake shoe assets. The DOCX file did
-not expose extractable text in the local reader, so this brief fills the missing
-implementation detail from the image, current app behavior, and the user's
-direction.
+but do not copy it literally and do not add fake shoe assets. The DOCX body was
+not extractable through the local OOXML reader, but the user supplied readable
+page screenshots. The requirements below incorporate those pages together with
+the current app behavior and the user's latest product decisions.
+
+When the document conflicts with the working application, current product
+decisions win. In particular, UI V2 must not require a React/Next.js rewrite,
+must not restore JSON/ZIP delivery, and must not add prompt-only image
+generation.
 
 ## Product Goal
 
@@ -43,6 +48,24 @@ Use the reference image as inspiration for these patterns:
 Do not use heavy shadows everywhere. The design should feel precise and calm,
 not noisy.
 
+## Design Tokens
+
+Use these document-derived values as the starting palette, adjusting contrast
+only when accessibility requires it:
+
+- App background: `#F7F8F1`.
+- Card surface: `#FFFFFF`.
+- Sidebar: `#080D0C` to `#0D1110`.
+- Accent: neon lime around `#CFFF24`.
+- Primary text: `#101410`.
+- Muted text: `#667064`.
+- Soft border: `#E1E7D8`.
+- Success: `#1E7A3A`.
+
+Use one radius scale, one shadow scale, and shared spacing variables throughout
+the application. The lime accent is for primary actions, active progress,
+success emphasis, and focus states; it should not fill every surface.
+
 ## Motion Direction
 
 Use CSS transitions and small vanilla JavaScript helpers only unless Codex A
@@ -58,6 +81,10 @@ explicitly approves a dependency. Preferred motion:
 - Respect `prefers-reduced-motion`.
 
 Avoid long looping decorative animations that distract from workflow tasks.
+Prefer `transform` and `opacity` for motion. Most interaction transitions should
+finish in `0.25s` to `0.45s`. Popovers may use a short `scale(0.98) -> 1` and
+fade; progress and loading states should remain informative rather than
+decorative.
 
 ## Current Workflow To Preserve
 
@@ -80,10 +107,16 @@ generation, or the old single `rightCodesApiKey`.
 
 - Sidebar width can grow from the current 260px if needed, but keep content
   compact and avoid horizontal scrolling.
+- Sidebar should contain the logo, create-project action, compact local project
+  list, local/API state, and a restrained assistant/status card.
 - Header should include project label, project name, status pill, saved-local
   pill, and settings button.
 - Stepper should show five visible steps:
   `商品素材 -> 产品设定 -> 生成脚本 -> 故事板 -> 导出`.
+- On wide screens, the main workspace should use roughly `70-75%` width and the
+  inspector/status panel `25-30%`.
+- Keep the main action bar visible near the top or sticky within the current
+  step; users should not need to scroll to find confirm/back/generate actions.
 - The hidden market step remains an internal state; do not expose it as a
   separate visual step unless Codex A changes the workflow contract.
 
@@ -93,26 +126,48 @@ generation, or the old single `rightCodesApiKey`.
 - Add six suggested angle cards:
   `主视图`, `侧视图`, `后跟视图`, `鞋底视图`, `细节特写`, `穿着场景`.
 - These are guidance cards, not required upload slots.
-- Show upload count/readiness in the right panel.
+- Show upload count/readiness and an AI quality score/checklist in the right
+  panel. Derive it from existing local data; do not invent a paid analysis call.
 - Keep existing upload and delete behavior.
+- Upload motion should include a drag-over highlight, stable thumbnail entrance,
+  and clear delete feedback without layout jumping.
 
 ### Step 02 Product Settings
 
 - Keep the compact popover controls from V1, but restyle them to match UI V2.
+- Country, audience, size, theme, tone, and shot count should appear together in
+  one compact settings region rather than separate drawers.
+- Clicking a setting should open its control immediately; it must not require a
+  second click to enter edit mode.
 - Keep one-line promise below all buttons.
+- The one-line promise placeholder should explain that leaving it blank lets the
+  system fill it automatically.
 - Product-lock details remain optional/collapsible.
+- Confirmation must fit in the viewport, remain Chinese-first, and place confirm
+  and back actions at the top.
 
 ### Step 03 Script
 
 - Keep two 10-second script columns where space allows.
 - Top actions remain sticky and clear.
 - Progress should look like UI V2, not a basic browser bar.
+- The selected shot count controls how many shots are generated in each
+  10-second block.
+- Each shot should present image, action, camera, selling point, voice/subtitle,
+  sound, and transition together in one compact card.
+- Support focused editing and regeneration without losing the other completed
+  script block.
 
 ### Step 04 Storyboard
 
 - Communicate img2img-only generation.
 - Show partial success clearly: `0/2`, `1/2`, or `2/2`.
 - Do not hide successfully stored local images if the other image fails.
+- Use skeleton/shimmer loading rather than a large blocking spinner.
+- Show each `0-10s` and `10-20s` result independently with retry only for the
+  missing or failed result.
+- Reveal completed images with a short fade/scale transition and keep their
+  matching script visible nearby.
 
 ### Step 05 Export
 
@@ -121,6 +176,20 @@ generation, or the old single `rightCodesApiKey`.
   - two matching scripts
   - copy controls
 - No JSON package button.
+
+## Shared Components And States
+
+Unify the existing controls rather than introducing visually unrelated widgets:
+
+- Button, card, input, textarea, select, popover, dialog, tabs, progress, toast,
+  badge, separator, and scroll area.
+- Project states: asset uploading, asset ready, analyzing, locked, script
+  generating, script ready, storyboard generating, partial storyboard success,
+  storyboard ready, export ready, and error.
+- Every asynchronous state must show progress or status text and preserve
+  completed user work.
+- Empty, loading, success, partial success, and error states must use the same
+  typography, spacing, icon weight, and action hierarchy.
 
 ## Accessibility And Responsiveness
 
@@ -138,3 +207,5 @@ generation, or the old single `rightCodesApiKey`.
 - No paid API call during tests.
 - No real model call from frontend code.
 - No backend schema change unless Codex A approves it.
+- No framework migration solely for visual polish.
+- No JSON, Markdown bundle, or ZIP export restoration.
