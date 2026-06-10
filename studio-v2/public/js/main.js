@@ -28,6 +28,7 @@ import {
   clearProviderSettingsInputs,
   closeProviderSettings,
   openProviderSettings,
+  refreshProviderSettings,
   saveProviderSettings,
   toggleProviderSecret
 } from "./settings.js";
@@ -233,6 +234,7 @@ function wireEvents() {
 async function boot() {
   wireEvents();
   try {
+    refreshProviderSettings().catch((error) => console.warn("Failed to refresh provider status.", error));
     await loadProjects();
     for (const project of state.projects) {
       try {

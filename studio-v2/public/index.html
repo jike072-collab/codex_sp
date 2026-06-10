@@ -7,7 +7,7 @@
   <title>Shoe Ad Studio</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body>
+<body class="ui-v2">
   <div class="app">
     <aside class="sidebar">
       <div class="brand">
@@ -27,11 +27,16 @@
       <nav class="project-list" id="projectList"></nav>
 
       <div class="local-note">
-        <button class="api-corner-button" id="apiSettingsButton" type="button" aria-label="API 设置">API</button>
-        <span class="status-dot"></span>
-        <div>
-          <strong>本地模式</strong>
-          <small>图片与项目数据保存在这台电脑</small>
+        <div class="local-note-row">
+          <span class="status-dot"></span>
+          <div>
+            <strong>本地模式</strong>
+            <small>图片与项目数据保存在这台电脑</small>
+          </div>
+        </div>
+        <div class="sidebar-api-status">
+          <span class="sidebar-api-pill" id="sidebarApiState">API 状态读取中</span>
+          <small id="sidebarApiDetails">正在读取供应商配置</small>
         </div>
       </div>
     </aside>
@@ -50,31 +55,33 @@
 
       <section class="workspace hidden" id="workspace">
         <header class="workspace-header">
-          <div>
+          <div class="workspace-title-block">
             <p class="kicker">LOCAL PROJECT</p>
             <div class="title-row">
               <h1 id="projectTitle">未命名项目</h1>
               <span class="project-state" id="projectState">素材准备</span>
             </div>
+            <p class="workspace-subtitle" id="workspaceSubtitle">创建项目后先上传商品素材。</p>
           </div>
           <div class="header-actions">
             <span class="save-state" id="saveState">已保存到本机</span>
+            <button class="api-corner-button" id="apiSettingsButton" type="button" aria-label="API 设置">设置</button>
           </div>
         </header>
 
         <ol class="stepper" id="stepper">
-          <li data-step="assets"><span>商品素材</span></li>
-          <li data-step="review"><span>产品锁定</span></li>
+          <li data-step="assets"><span class="stepper-badge">01</span><span class="stepper-copy"><strong>商品素材</strong><small>上传与整理</small></span></li>
+          <li data-step="review"><span class="stepper-badge">02</span><span class="stepper-copy"><strong>产品设定</strong><small>锁定与确认</small></span></li>
           <li class="workflow-skipped-step" data-step="market" aria-hidden="true"><span>创意确认</span></li>
-          <li data-step="script"><span>广告脚本</span></li>
-          <li data-step="visual"><span>视觉资产</span></li>
-          <li data-step="export"><span>交付导出</span></li>
+          <li data-step="script"><span class="stepper-badge">03</span><span class="stepper-copy"><strong>生成脚本</strong><small>两段 10 秒</small></span></li>
+          <li data-step="visual"><span class="stepper-badge">04</span><span class="stepper-copy"><strong>故事板</strong><small>img2img 生成</small></span></li>
+          <li data-step="export"><span class="stepper-badge">05</span><span class="stepper-copy"><strong>导出</strong><small>两图两脚本</small></span></li>
         </ol>
 
         <div class="stage-layout">
           <section class="stage-card">
             <div class="stage-view" id="assetsStage">
-              <div class="section-heading">
+              <div class="section-heading upload-heading">
                 <div>
                   <p class="section-index">STEP 01</p>
                   <h2>整理商品素材</h2>
@@ -83,12 +90,59 @@
                 <span class="requirement">建议 4-8 张</span>
               </div>
 
-              <button class="drop-zone" id="dropZone" type="button">
-                <span class="upload-icon">↥</span>
-                <strong>拖入鞋子图片，或点击选择</strong>
-                <small>支持 JPG、PNG、WebP；建议包含侧面、正面、后跟、鞋底</small>
-              </button>
-              <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
+              <div class="upload-surface">
+                <button class="drop-zone" id="dropZone" type="button">
+                  <span class="upload-icon">↥</span>
+                  <strong>拖入鞋子图片，或点击选择</strong>
+                  <small>支持 JPG、PNG、WebP；建议包含侧面、正面、后跟、鞋底</small>
+                </button>
+                <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
+
+                <div class="suggested-angle-grid">
+                  <article class="suggested-angle-card">
+                    <span>01</span>
+                    <div>
+                      <strong>主视图</strong>
+                      <small>正面或最能代表鞋型的角度。</small>
+                    </div>
+                  </article>
+                  <article class="suggested-angle-card">
+                    <span>02</span>
+                    <div>
+                      <strong>侧视图</strong>
+                      <small>看清鞋身线条和轮廓比例。</small>
+                    </div>
+                  </article>
+                  <article class="suggested-angle-card">
+                    <span>03</span>
+                    <div>
+                      <strong>后跟视图</strong>
+                      <small>确认包裹感、后跟结构和品牌标识。</small>
+                    </div>
+                  </article>
+                  <article class="suggested-angle-card">
+                    <span>04</span>
+                    <div>
+                      <strong>鞋底视图</strong>
+                      <small>补充纹路、厚度和中底表现。</small>
+                    </div>
+                  </article>
+                  <article class="suggested-angle-card">
+                    <span>05</span>
+                    <div>
+                      <strong>细节特写</strong>
+                      <small>拉链、鞋带、材质、缝线都可拍清楚。</small>
+                    </div>
+                  </article>
+                  <article class="suggested-angle-card">
+                    <span>06</span>
+                    <div>
+                      <strong>穿着场景</strong>
+                      <small>让后续创意更容易进入生活语境。</small>
+                    </div>
+                  </article>
+                </div>
+              </div>
 
               <div class="asset-grid" id="assetGrid"></div>
 
@@ -219,13 +273,42 @@
             </div>
           </section>
 
-          <aside class="context-panel">
-            <h3>这一阶段的完成标准</h3>
-            <ul id="completionList">
-              <li>图片属于同一款鞋</li>
-              <li>关键角度足够清晰</li>
-              <li>产品外观可以稳定锁定</li>
-            </ul>
+          <aside class="context-panel quality-panel">
+            <div class="panel-card panel-overview">
+              <p class="panel-kicker" id="panelStageKicker">STEP 01</p>
+              <h3 id="panelStageTitle">上传进度</h3>
+              <p class="panel-copy" id="panelStageCopy">拖入 4-8 张清晰的同款鞋素材。</p>
+              <div class="panel-metric-grid">
+                <div>
+                  <span>素材数量</span>
+                  <strong id="panelAssetCount">0 张</strong>
+                </div>
+                <div>
+                  <span>当前状态</span>
+                  <strong id="panelWorkflowState">商品素材</strong>
+                </div>
+                <div>
+                  <span>本地保存</span>
+                  <strong id="panelSaveState">已保存</strong>
+                </div>
+                <div>
+                  <span>API 状态</span>
+                  <strong id="panelApiState">读取中</strong>
+                </div>
+              </div>
+              <div class="panel-progress">
+                <div class="panel-progress-track"><i id="panelProgressBar"></i></div>
+                <small id="panelProgressText">等待上传素材</small>
+              </div>
+            </div>
+            <div class="panel-card">
+              <h3>这一阶段的完成标准</h3>
+              <ul id="completionList">
+                <li>图片属于同一款鞋</li>
+                <li>关键角度足够清晰</li>
+                <li>产品外观可以稳定锁定</li>
+              </ul>
+            </div>
           </aside>
         </div>
       </section>

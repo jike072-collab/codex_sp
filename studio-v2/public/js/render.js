@@ -27,6 +27,32 @@ import {
 
 const STAGE_ORDER = ["assets", "review", "market", "script", "visual", "export"];
 
+const STAGE_PANEL_COPY = {
+  assets: "先上传清晰的同款鞋素材，后面的识别和锁定才会稳。",
+  review: "确认产品锁定、受众、比例和创意方向。",
+  market: "把已确认的产品信息整理成脚本输入。",
+  script: "保持两段 10 秒脚本清楚、可改、好对照。",
+  visual: "img2img 只生成两张故事板，成功的会保留。",
+  export: "只保留两张故事板和对应脚本，方便直接交付。"
+};
+
+const STAGE_PANEL_TITLE = {
+  assets: "上传进度",
+  review: "产品设定",
+  market: "创意确认",
+  script: "脚本进度",
+  visual: "故事板状态",
+  export: "最终交付"
+};
+
+function providerSummary() {
+  const providers = state.providerStatus || {};
+  const kinds = ["vision", "text", "image"];
+  const configuredCount = kinds.filter((kind) => providers[kind]?.configured).length;
+  if (!configuredCount) return "尚未配置";
+  return `${configuredCount}/3 已配置`;
+}
+
 function viewStatus() {
   if (!state.project) return "assets";
   if (!state.viewStatus) state.viewStatus = state.project.status;
@@ -97,6 +123,16 @@ export function renderWorkspace() {
   el("projectState").textContent = isReviewingPast
     ? `${statusLabel(project.status)} · 回看${statusLabel(activeStatus)}`
     : statusLabel(project.status);
+  const subtitleByStatus = {
+    assets: "先上传清晰素材，再进入识别和锁定。",
+    analyzing: "正在识别鞋款，稍后会进入产品设定。",
+    review: "确认产品信息、受众、比例和创意方向。",
+    market: "整理创意 brief，准备生成两段脚本。",
+    script: "编辑两段 10 秒脚本，保持节奏清楚。",
+    visual: "img2img 只生成两张故事板。",
+    export: "最终页只保留两张故事板和对应脚本。"
+  };
+  el("workspaceSubtitle").textContent = subtitleByStatus[activeStatus] || subtitleByStatus.assets;
   const setup = projectSetup(project);
   const briefCountry = el("briefCountry");
   const briefAudience = el("briefAudience");
@@ -108,6 +144,7 @@ export function renderWorkspace() {
   renderAssets();
   renderStepper(activeStatus);
   renderCompletionList(activeStatus);
+  renderWorkspacePanel(project, activeStatus);
 
   el("assetsStage").classList.toggle("hidden", !["assets", "analyzing"].includes(activeStatus));
   el("reviewStage").classList.toggle("hidden", activeStatus !== "review");
@@ -132,6 +169,42 @@ export function renderWorkspace() {
   el("saveState").textContent = isReviewingPast
     ? `正在回看：${statusLabel(activeStatus)}`
     : "已保存到本机";
+}
+
+function renderWorkspacePanel(project, activeStatus) {
+  const assets = project.assets || [];
+  const totalSteps = 5;
+  const currentStep = Math.max(1, STAGE_ORDER.indexOf(activeStatus) >= 0 ? STAGE_ORDER.indexOf(activeStatus) : 0);
+  const visibleStep = currentStep >= 0 ? Math.min(totalSteps, currentStep) : 1;
+  const progressStep = activeStatus === "analyzing" ? 1 : visibleStep;
+  const completedPercent = activeStatus === "export"
+    ? 100
+    : Math.max(10, Math.min(100, Math.round((progressStep / totalSteps) * 100)));
+  const readinessText = (() => {
+    if (activeStatus !== "assets" && activeStatus !== "analyzing") return `${statusLabel(activeStatus)} 已进入后续流程`;
+    if (!assets.length) return "等待上传素材";
+    if (assets.length < 4) return `已上传 ${assets.length} 张，建议继续补充`;
+    return `已上传 ${assets.length} 张，可以开始识别`;
+  })();
+  const panelStageKicker = el("panelStageKicker");
+  const panelStageTitle = el("panelStageTitle");
+  const panelStageCopy = el("panelStageCopy");
+  const panelAssetCount = el("panelAssetCount");
+  const panelWorkflowState = el("panelWorkflowState");
+  const panelSaveState = el("panelSaveState");
+  const panelApiState = el("panelApiState");
+  const panelProgressBar = el("panelProgressBar");
+  const panelProgressText = el("panelProgressText");
+  const panelTitleIndex = Math.max(0, STAGE_ORDER.indexOf(activeStatus));
+  if (panelStageKicker) panelStageKicker.textContent = `STEP 0${Math.min(totalSteps, Math.max(1, panelTitleIndex + 1))}`;
+  if (panelStageTitle) panelStageTitle.textContent = STAGE_PANEL_TITLE[activeStatus] || "工作进度";
+  if (panelStageCopy) panelStageCopy.textContent = STAGE_PANEL_COPY[activeStatus] || "";
+  if (panelAssetCount) panelAssetCount.textContent = `${assets.length} 张`;
+  if (panelWorkflowState) panelWorkflowState.textContent = statusLabel(activeStatus);
+  if (panelSaveState) panelSaveState.textContent = state.busy ? "处理中" : "已保存";
+  if (panelApiState) panelApiState.textContent = providerSummary();
+  if (panelProgressBar) panelProgressBar.style.width = `${completedPercent}%`;
+  if (panelProgressText) panelProgressText.textContent = readinessText;
 }
 
 export function renderStepper(activeStatus = viewStatus()) {
@@ -283,36 +356,42 @@ function renderReviewControls(setup) {
   const groups = [
     {
       name: "targetCountry",
+      icon: "国",
       label: "国家",
       value: countryLabel,
       options: compactOptionsHtml("targetCountry", marketCountryOptions, setup.targetCountry)
     },
     {
       name: "audience",
+      icon: "人",
       label: "人群",
       value: setup.audience,
       options: compactOptionsHtml("audience", audienceOptions.map(([value, label, description]) => [label, label, description]), setup.audience)
     },
     {
       name: "output_aspect_ratio",
+      icon: "比",
       label: "尺寸",
       value: setup.outputAspectRatio,
       options: compactOptionsHtml("output_aspect_ratio", aspectRatioOptions, setup.outputAspectRatio, { valueAsLabel: true, withIcons: true })
     },
     {
       name: "creativeTheme",
+      icon: "题",
       label: "主题",
       value: themeLabel,
       options: compactOptionsHtml("creativeTheme", creativeThemeOptions, setup.creativeTheme)
     },
     {
       name: "tone",
+      icon: "调",
       label: "语气",
       value: toneLabel,
       options: compactOptionsHtml("tone", toneOptions, setup.tone)
     },
     {
       name: "shotsPerSegment",
+      icon: "镜",
       label: "镜头",
       value: `${setup.shotsPerSegment} 个`,
       options: compactOptionsHtml("shotsPerSegment", [[3, "3 个", "每 10 秒"], [4, "4 个", "每 10 秒"], [5, "5 个", "每 10 秒"]], setup.shotsPerSegment)
@@ -321,8 +400,8 @@ function renderReviewControls(setup) {
   container.innerHTML = groups.map((group) => `
     <div class="review-menu" data-review-menu-root="${escapeHtml(group.name)}">
       <button class="review-chip" type="button" data-review-menu="${escapeHtml(group.name)}" aria-expanded="false">
-        <span>${escapeHtml(group.label)}</span>
-        <strong>${escapeHtml(group.value)}</strong>
+        <i aria-hidden="true">${escapeHtml(group.icon)}</i>
+        <span><small>${escapeHtml(group.label)}</small><strong>${escapeHtml(group.value)}</strong></span>
         <b>⌄</b>
       </button>
       <div class="review-popover hidden" data-review-panel="${escapeHtml(group.name)}">
