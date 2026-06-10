@@ -241,8 +241,8 @@ export function renderVisualStage(project = state.project) {
         <span class="requirement">${completedItems.length}/2</span>
       </div>
       ${completedItems.length ? `
-        <div class="deliverable-grid partial-deliverable-grid">
-          ${completedItems.map((item, index) => renderDeliverable(project, item, index)).join("")}
+        <div class="storyboard-grid partial-deliverable-grid">
+          ${completedItems.map((item) => renderStoryboardCard(project, item)).join("")}
         </div>
       ` : ""}
       <div class="visual-error-card">
@@ -250,6 +250,26 @@ export function renderVisualStage(project = state.project) {
         <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">
           继续生成缺失图片
         </button>
+      </div>
+    `;
+    return;
+  }
+  if (completedItems.length === 2) {
+    container.innerHTML = `
+      <div class="section-heading compact-stage-heading">
+        <div>
+          <p class="section-index">STEP 04</p>
+          <h2>生成故事板</h2>
+          <p>两张分段故事板已保存。可预览或下载图片，完整对应脚本保留在导出页。</p>
+        </div>
+        <span class="requirement">2/2 已完成</span>
+      </div>
+      <div class="storyboard-grid">
+        ${completedItems.map((item) => renderStoryboardCard(project, item)).join("")}
+      </div>
+      <div class="stage-actions compact-stage-actions">
+        <p>故事板只展示图片与必要信息，避免重复堆叠完整脚本。</p>
+        <button class="primary-button" type="button" data-action="view-export">进入最终交付</button>
       </div>
     `;
     return;
@@ -276,7 +296,7 @@ function renderExportProgress(project) {
     <div class="future-content script-start-panel">
       <p class="section-index">STEP 05</p>
       <h2>正在生成故事板图片</h2>
-      <p>会生成两个故事板：0-10 秒和 10-20 秒。尺寸使用你在第二步选择的 ${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")}。</p>
+      <p>会生成两个故事板：0-10 秒和 10-20 秒。每个分镜画面按第二步选择的 ${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")} 构图，外层故事板按实际生成尺寸展示。</p>
       <div class="script-progress active">
         <span><i></i></span>
         <strong>生成中</strong>
@@ -308,8 +328,8 @@ function renderExportMismatch(project) {
   return `
     <div class="future-content script-start-panel visual-error-card">
       <p class="section-index">STEP 05</p>
-      <h2>故事板尺寸需要重新生成</h2>
-      <p>这个项目里保存的是旧版视觉结果，和第二步选择的 ${escapeHtml(selectedRatio)} 不一致。点击下面按钮会覆盖旧结果，只生成两张 ${escapeHtml(selectedRatio)} 故事板。</p>
+      <h2>故事板分镜比例需要重新生成</h2>
+      <p>这个项目里保存的是旧版视觉结果，内部画面和第二步选择的 ${escapeHtml(selectedRatio)} 不一致。点击下面按钮会覆盖旧结果，并按该分镜比例重新生成两张故事板。</p>
       <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">重新生成当前尺寸故事板</button>
     </div>
   `;
@@ -321,7 +341,7 @@ function renderExportError(project) {
     <div class="future-content script-start-panel visual-error-card">
       <p class="section-index">STEP 05</p>
       <h2>故事板生成未完成</h2>
-      <p>已完成 ${completedItems.length}/2 张。尺寸仍使用第二步选择的 ${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")}，继续时只生成缺失图片。</p>
+      <p>已完成 ${completedItems.length}/2 张。内部分镜仍按第二步选择的 ${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")} 构图，继续时只生成缺失图片。</p>
       <div class="error-message">${escapeHtml(state.visualGenerationError)}</div>
       <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">继续生成缺失图片</button>
     </div>
@@ -330,14 +350,40 @@ function renderExportError(project) {
 
 function renderStoryboardImage(item) {
   if (!item.generated_image?.url) {
-    return `<div class="generated-image-preview"><span>${escapeHtml(item.aspect_ratio || "")}</span></div>`;
+    return `<div class="generated-image-preview"><span>分镜 ${escapeHtml(item.aspect_ratio || "")}</span></div>`;
   }
   return `
     <button class="generated-image-preview clickable-preview" type="button"
       data-preview-image="${escapeHtml(item.generated_image.url)}"
-      data-preview-title="${escapeHtml(`${item.segment_id} 故事板 · ${item.aspect_ratio}`)}">
+      data-preview-title="${escapeHtml(`${item.segment_id} 故事板 · 分镜比例 ${item.aspect_ratio}`)}">
       <img src="${escapeHtml(item.generated_image.url)}" alt="${escapeHtml(item.asset_id)}">
     </button>
+  `;
+}
+
+function renderStoryboardCard(project, item) {
+  const segment = scriptSegmentById(project, item.segment_id) || {};
+  const shotCount = Array.isArray(segment.shots) ? segment.shots.length : 0;
+  return `
+    <article class="storyboard-card">
+      <div class="storyboard-card-heading">
+        <div>
+          <p class="section-index">${escapeHtml(item.segment_id)}</p>
+          <h3>${escapeHtml(segment.theme || `${item.segment_id} 故事板`)}</h3>
+        </div>
+        <span class="storyboard-status">已保存</span>
+      </div>
+      ${renderStoryboardImage(item)}
+      <div class="storyboard-meta">
+        <span>时长 10s</span>
+        <span>分镜比例 ${escapeHtml(item.aspect_ratio || "")}</span>
+        <span>镜头 ${escapeHtml(shotCount)} 个</span>
+      </div>
+      ${item.generated_image?.url ? `
+        <a class="ghost-button storyboard-download" href="${escapeHtml(item.generated_image.url)}"
+          download="${escapeHtml(item.asset_id || `${item.segment_id}-storyboard`)}">下载图片</a>
+      ` : ""}
+    </article>
   `;
 }
 
@@ -349,7 +395,7 @@ function renderDeliverable(project, item, index) {
       <div class="segment-heading">
         <div>
           <p class="section-index">${escapeHtml(item.segment_id)}</p>
-          <h3>${escapeHtml(item.segment_id)} 故事板 · ${escapeHtml(item.aspect_ratio)}</h3>
+          <h3>${escapeHtml(item.segment_id)} 故事板</h3>
         </div>
         <button class="ghost-button small" type="button" data-copy-target="segmentScript${index}">复制脚本</button>
       </div>
@@ -381,7 +427,7 @@ export function renderExportStage(project = state.project) {
         <h2>最终交付</h2>
         <p>这里只保留你拿去生成视频需要的内容：两张故事板图片，以及各自对应的 10 秒脚本。</p>
       </div>
-      <span class="requirement">${escapeHtml(imageItems.length)} 张故事板 · ${escapeHtml(project.marketBrief?.outputAspectRatio || imageItems[0]?.aspect_ratio || "")}</span>
+      <span class="requirement">${escapeHtml(imageItems.length)} 张故事板 · 分镜 ${escapeHtml(project.marketBrief?.outputAspectRatio || imageItems[0]?.aspect_ratio || "")}</span>
     </div>
     <div class="deliverable-grid">
       ${imageItems.map((item, index) => renderDeliverable(project, item, index)).join("")}
