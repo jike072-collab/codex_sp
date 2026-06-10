@@ -208,6 +208,33 @@ test("provider HTTP 524 is classified as a possibly billed timeout", async () =>
   );
 });
 
+test("provider excessive system load is classified as retryable overload", async () => {
+  await assert.rejects(
+    postProviderJson({
+      url: "https://example.test/images",
+      apiKey: "test-key",
+      body: { prompt: "storyboard" },
+      timeoutMs: 1000,
+      providerLabel: "Right Code image model",
+      errorCode: "IMAGE_PROVIDER_ERROR",
+      fetchImpl: async () => new Response(JSON.stringify({
+        error: { message: "excessive system load" }
+      }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      })
+    }),
+    (error) => {
+      assert.equal(error.code, "IMAGE_PROVIDER_OVERLOADED");
+      assert.equal(error.providerStatus, 400);
+      assert.equal(error.retryable, true);
+      assert.equal(error.possiblyBilled, false);
+      assert.match(error.message, /excessive system load/);
+      return true;
+    }
+  );
+});
+
 test("provider errors preserve string error details", async () => {
   await assert.rejects(
     () => postProviderJson({
@@ -556,6 +583,8 @@ test("visual retry preserves a completed local image and only generates the miss
       project.imagePackage.image_generation[0].generated_image.url,
       "/uploads/provider-project/partial-1.png"
     );
+    assert.equal(project.imagePackage.image_generation[1].status, "failed");
+    assert.equal(project.imagePackage.image_generation[1].error.retryable, true);
     assert.equal(project.imagePackage.image_generation[1].generated_image, undefined);
 
     await generateProjectVisuals(project, "2026-06-06T01:30:00.000Z", dependencies);

@@ -6,13 +6,23 @@ const PLACEHOLDER_KEYS = new Set([
 ]);
 
 export class ProviderError extends Error {
-  constructor(message, { code = "PROVIDER_ERROR", providerStatus, possiblyBilled = false, cause } = {}) {
+  constructor(
+    message,
+    {
+      code = "PROVIDER_ERROR",
+      providerStatus,
+      possiblyBilled = false,
+      retryable = false,
+      cause
+    } = {}
+  ) {
     super(message, { cause });
     this.name = "ProviderError";
     this.code = code;
     this.statusCode = 502;
     this.providerStatus = providerStatus;
     this.possiblyBilled = possiblyBilled;
+    this.retryable = retryable;
   }
 }
 
@@ -49,6 +59,17 @@ export function extractJsonObject(text, label = "模型") {
   }
 }
 
+function retryableProviderDetail(detail) {
+  return /excessive\s+system\s+load|system\s+load|overload|temporar(?:y|ily)\s+unavailable/i
+    .test(String(detail || ""));
+}
+
+function retryableErrorCode(errorCode, suffix) {
+  return errorCode.endsWith("_ERROR")
+    ? errorCode.replace(/_ERROR$/, suffix)
+    : errorCode;
+}
+
 export async function postProviderJson({
   url,
   apiKey,
@@ -72,12 +93,10 @@ export async function postProviderJson({
     });
   } catch (error) {
     const timedOut = error?.name === "TimeoutError" || error?.name === "AbortError";
-    const code = timedOut && errorCode.endsWith("_ERROR")
-      ? errorCode.replace(/_ERROR$/, "_TIMEOUT")
-      : errorCode;
+    const code = timedOut ? retryableErrorCode(errorCode, "_TIMEOUT") : errorCode;
     throw new ProviderError(
       timedOut ? `${providerLabel}请求超时。` : `${providerLabel}连接失败。`,
-      { code, possiblyBilled: timedOut, cause: error }
+      { code, possiblyBilled: timedOut, retryable: timedOut, cause: error }
     );
   }
 
@@ -93,14 +112,18 @@ export async function postProviderJson({
       // Provider error bodies are not guaranteed to be JSON.
     }
     const suffix = detail ? `：${String(detail).slice(0, 180)}` : "";
+    const overloaded = retryableProviderDetail(detail);
     throw new ProviderError(
       `${providerLabel}调用失败（HTTP ${response.status}）${suffix}`,
       {
-        code: timedOut && errorCode.endsWith("_ERROR")
-          ? errorCode.replace(/_ERROR$/, "_TIMEOUT")
-          : errorCode,
+        code: timedOut
+          ? retryableErrorCode(errorCode, "_TIMEOUT")
+          : overloaded
+            ? retryableErrorCode(errorCode, "_OVERLOADED")
+            : errorCode,
         providerStatus: response.status,
-        possiblyBilled: timedOut
+        possiblyBilled: timedOut,
+        retryable: timedOut || overloaded
       }
     );
   }

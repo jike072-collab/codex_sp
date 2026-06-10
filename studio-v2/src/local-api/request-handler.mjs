@@ -4,6 +4,16 @@ import { sendJson } from "./http-helpers.mjs";
 import { serveFile } from "./static-files.mjs";
 import { isExpectedError } from "../workflow-domain/domain-error.mjs";
 
+function errorResponseBody(error) {
+  return {
+    error: error.message || "服务器错误。",
+    code: error.code || "INTERNAL_ERROR",
+    ...(typeof error.retryable === "boolean" ? { retryable: error.retryable } : {}),
+    ...(typeof error.possiblyBilled === "boolean" ? { possiblyBilled: error.possiblyBilled } : {}),
+    ...(Number.isInteger(error.providerStatus) ? { providerStatus: error.providerStatus } : {})
+  };
+}
+
 export function createRequestHandler() {
   return async function requestHandler(request, response) {
     try {
@@ -21,10 +31,7 @@ export function createRequestHandler() {
     } catch (error) {
       if (!isExpectedError(error)) console.error(error);
       if (!response.headersSent) {
-        sendJson(response, error.statusCode || 500, {
-          error: error.message || "服务器错误。",
-          code: error.code || "INTERNAL_ERROR"
-        });
+        sendJson(response, error.statusCode || 500, errorResponseBody(error));
       }
       else response.end();
     }

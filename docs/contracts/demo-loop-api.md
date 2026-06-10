@@ -31,9 +31,15 @@ Expected client errors use:
 ```json
 {
   "error": "Human-readable message",
-  "code": "STABLE_ERROR_CODE"
+  "code": "STABLE_ERROR_CODE",
+  "retryable": true,
+  "possiblyBilled": false,
+  "providerStatus": 400
 }
 ```
+
+`retryable`, `possiblyBilled`, and `providerStatus` are included only when the
+backend can safely classify the provider failure.
 
 ## Generate Demo Script
 
@@ -218,6 +224,9 @@ Behavior:
   the project in `visual`, and return the provider error. Retrying
   `/visual/generate` reuses already stored local storyboard images and only
   calls the provider for missing entries.
+- Provider overload responses such as `excessive system load` are retryable
+  failures. They use `IMAGE_PROVIDER_OVERLOADED`, keep the project in `visual`,
+  preserve completed storyboard images, and do not create demo/fake images.
 
 Persisted fields:
 
@@ -257,7 +266,23 @@ On a retryable visual provider failure, the persisted project includes:
     "code": "IMAGE_PROVIDER_TIMEOUT",
     "message": "Human-readable provider failure.",
     "failedAt": "ISO-8601 timestamp",
-    "possiblyBilled": true
+    "possiblyBilled": true,
+    "retryable": true
+  }
+}
+```
+
+Each failed `image_generation` item remains in place with:
+
+```json
+{
+  "segment_id": "10-20s",
+  "type": "storyboard_board",
+  "status": "failed",
+  "error": {
+    "code": "IMAGE_PROVIDER_OVERLOADED",
+    "message": "Human-readable provider failure.",
+    "retryable": true
   }
 }
 ```
@@ -273,6 +298,8 @@ Requirements:
 - Project status is `export`.
 - Planning package and exactly two current-aspect `storyboard_board` entries
   exist, one for `0-10s` and one for `10-20s`.
+- Both storyboard entries have `status: "done"` and a stored
+  `generated_image.url`.
 
 Response:
 
@@ -362,7 +389,8 @@ summary includes enough status for UI V2:
         "code": "IMAGE_PROVIDER_TIMEOUT",
         "message": "Human-readable provider failure.",
         "failedAt": "ISO-8601 timestamp",
-        "possiblyBilled": true
+        "possiblyBilled": true,
+        "retryable": true
       },
       "omniPackageCount": 0
     }

@@ -126,6 +126,7 @@
               "format": "date-time"
             },
             "possiblyBilled": { "type": "boolean" },
+            "retryable": { "type": "boolean" },
             "providerStatus": { "type": "integer" }
           },
           "additionalProperties": false
@@ -270,6 +271,17 @@
         "prompt": { "type": "string", "minLength": 1 },
         "negative_prompt": { "type": "string", "minLength": 1 },
         "reference_policy": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["waiting", "running", "done", "failed"] },
+        "error": {
+          "type": "object",
+          "required": ["code", "message"],
+          "properties": {
+            "code": { "type": "string", "minLength": 1 },
+            "message": { "type": "string", "minLength": 1 },
+            "retryable": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
         "script_copy": { "type": "string" },
         "generated_image": {
           "type": "object",

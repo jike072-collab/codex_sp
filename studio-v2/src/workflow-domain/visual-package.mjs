@@ -167,7 +167,8 @@ export function recordVisualGenerationFailure(project, error, failedAt = new Dat
     code: error?.code || "IMAGE_PROVIDER_ERROR",
     message: error?.message || "故事板图片生成失败。",
     failedAt,
-    possiblyBilled: Boolean(error?.possiblyBilled)
+    possiblyBilled: Boolean(error?.possiblyBilled),
+    retryable: Boolean(error?.retryable)
   };
   if (Number.isInteger(error?.providerStatus)) {
     project.visualGenerationFailure.providerStatus = error.providerStatus;

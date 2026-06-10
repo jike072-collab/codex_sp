@@ -257,7 +257,8 @@ export async function generateProjectVisuals(
         item.status = "failed";
         item.error = {
           code: error?.code || "IMAGE_PROVIDER_ERROR",
-          message: error?.message || "故事板生成失败。"
+          message: error?.message || "故事板生成失败。",
+          retryable: Boolean(error?.retryable)
         };
         throw error;
       }

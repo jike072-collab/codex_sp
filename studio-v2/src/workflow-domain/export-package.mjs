@@ -40,6 +40,9 @@ export function getExportReadiness(project) {
     if (!expectedSegments.delete(item.segment_id)) {
       return { ready: false, code: "EXPORT_NOT_READY", reason: "storyboard_segment" };
     }
+    if (item.status !== "done" || !item.generated_image?.url) {
+      return { ready: false, code: "EXPORT_NOT_READY", reason: "storyboard_image" };
+    }
   }
 
   return {

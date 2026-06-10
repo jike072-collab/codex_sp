@@ -297,11 +297,14 @@ test("visual generation timeout records a retryable failure state", async () => 
     });
     assert.equal(response.response.status, 502);
     assert.equal(response.body.code, "IMAGE_PROVIDER_TIMEOUT");
+    assert.equal(response.body.retryable, true);
+    assert.equal(response.body.possiblyBilled, true);
 
     const reopened = await jsonRequest(`/api/projects/${projectId}`);
     assert.equal(reopened.body.project.status, "visual");
     assert.equal(reopened.body.project.visualGenerationFailure.code, "IMAGE_PROVIDER_TIMEOUT");
     assert.equal(reopened.body.project.visualGenerationFailure.possiblyBilled, true);
+    assert.equal(reopened.body.project.visualGenerationFailure.retryable, true);
     assert.equal(reopened.body.project.visualGeneratedAt, null);
     assert.equal(reopened.body.project.imagePackage.image_generation.length, 2);
     assert.equal(providerRequests.length, 2);

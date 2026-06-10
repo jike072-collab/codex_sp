@@ -195,9 +195,66 @@ test("legacy export-era packages are treated as not ready until the current stor
   });
 });
 
-test("visual generation failures are recorded when provider calls time out", () => {
+test("export readiness requires two completed storyboard image URLs", () => {
   const project = {
     id: "project-4",
+    name: "Project",
+    status: "export",
+    targetCountry: "Thailand",
+    audience: "Audience",
+    createdAt: "2026-06-06T00:00:00.000Z",
+    updatedAt: "2026-06-06T00:00:00.000Z",
+    assets: [],
+    visionAnalysis: {},
+    marketBrief: { outputAspectRatio: "4:5" },
+    scriptConfirmedAt: "2026-06-06T00:00:00.000Z",
+    planningPackage: {
+      product_lock_manifest: {
+        must_keep: ["exact silhouette"],
+        must_not_change: ["do not change color"]
+      },
+      script_20s: {
+        total_duration_sec: 20,
+        segment_a_0_10s: segment("0-10s", 0),
+        segment_b_10_20s: segment("10-20s", 10)
+      }
+    },
+    imagePackage: {
+      image_generation: [
+        {
+          segment_id: "0-10s",
+          type: "storyboard_board",
+          status: "done",
+          aspect_ratio: "4:5",
+          generated_image: { url: "/uploads/project-4/storyboard-1.png" }
+        },
+        {
+          segment_id: "10-20s",
+          type: "storyboard_board",
+          status: "failed",
+          aspect_ratio: "4:5",
+          error: {
+            code: "IMAGE_PROVIDER_OVERLOADED",
+            message: "Right Code image model call failed: excessive system load",
+            retryable: true
+          }
+        }
+      ]
+    }
+  };
+
+  const readiness = getExportReadiness(project);
+  assert.equal(readiness.ready, false);
+  assert.equal(readiness.code, "EXPORT_NOT_READY");
+  assert.equal(readiness.reason, "storyboard_image");
+  assert.throws(() => buildExportPackage(project), {
+    code: "EXPORT_NOT_READY"
+  });
+});
+
+test("visual generation failures are recorded when provider calls time out", () => {
+  const project = {
+    id: "project-5",
     name: "Project",
     status: "visual",
     targetCountry: "Thailand",
@@ -226,6 +283,7 @@ test("visual generation failures are recorded when provider calls time out", () 
     Object.assign(new Error("Right Code 图片模型请求超时。"), {
       code: "IMAGE_PROVIDER_TIMEOUT",
       possiblyBilled: true,
+      retryable: true,
       providerStatus: 504
     }),
     "2026-06-06T04:00:00.000Z"
@@ -238,6 +296,7 @@ test("visual generation failures are recorded when provider calls time out", () 
     message: "Right Code 图片模型请求超时。",
     failedAt: "2026-06-06T04:00:00.000Z",
     possiblyBilled: true,
+    retryable: true,
     providerStatus: 504
   });
 });
