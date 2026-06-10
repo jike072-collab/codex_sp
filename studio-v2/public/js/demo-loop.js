@@ -125,7 +125,7 @@ function renderGenerateScript(project) {
   const shotsPerSegment = projectSetup(project).shotsPerSegment;
   return `
     <div class="future-content script-start-panel">
-      <p class="section-index">STEP 04</p>
+      <p class="section-index">STEP 03</p>
       <h2>市场创意已确认</h2>
       <p>将使用第二步选择的每段 ${escapeHtml(shotsPerSegment)} 个镜头生成 20 秒脚本。后续会按两个 10 秒段落分别生成故事板。</p>
       <div class="confirmed-card">
@@ -154,7 +154,7 @@ function renderScriptEditor(project) {
   return `
     <div class="section-heading">
       <div>
-        <p class="section-index">STEP 04</p>
+        <p class="section-index">STEP 03</p>
         <h2>编辑广告脚本</h2>
         <p>脚本结构按“画面、动作、镜头、卖点、口播/字幕、音效、转场”整理。确认后会直接进入最终交付页并生成两张故事板。</p>
       </div>
@@ -234,7 +234,7 @@ export function renderVisualStage(project = state.project) {
     container.innerHTML = `
       <div class="section-heading">
         <div>
-          <p class="section-index">STEP 05</p>
+          <p class="section-index">STEP 04</p>
           <h2>故事板生成未完成</h2>
           <p>已完成 ${completedItems.length}/2 张。已成功的图片会保留，继续生成时只处理缺失或已失效的图片。</p>
         </div>
@@ -256,7 +256,7 @@ export function renderVisualStage(project = state.project) {
   }
   container.innerHTML = `
     <div class="future-content">
-      <p class="section-index">STEP 05</p>
+      <p class="section-index">STEP 04</p>
       <h2>故事板图片</h2>
       <p>此步骤只生成两个分段故事板。生成时会直接进入最终交付页显示进度。</p>
       <div class="confirmed-card">
@@ -274,7 +274,7 @@ export function renderVisualStage(project = state.project) {
 function renderExportProgress(project) {
   return `
     <div class="future-content script-start-panel">
-      <p class="section-index">FINAL DELIVERY</p>
+      <p class="section-index">STEP 05</p>
       <h2>正在生成故事板图片</h2>
       <p>会生成两个故事板：0-10 秒和 10-20 秒。尺寸使用你在第二步选择的 ${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")}。</p>
       <div class="script-progress active">
@@ -307,7 +307,7 @@ function renderExportMismatch(project) {
   const selectedRatio = project.marketBrief?.outputAspectRatio || "9:16";
   return `
     <div class="future-content script-start-panel visual-error-card">
-      <p class="section-index">FINAL DELIVERY</p>
+      <p class="section-index">STEP 05</p>
       <h2>故事板尺寸需要重新生成</h2>
       <p>这个项目里保存的是旧版视觉结果，和第二步选择的 ${escapeHtml(selectedRatio)} 不一致。点击下面按钮会覆盖旧结果，只生成两张 ${escapeHtml(selectedRatio)} 故事板。</p>
       <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">重新生成当前尺寸故事板</button>
@@ -319,7 +319,7 @@ function renderExportError(project) {
   const completedItems = locallyStoredStoryboardItems(project);
   return `
     <div class="future-content script-start-panel visual-error-card">
-      <p class="section-index">FINAL DELIVERY</p>
+      <p class="section-index">STEP 05</p>
       <h2>故事板生成未完成</h2>
       <p>已完成 ${completedItems.length}/2 张。尺寸仍使用第二步选择的 ${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")}，继续时只生成缺失图片。</p>
       <div class="error-message">${escapeHtml(state.visualGenerationError)}</div>
@@ -377,7 +377,7 @@ export function renderExportStage(project = state.project) {
   container.innerHTML = `
     <div class="section-heading">
       <div>
-        <p class="section-index">FINAL DELIVERY</p>
+        <p class="section-index">STEP 05</p>
         <h2>最终交付</h2>
         <p>这里只保留你拿去生成视频需要的内容：两张故事板图片，以及各自对应的 10 秒脚本。</p>
       </div>

@@ -45,6 +45,16 @@ const STAGE_PANEL_TITLE = {
   export: "最终交付"
 };
 
+const VISIBLE_STAGE_NUMBER = {
+  assets: 1,
+  analyzing: 1,
+  review: 2,
+  market: 2,
+  script: 3,
+  visual: 4,
+  export: 5
+};
+
 function providerSummary() {
   const providers = state.providerStatus || {};
   const kinds = ["vision", "text", "image"];
@@ -174,9 +184,8 @@ export function renderWorkspace() {
 function renderWorkspacePanel(project, activeStatus) {
   const assets = project.assets || [];
   const totalSteps = 5;
-  const currentStep = Math.max(1, STAGE_ORDER.indexOf(activeStatus) >= 0 ? STAGE_ORDER.indexOf(activeStatus) : 0);
-  const visibleStep = currentStep >= 0 ? Math.min(totalSteps, currentStep) : 1;
-  const progressStep = activeStatus === "analyzing" ? 1 : visibleStep;
+  const visibleStep = VISIBLE_STAGE_NUMBER[activeStatus] || 1;
+  const progressStep = visibleStep;
   const completedPercent = activeStatus === "export"
     ? 100
     : Math.max(10, Math.min(100, Math.round((progressStep / totalSteps) * 100)));
@@ -195,8 +204,7 @@ function renderWorkspacePanel(project, activeStatus) {
   const panelApiState = el("panelApiState");
   const panelProgressBar = el("panelProgressBar");
   const panelProgressText = el("panelProgressText");
-  const panelTitleIndex = Math.max(0, STAGE_ORDER.indexOf(activeStatus));
-  if (panelStageKicker) panelStageKicker.textContent = `STEP 0${Math.min(totalSteps, Math.max(1, panelTitleIndex + 1))}`;
+  if (panelStageKicker) panelStageKicker.textContent = `STEP 0${visibleStep}`;
   if (panelStageTitle) panelStageTitle.textContent = STAGE_PANEL_TITLE[activeStatus] || "工作进度";
   if (panelStageCopy) panelStageCopy.textContent = STAGE_PANEL_COPY[activeStatus] || "";
   if (panelAssetCount) panelAssetCount.textContent = `${assets.length} 张`;
