@@ -11,7 +11,10 @@ assets -> analyzing -> review -> market -> script -> visual -> export
 - Saving the market brief enters `script`.
 - Generating a script keeps the project in `script`.
 - Confirming an edited script enters `visual`.
-- Generating visual prompts enters `export`.
+- Generating visual prompts enters `export` in no-key demo mode or when both
+  storyboard images finish successfully. If a real image provider call partly
+  fails, the project keeps the successful storyboard image, returns a retryable
+  provider error, and stays in `visual`.
 
 All successful mutation responses return:
 
@@ -193,15 +196,23 @@ Behavior:
 - The storyboard aspect ratio uses `marketBrief.outputAspectRatio`, selected by
   the user in Step 02.
 - When `IMAGE_MODEL_API_KEY` is configured and the provider is not `manual`,
-  call the configured image provider once for each of the two storyboard entries.
-- Without a usable image key, keep prompt-only demo behavior.
+  call the configured image provider once for each missing storyboard entry.
+  Real provider calls are img2img-only and must include the uploaded shoe
+  reference images.
+- Without a usable image key, keep local no-key demo behavior: create the two
+  prompt/storyboard entries without making a paid provider call.
 - Create exactly two `image_generation` entries:
   - `0-10s_storyboard_board`, selected aspect ratio
   - `10-20s_storyboard_board`, selected aspect ratio
 - Every prompt includes the confirmed product `must_keep` and `must_not_change` rules.
 - Do not create separate keyframe images or Flow Omni packages for V1.
-- Set `visualGeneratedAt`.
-- Enter `export`.
+- On full success, set `visualGeneratedAt`, clear `visualGenerationFailure`,
+  and enter `export`.
+- On partial provider success, preserve any stored local storyboard image,
+  set `imagePackage.mode` to `partial`, record `visualGenerationFailure`, keep
+  the project in `visual`, and return the provider error. Retrying
+  `/visual/generate` reuses already stored local storyboard images and only
+  calls the provider for missing entries.
 
 Persisted fields:
 
@@ -231,6 +242,21 @@ In API image mode, each `image_generation` item also includes:
 }
 ```
 
+On a retryable visual provider failure, the persisted project includes:
+
+```json
+{
+  "status": "visual",
+  "visualGeneratedAt": null,
+  "visualGenerationFailure": {
+    "code": "IMAGE_PROVIDER_TIMEOUT",
+    "message": "Human-readable provider failure.",
+    "failedAt": "ISO-8601 timestamp",
+    "possiblyBilled": true
+  }
+}
+```
+
 ## Export Delivery Package
 
 ```http
@@ -240,7 +266,8 @@ GET /api/projects/:projectId/export
 Requirements:
 
 - Project status is `export`.
-- Planning package and two storyboard prompt or image entries exist.
+- Planning package and exactly two current-aspect `storyboard_board` entries
+  exist, one for `0-10s` and one for `10-20s`.
 
 Response:
 
@@ -298,6 +325,50 @@ Export shape:
 
 Local filesystem paths, stored filenames, hashes, and API credentials must not appear in the export.
 
+The local API keeps this JSON route for compatibility and internal verification.
+UI V2 must not show a JSON download button; the final screen presents only the
+two storyboard images, their two matching scripts, and copy controls.
+
+## Project List Summary
+
+```http
+GET /api/projects
+```
+
+The project list returns compact summaries for the sidebar and right-side
+readiness panel. Heavy generated payloads such as `visionAnalysis`,
+`planningPackage`, and `imagePackage` are omitted from each summary, but the
+summary includes enough status for UI V2:
+
+```json
+{
+  "projects": [
+    {
+      "id": "opaque-project-id",
+      "name": "Project name",
+      "status": "visual",
+      "assets": [],
+      "hasAnalysis": true,
+      "hasPlanningPackage": true,
+      "hasImagePackage": true,
+      "exportReady": false,
+      "visualNeedsRegeneration": false,
+      "visualGenerationFailure": {
+        "code": "IMAGE_PROVIDER_TIMEOUT",
+        "message": "Human-readable provider failure.",
+        "failedAt": "ISO-8601 timestamp",
+        "possiblyBilled": true
+      },
+      "omniPackageCount": 0
+    }
+  ]
+}
+```
+
+Use `exportReady` to decide whether the final two-storyboard delivery is ready.
+Use `visualNeedsRegeneration` for old export-era projects whose stored
+storyboard package does not match the current two-storyboard contract.
+
 ## Restore Behavior
 
 `GET /api/projects/:projectId` returns all persisted workflow fields. The frontend must render from project state:
@@ -305,6 +376,9 @@ Local filesystem paths, stored filenames, hashes, and API credentials must not a
 - `script` with no `planningPackage`: show Generate Script.
 - `script` with `planningPackage`: show editable script.
 - `visual`: show the action to generate two storyboard images.
-- `export` without generated images: show generation progress or a retryable error.
+- `visual` with `imagePackage.mode` of `partial`: show the successful local
+  storyboard image, the missing/failed entry, and a retry action.
+- `export` with `exportReady: false`: show that current-size storyboards must
+  be regenerated.
 - `export` with generated images: show two clickable storyboard images, the matching
-  0-10s and 10-20s script copy actions, and JSON download.
+  0-10s and 10-20s script copy actions.
