@@ -1,6 +1,19 @@
 # Codex A UI V2 Backend And Integration Task
 
-Status: READY
+Status: SUBMITTED - COORDINATOR REVIEW PASSED
+
+## Coordinator Review - 2026-06-10
+
+Reviewed remote branch `codex/backend-ui-v2-support` at commit `517c48e`.
+
+- Scope is correct: contract documentation and backend API tests only.
+- No `studio-v2/public/**` files were changed.
+- Full backend test run passed: `33/33`.
+- Existing API already supplies the UI V2 readiness and partial-success fields.
+- No backend rework is required at this stage.
+
+Keep the branch available for final integration. Do not merge it into `main`
+until the frontend branch has also been reviewed.
 
 Route: standard
 

@@ -1,6 +1,25 @@
 # Codex B UI V2 Frontend Task
 
-Status: READY
+Status: ACTION REQUIRED - REMOTE BRANCH NOT SUBMITTED
+
+## Coordinator Check - 2026-06-10
+
+The coordinator checked GitHub after the latest UI reference update. There is
+currently no remote `codex/frontend-ui-v2` branch, so the frontend task has not
+been submitted for review.
+
+Required next action:
+
+1. Fetch the latest remote branches.
+2. Start from the latest `origin/ui-v2` commit.
+3. Read the full updated `docs/UI-V2-BRIEF.md`, including the five newer AI
+   beautification references and the explicit rejected mockup features.
+4. Complete the frontend implementation and verification.
+5. Commit and push `codex/frontend-ui-v2` immediately.
+6. Report the commit hash, changed files, checks run, and screenshots reviewed.
+
+Do not report this task as complete while the work exists only on the other
+computer. The remote branch is the required handoff.
 
 Route: complex
 
