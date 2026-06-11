@@ -363,6 +363,13 @@ async function waitForMinimumFeedback(startedAt, minimumMs = 1800) {
   if (remaining > 0) await new Promise((resolve) => window.setTimeout(resolve, remaining));
 }
 
+function updateProductionProgressDom(progress) {
+  if (!progress?.active) return;
+  if (el("productionHeaderPercent")) el("productionHeaderPercent").textContent = `${progress.percent}%`;
+  if (el("productionHeaderProgress")) el("productionHeaderProgress").style.width = `${progress.percent}%`;
+  if (el("productionDockHint")) el("productionDockHint").textContent = progress.message;
+}
+
 function setScriptProgress(active) {
   const progress = el("scriptProgress");
   if (!progress) return;
@@ -380,6 +387,7 @@ function setScriptProgress(active) {
   const message = progress.querySelector(".workflow-progress-message");
   const fill = progress.querySelector(".workflow-progress-fill");
   state.workflowProgress = { active: true, stage: "script", percent, message: "正在整理市场语言与产品锁定..." };
+  updateProductionProgressDom(state.workflowProgress);
   label.textContent = `${percent}%`;
   if (fill) fill.style.width = `${percent}%`;
   setScriptProgress.timer = window.setInterval(() => {
@@ -390,6 +398,7 @@ function setScriptProgress(active) {
         ? "正在生成两个 10 秒镜头序列..."
         : "正在校验 20 秒时间线与字段完整性...";
     state.workflowProgress = { active: true, stage: "script", percent, message: status };
+    updateProductionProgressDom(state.workflowProgress);
     label.textContent = `${percent}%`;
     if (fill) fill.style.width = `${percent}%`;
     if (message) message.textContent = status;
@@ -417,6 +426,7 @@ function updateVisualProgressDom() {
   if (el("visualProgressCount")) el("visualProgressCount").textContent = `${progress.completed}/2`;
   if (el("panelProgressBar")) el("panelProgressBar").style.width = `${progress.percent}%`;
   if (el("panelProgressText")) el("panelProgressText").textContent = progress.message;
+  updateProductionProgressDom(progress);
 }
 
 function startVisualProgress() {
