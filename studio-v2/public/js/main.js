@@ -52,6 +52,15 @@ function wireEvents() {
   el("imagePreviewDialog").addEventListener("click", (event) => {
     if (event.target.id === "imagePreviewDialog") el("imagePreviewDialog").close();
   });
+  el("productionDockAction").addEventListener("click", (event) => {
+    const button = event.currentTarget;
+    const target = button.dataset.targetId
+      ? el(button.dataset.targetId)
+      : button.dataset.targetSelector
+        ? document.querySelector(button.dataset.targetSelector)
+        : null;
+    if (target && !target.disabled) target.click();
+  });
 
   el("stepper").addEventListener("click", (event) => {
     const item = event.target.closest("[data-step]");
