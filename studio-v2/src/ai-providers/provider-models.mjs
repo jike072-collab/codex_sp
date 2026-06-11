@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { loadEnv } from "../config.mjs";
 import {
   hasUsableApiKey,
@@ -31,6 +33,14 @@ function fallback(currentModel, status, message) {
 
 function cacheKey(parts) {
   return parts.join("|");
+}
+
+function apiKeyFingerprint(apiKey) {
+  if (!hasUsableApiKey(apiKey)) return "missing-key";
+  return createHash("sha256")
+    .update(String(apiKey))
+    .digest("hex")
+    .slice(0, 16);
 }
 
 function cached(key) {
@@ -187,7 +197,7 @@ async function discoverStandardProvider(provider, env, { refresh, fetchImpl, tim
     provider.id,
     apiUrl,
     currentModel,
-    hasUsableApiKey(apiKey) ? "configured" : "missing-key"
+    apiKeyFingerprint(apiKey)
   ]);
   const existing = refresh ? null : cached(key);
   if (existing) return existing;
@@ -212,7 +222,7 @@ async function discoverImageProvider(provider, env, { refresh, fetchImpl, timeou
       channel.id,
       channel.apiUrl,
       channel.model,
-      channel.configured ? "configured" : "missing-key"
+      apiKeyFingerprint(channel.apiKey)
     ]);
     const existing = refresh ? null : cached(key);
     const discovered = existing || await fetchModelList("image", {

@@ -177,3 +177,94 @@ test("provider model discovery degrades safely for unsupported and error respons
     assert.match(result.providers.image.channels[1].message, /HTTP 500/);
   });
 });
+
+test("provider model discovery cache is invalidated when API keys change", async () => {
+  await withProviderEnv({
+    VISION_MODEL_API_KEY: "vision-key-a",
+    VISION_API_URL: "https://vision.example.test/gemini",
+    VISION_MODEL: "gemini-2.5-flash",
+    TEXT_MODEL_API_KEY: "text-key-a",
+    TEXT_API_URL: "https://text.example.test/chat/completions",
+    TEXT_MODEL: "deepseek-v4-pro",
+    IMAGE_MODEL_API_KEY: "image-key-a",
+    IMAGE_API_URL: "https://image-a.example.test/draw/v1/images/generations",
+    IMAGE_MODEL: "gpt-image-2",
+    IMAGE_SECONDARY_API_KEY: "image-key-b",
+    IMAGE_SECONDARY_API_URL: "https://image-b.example.test/draw/v1/images/generations",
+    IMAGE_SECONDARY_MODEL: "gpt-image-2"
+  }, async () => {
+    const requestCounts = new Map();
+    const fetchImpl = async (url, options) => {
+      const auth = options.headers["x-goog-api-key"] || options.headers.Authorization;
+      const key = `${url}|${auth}`;
+      requestCounts.set(key, (requestCounts.get(key) || 0) + 1);
+
+      if (String(url).includes("/gemini/v1beta/models")) {
+        return jsonResponse({
+          models: [{ name: `models/gemini-${auth === "vision-key-a" ? "alpha" : "beta"}` }]
+        });
+      }
+      if (String(url).includes("text.example.test/models")) {
+        return jsonResponse({
+          data: [{ id: auth === "Bearer text-key-a" ? "deepseek-alpha" : "deepseek-beta" }]
+        });
+      }
+      if (String(url).includes("image-a.example.test/draw/v1/models")) {
+        return jsonResponse({
+          data: [{ id: auth === "Bearer image-key-a" ? "gpt-image-a1" : "gpt-image-a2" }]
+        });
+      }
+      if (String(url).includes("image-b.example.test/draw/v1/models")) {
+        return jsonResponse({
+          data: [{ id: auth === "Bearer image-key-b" ? "gpt-image-b1" : "gpt-image-b2" }]
+        });
+      }
+      throw new Error(`unexpected url: ${url}`);
+    };
+
+    const first = await discoverAdminProviderModels({ fetchImpl });
+    assert.ok(first.providers.vision.models.some((model) => model.id === "gemini-alpha"));
+    assert.ok(first.providers.text.models.some((model) => model.id === "deepseek-alpha"));
+    assert.ok(first.providers.image.channels[0].models.some((model) => model.id === "gpt-image-a1"));
+    assert.ok(first.providers.image.channels[1].models.some((model) => model.id === "gpt-image-b1"));
+
+    process.env.VISION_MODEL_API_KEY = "vision-key-z";
+    process.env.TEXT_MODEL_API_KEY = "text-key-z";
+    process.env.IMAGE_MODEL_API_KEY = "image-key-z";
+    process.env.IMAGE_SECONDARY_API_KEY = "image-key-y";
+
+    const second = await discoverAdminProviderModels({ fetchImpl });
+    assert.ok(second.providers.vision.models.some((model) => model.id === "gemini-beta"));
+    assert.ok(second.providers.text.models.some((model) => model.id === "deepseek-beta"));
+    assert.ok(second.providers.image.channels[0].models.some((model) => model.id === "gpt-image-a2"));
+    assert.ok(second.providers.image.channels[1].models.some((model) => model.id === "gpt-image-b2"));
+    assert.equal(second.providers.vision.models.some((model) => model.id === "gemini-alpha"), false);
+    assert.equal(second.providers.text.models.some((model) => model.id === "deepseek-alpha"), false);
+    assert.equal(second.providers.image.channels[0].models.some((model) => model.id === "gpt-image-a1"), false);
+    assert.equal(second.providers.image.channels[1].models.some((model) => model.id === "gpt-image-b1"), false);
+
+    assert.equal(
+      [...requestCounts.keys()].filter((key) => key.includes("vision.example.test")).length,
+      2
+    );
+    assert.equal(
+      [...requestCounts.keys()].filter((key) => key.includes("text.example.test")).length,
+      2
+    );
+    assert.equal(
+      [...requestCounts.keys()].filter((key) => key.includes("image-a.example.test")).length,
+      2
+    );
+    assert.equal(
+      [...requestCounts.keys()].filter((key) => key.includes("image-b.example.test")).length,
+      2
+    );
+
+    const cached = await discoverAdminProviderModels({
+      fetchImpl: async () => {
+        throw new Error("updated key cache should satisfy repeated reads");
+      }
+    });
+    assert.deepEqual(cached, second);
+  });
+});
