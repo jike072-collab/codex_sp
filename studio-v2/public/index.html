@@ -39,30 +39,53 @@
 
     <main class="main">
       <section class="empty-screen" id="emptyScreen">
-        <div class="empty-visual">
-          <span class="shoe-line">01</span>
-          <div class="visual-orbit"></div>
+        <div class="empty-production-preview" aria-hidden="true">
+          <div class="empty-frame hero-frame"><span>PRODUCT</span><strong>01</strong></div>
+          <div class="empty-frame script-frame"><span>SCRIPT</span><strong>20s</strong></div>
+          <div class="empty-frame board-frame"><span>STORYBOARD</span><strong>2</strong></div>
         </div>
-        <p class="kicker">PERSONAL CREATIVE WORKFLOW</p>
-        <h1>从一双鞋开始，<br>完成一条可控的广告生产链。</h1>
-        <p class="empty-copy">先识别并锁定产品，再进入市场策略、脚本和视觉生成。每一步都可以检查和修改。</p>
-        <button class="primary-button large" id="emptyCreateButton" type="button">创建第一个项目</button>
+        <div class="empty-story">
+          <p class="kicker">LOCAL AD PRODUCTION STUDIO</p>
+          <h1>把一双鞋，制作成一条完整广告。</h1>
+          <p class="empty-copy">上传商品参考图，锁定产品身份，完成两段脚本与两张故事板。每个关键画面都由你确认。</p>
+          <div class="empty-delivery-promise">
+            <span>最终交付</span>
+            <strong>2 张故事板</strong>
+            <i></i>
+            <strong>2 段脚本</strong>
+          </div>
+          <button class="primary-button large" id="emptyCreateButton" type="button">开始制作第一条广告</button>
+        </div>
       </section>
 
       <section class="workspace hidden" id="workspace">
         <header class="workspace-header">
           <div class="workspace-title-block">
-            <p class="kicker">LOCAL PROJECT</p>
+            <p class="kicker" id="productionSceneLabel">SCENE 01 / 05</p>
             <div class="title-row">
               <h1 id="projectTitle">未命名项目</h1>
               <span class="project-state" id="projectState">素材准备</span>
             </div>
             <p class="workspace-subtitle" id="workspaceSubtitle">创建项目后先上传商品素材。</p>
           </div>
-          <div class="header-actions">
+          <div class="production-header-status">
+            <div class="production-header-meta">
+              <span>制作进度</span>
+              <strong id="productionHeaderPercent">20%</strong>
+            </div>
+            <div class="production-header-progress"><i id="productionHeaderProgress"></i></div>
             <span class="save-state" id="saveState">已保存到本机</span>
           </div>
         </header>
+
+        <section class="production-focus" aria-label="当前制作概览">
+          <div class="production-focus-copy">
+            <span class="production-timecode" id="productionTimecode">00:00:00</span>
+            <p id="productionObjective">准备商品素材，建立广告视觉基准。</p>
+            <strong id="productionOutcome">最终交付：2 张故事板 + 2 段脚本</strong>
+          </div>
+          <div class="production-reel" id="productionReel" aria-label="项目视觉素材"></div>
+        </section>
 
         <ol class="stepper" id="stepper">
           <li data-step="assets"><span class="stepper-badge">01</span><span class="stepper-copy"><strong>商品素材</strong><small>上传与整理</small></span></li>
@@ -311,6 +334,15 @@
               </ul>
             </div>
           </aside>
+        </div>
+
+        <div class="production-action-dock" id="productionActionDock">
+          <div>
+            <span id="productionDockLabel">当前任务</span>
+            <strong id="productionDockTitle">上传至少 4 张同款鞋参考图</strong>
+            <small id="productionDockHint">完成后即可识别并锁定产品。</small>
+          </div>
+          <button class="primary-button" id="productionDockAction" type="button">继续制作</button>
         </div>
       </section>
     </main>
