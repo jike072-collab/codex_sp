@@ -29,8 +29,110 @@ const THEME_LABELS = {
   "street-style": "街头风格"
 };
 
+const CHINESE_SCRIPT_COPY = new Map(Object.entries({
+  "Immediate low-angle product-first landing with the full shoe identity readable.": "产品从低机位进入画面，完整清晰地展示鞋款识别特征。",
+  "Macro pass across the confirmed upper texture, lace layout, and side detail.": "微距扫过已确认的鞋面纹理、鞋带结构与侧面细节。",
+  "Short movement sequence with the shoe remaining the clear hero.": "鞋款保持视觉主体，完成一段简短的运动展示。",
+  "Side profile detail hold with the confirmed midsole shape readable.": "停留展示侧面轮廓，清楚呈现已确认的中底结构。",
+  "Fast full-shoe hero flash that locks the silhouette before the next segment.": "快速闪现完整鞋款画面，在下一段前强化轮廓记忆。",
+  "Controlled sole and side-profile proof shot using only visible product details.": "仅使用可见产品细节，展示鞋底与侧面轮廓。",
+  "Smooth everyday movement matched to the selected audience and market tone.": "结合目标人群与市场语气，呈现自然流畅的日常运动。",
+  "Final clean ecommerce hero with the complete shoe visible.": "完整鞋款进入干净的电商主视觉画面。",
+  "Close product proof pass across the outsole and lower side detail.": "近距离扫过外底与鞋身下部细节，验证产品特征。",
+  "CTA-ready hero frame with the shoe centered and fully readable.": "鞋款居中完整呈现，形成适合行动号召的收尾画面。",
+  "The shoe enters frame and lands cleanly without changing shape or color.": "鞋款干净入场并落地，保持原有鞋型与配色。",
+  "A controlled light sweep reveals visible product construction.": "受控光线扫过鞋身，展示可见的产品结构。",
+  "One confident step carries the product into motion.": "一个有力步伐带动鞋款进入运动状态。",
+  "The shoe pivots slightly to show the side structure.": "鞋款轻微转动，展示侧面结构。",
+  "The shoe lands in a stable hero pose for a quick read.": "鞋款稳定落入主视觉姿态，便于快速识别。",
+  "The shoe rolls through one stable step with the sole profile readable.": "鞋款完成一个稳定步伐，清楚展示鞋底轮廓。",
+  "Two natural steps keep the confirmed colors and silhouette consistent.": "两个自然步伐保持已确认的配色与轮廓一致。",
+  "The shoe settles into a simple hero pose and holds.": "鞋款进入简洁主视觉姿态并停留。",
+  "A short motion pass keeps the sole and side pattern stable.": "短促运动展示中保持鞋底与侧面图案稳定。",
+  "The shoe holds steady with no added logos or invented labels.": "鞋款稳定停留，不增加标志或虚构标签。",
+  "Low-angle close-up with a short push-in.": "低机位特写，镜头短距离推进。",
+  "Macro side detail.": "侧面细节微距镜头。",
+  "Low side tracking shot.": "低机位侧面跟拍。",
+  "Clean three-quarter side close-up.": "干净的侧前方三分之二特写。",
+  "Full product close-up.": "完整产品特写。",
+  "Low three-quarter product angle.": "低机位侧前三分之二产品角度。",
+  "Side tracking medium close-up.": "侧面跟拍中近景。",
+  "Full product hero close-up.": "完整产品主视觉特写。",
+  "Low macro tracking move.": "低机位微距跟拍。",
+  "Centered ecommerce hero frame.": "居中的电商主视觉画面。",
+  "Distinctive product identity": "突出清晰的产品识别特征",
+  "Structured sole profile": "突出有层次的鞋底轮廓",
+  "Clear product recognition": "确保产品清楚可识别",
+  "Beat hit and short whoosh.": "节拍重音配合短促掠过声。",
+  "Soft snap over the beat.": "节拍上叠加轻柔弹响。",
+  "Footstep rhythm and music lift.": "脚步节奏推动音乐上扬。",
+  "Short camera click and beat lift.": "短促快门声配合节拍提升。",
+  "Final hit into proof segment.": "以收束重音进入产品验证段落。",
+  "Clean contact sound.": "干净的落地接触声。",
+  "Music rises with light footsteps.": "音乐随轻快脚步逐渐上扬。",
+  "Final beat and short hold.": "最后一个节拍后短暂停留。",
+  "Light scrape and beat tick.": "轻微摩擦声配合节拍点。",
+  "Final resolved chord.": "以完整和弦收束。",
+  "Fast push-in.": "快速推进。",
+  "Match cut.": "匹配剪辑。",
+  "Motion cut into proof segment.": "通过运动剪辑进入产品验证段落。",
+  "Graphic match cut.": "图形匹配转场。",
+  "Hard cut.": "直接切换。",
+  "Quick clean cut.": "快速干净切换。",
+  "Soft speed ramp.": "柔和变速转场。",
+  "End hold.": "结尾停留。",
+  "Clean whip cut.": "干净甩镜转场。",
+  "พร้อมลุยทุกวัน": "每天都准备好出发",
+  "เบา คล่องตัว": "轻盈灵活",
+  "มั่นใจทุกก้าว": "每一步都更自信",
+  "สบายทุกจังหวะ": "每个节奏都舒适",
+  "พร้อมแล้ว ไปกันเลย": "准备好了，现在出发",
+  "Siap dipakai setiap hari": "每天都准备好穿上",
+  "Ringan saat bergerak": "移动时轻盈自在",
+  "Mantap di setiap langkah": "每一步都稳健自信",
+  "Nyaman sampai akhir": "舒适坚持到最后",
+  "Siap melangkah": "准备迈步出发",
+  "Sẵn sàng mỗi ngày": "每天都准备好",
+  "Nhẹ nhàng chuyển động": "轻盈自在地移动",
+  "Tự tin từng bước": "每一步都更自信",
+  "Êm ái đến cuối": "舒适直到最后",
+  "Sẵn sàng lên đường": "准备出发",
+  "Ready for every day": "每天都准备好",
+  "Light on the move": "移动中保持轻盈",
+  "Confident every step": "每一步都更自信",
+  "Comfort to the finish": "舒适坚持到最后",
+  "Ready when you are": "随时准备出发",
+  "Sedia untuk setiap hari": "每天都准备好",
+  "Ringan bila bergerak": "移动时轻盈自在",
+  "Yakin setiap langkah": "每一步都更自信",
+  "Selesa hingga akhir": "舒适坚持到最后",
+  "Jom melangkah": "一起迈步出发",
+  "Everyday ready": "每天都准备好",
+  "Light in motion": "运动中保持轻盈",
+  "Confidence each step": "每一步都更自信",
+  "Ready for the city": "准备进入城市节奏",
+  "Ready to move": "准备开始行动"
+}));
+
+const CHINESE_FIELD_FALLBACK = {
+  visual: "按当前镜头展示鞋款，保持产品外观与参考图一致。",
+  action: "按照原始脚本完成产品动作，保持轮廓与配色稳定。",
+  camera: "使用清晰的产品镜头展示鞋款结构与细节。",
+  selling_point: "突出已确认、可从参考图验证的产品卖点。",
+  localized_caption_or_vo: "使用目标市场语言呈现简短口播或字幕。",
+  sound: "使用与镜头节奏匹配的简洁音效。",
+  transition: "自然衔接至下一个镜头。"
+};
+
 function clean(value) {
   return String(value || "").trim();
+}
+
+function chineseScriptValue(field, value) {
+  const source = clean(value);
+  if (!source) return CHINESE_FIELD_FALLBACK[field] || "暂无内容";
+  if (/[\u3400-\u9fff]/u.test(source)) return source;
+  return CHINESE_SCRIPT_COPY.get(source) || CHINESE_FIELD_FALLBACK[field] || "按原始脚本执行。";
 }
 
 function marketTitle(project) {
@@ -75,10 +177,14 @@ function renderTimelineRow(segmentKey, segmentLabel, shot, shotIndex, timelineIn
       </th>
       ${SHOT_FIELDS.map(([field, label]) => `
         <td>
-          <textarea rows="1" aria-label="${escapeHtml(segmentLabel)} 镜头 ${shotIndex + 1} ${escapeHtml(label)}"
+          <textarea hidden aria-hidden="true"
             data-segment="${escapeHtml(segmentKey)}"
             data-shot-index="${shotIndex}"
             data-shot-field="${escapeHtml(field)}">${escapeHtml(shot[field] || "")}</textarea>
+          <div class="script-chinese-copy"
+            aria-label="${escapeHtml(segmentLabel)} 镜头 ${shotIndex + 1} ${escapeHtml(label)}">
+            ${escapeHtml(chineseScriptValue(field, shot[field]))}
+          </div>
         </td>
       `).join("")}
     </tr>
@@ -89,16 +195,13 @@ function renderScriptTimeline(script) {
   let timelineIndex = 0;
   return `
     <section class="script-timeline-card">
-      <div class="script-theme-grid">
-        ${SEGMENTS.map(([segmentKey, segmentLabel]) => {
+      <div hidden>
+        ${SEGMENTS.map(([segmentKey]) => {
           const segment = script[segmentKey] || {};
           return `
-            <label>
-              <span>${escapeHtml(segmentLabel)} 主题</span>
-              <input data-segment="${escapeHtml(segmentKey)}"
-                data-field="theme"
-                value="${escapeHtml(segment.theme || "")}">
-            </label>
+            <input type="hidden" data-segment="${escapeHtml(segmentKey)}"
+              data-field="theme"
+              value="${escapeHtml(segment.theme || "")}">
           `;
         }).join("")}
       </div>
@@ -158,8 +261,8 @@ function renderScriptEditor(project) {
     <div class="section-heading">
       <div>
         <p class="section-index">STEP 03</p>
-        <h2>编辑 20 秒广告脚本</h2>
-        <p>全部镜头按时间顺序集中编辑；确认后仍按 0-10 秒和 10-20 秒生成两张故事板与两段交付脚本。</p>
+        <h2>审核 20 秒中文脚本</h2>
+        <p>这里显示中文审核稿；确认后仍使用原始目标语言生成两张故事板与两段交付脚本。</p>
       </div>
       <span class="requirement">20 秒</span>
     </div>

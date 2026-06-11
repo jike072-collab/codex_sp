@@ -57,38 +57,6 @@ const VISIBLE_STAGE_NUMBER = {
   export: 5
 };
 
-const STAGE_EXPERIENCE = {
-  assets: {
-    objective: "建立商品视觉基准，让后续画面始终像同一双鞋。"
-  },
-  analyzing: {
-    objective: "正在读取鞋型、材质与不可改变的产品特征。"
-  },
-  review: {
-    objective: "锁定产品身份，并确定这条广告面对谁、以什么画幅呈现。"
-  },
-  market: {
-    objective: "把产品设定整理成可直接驱动广告脚本的创意方向。"
-  },
-  script: {
-    objective: "把创意方向变成一份连续、可编辑的 20 秒广告脚本。"
-  },
-  visual: {
-    objective: "使用商品参考图制作两张分段故事板，成功画面会被保留。"
-  },
-  export: {
-    objective: "两张故事板与两段脚本已组成可直接使用的第一版广告交付。"
-  }
-};
-
-function providerSummary() {
-  const providers = state.providerStatus || {};
-  const kinds = ["vision", "text", "image"];
-  const configuredCount = kinds.filter((kind) => providers[kind]?.configured).length;
-  if (!configuredCount) return "尚未配置";
-  return `${configuredCount}/3 已配置`;
-}
-
 function publicQualityNotes(analysis) {
   const notes = [
     ...(analysis?.image_quality?.missing_or_unclear || []),
@@ -178,7 +146,7 @@ export function renderWorkspace() {
     analyzing: "正在识别鞋款，稍后会进入产品设定。",
     review: "确认产品信息、受众、比例和创意方向。",
     market: "整理创意 brief，准备生成两段脚本。",
-    script: "编辑完整 20 秒脚本，按时间顺序检查镜头与文案。",
+    script: "查看完整 20 秒中文脚本，按时间顺序检查镜头与文案。",
     visual: "img2img 只生成两张故事板。",
     export: "最终页只保留两张故事板和对应脚本。"
   };
@@ -220,7 +188,6 @@ export function renderWorkspace() {
 }
 
 function renderProductionExperience(activeStatus) {
-  const experience = STAGE_EXPERIENCE[activeStatus] || STAGE_EXPERIENCE.assets;
   const visibleStep = VISIBLE_STAGE_NUMBER[activeStatus] || 1;
   const workspace = el("workspace");
   const stageChanged = workspace.dataset.renderedStage !== activeStatus;
@@ -233,8 +200,6 @@ function renderProductionExperience(activeStatus) {
   }
 
   el("productionSceneLabel").textContent = `SCENE ${String(visibleStep).padStart(2, "0")} / 05`;
-  el("productionTimecode").textContent = `00:00:${String((visibleStep - 1) * 5).padStart(2, "0")}`;
-  el("productionObjective").textContent = experience.objective;
 }
 
 function renderWorkspacePanel(project, activeStatus) {
@@ -259,8 +224,6 @@ function renderWorkspacePanel(project, activeStatus) {
   const panelStageCopy = el("panelStageCopy");
   const panelAssetCount = el("panelAssetCount");
   const panelWorkflowState = el("panelWorkflowState");
-  const panelSaveState = el("panelSaveState");
-  const panelApiState = el("panelApiState");
   const panelProgressBar = el("panelProgressBar");
   const panelProgressText = el("panelProgressText");
   if (panelStageKicker) panelStageKicker.textContent = `STEP 0${visibleStep}`;
@@ -268,8 +231,6 @@ function renderWorkspacePanel(project, activeStatus) {
   if (panelStageCopy) panelStageCopy.textContent = STAGE_PANEL_COPY[activeStatus] || "";
   if (panelAssetCount) panelAssetCount.textContent = `${assets.length} 张`;
   if (panelWorkflowState) panelWorkflowState.textContent = statusLabel(activeStatus);
-  if (panelSaveState) panelSaveState.textContent = state.busy ? "处理中" : "已保存";
-  if (panelApiState) panelApiState.textContent = providerSummary();
   if (panelProgressBar) panelProgressBar.style.width = `${completedPercent}%`;
   if (panelProgressText) panelProgressText.textContent = workflowProgress?.active && workflowProgress.stage === activeStatus
     ? workflowProgress.message
@@ -355,7 +316,7 @@ function renderCompletionList(status) {
     analyzing: ["等待识别完成", "保留原始素材", "准备进入人工审核"],
     review: ["目标人群和尺寸已选择", "创意方向和核心信息已整理", "产品锁定已确认"],
     market: ["目标国家已选择", "目标人群已确认", "创意主题、核心信息和语气已填写"],
-    script: ["完整 20 秒脚本已生成", "全部镜头按时间顺序可编辑", "确认后按两个 10 秒分段生成故事板"],
+    script: ["完整 20 秒脚本已生成", "全部镜头按时间顺序可审核", "确认后按两个 10 秒分段生成故事板"],
     visual: ["脚本已确认", "故事板方向清晰", "准备生成两张分段故事板"],
     export: ["两张故事板已整理", "两段 10 秒脚本可复制", "第一版交付内容已就绪"]
   };
