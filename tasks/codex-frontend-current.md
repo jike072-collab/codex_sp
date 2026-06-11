@@ -4,9 +4,9 @@ Status: READY
 
 Route: complex
 
-Base commit: `f996758`
+Base commit: `b28bb04`
 
-Branch: `codex/frontend-admin-provider-ux`
+Branch: `codex/frontend-cinematic-workbench`
 
 Backend dependency branch: `codex/backend-storyboard-524-model-discovery`
 
@@ -28,6 +28,9 @@ Route: complex
 - Show the currently saved API key as a masked value.
 - Add a final visual polish pass so the workbench and Admin pages feel like a
   stable finished product rather than a patched prototype.
+- Revise the submitted cinematic dark theme: keep useful layout/interaction
+  improvements, but return the product to the earlier lighter workbench visual
+  direction.
 
 ## Main Workbench
 
@@ -90,6 +93,18 @@ Polish rules:
 - Keep the product as an actual app screen, not a landing page.
 - Do not add marketing hero sections, decorative blobs, oversized cards, or
   one-note color themes.
+- Do not use a full black/cinematic production-studio theme for the main
+  workbench.
+- The main canvas, stage cards, forms, storyboard/script areas, dialogs, and
+  Admin page should stay light, calm, and work-focused.
+- A dark sidebar or small dark status strip is acceptable, but black should not
+  dominate the whole product.
+- Preserve useful non-color improvements from the submitted cinematic branch,
+  such as clearer progress/status, stable stepper sizing, better action dock
+  behavior, and improved layout density, if they remain usable after the color
+  rollback.
+- Remove or soften any cinematic/banner-like section that makes the app feel
+  like a marketing page instead of a production tool.
 - Do not place cards inside other cards.
 - Do not introduce layout movement when switching steps or changing states.
 - Buttons and controls must keep stable dimensions across loading, hover,
@@ -172,6 +187,10 @@ Do not edit:
   - no horizontal scrolling
   - no page jump when switching steps
   - button text fits in every state
+- Verify the visual tone is not overwhelmingly black:
+  - main work area uses light surfaces
+  - dark areas are limited to navigation or secondary emphasis
+  - Step 02, Step 03, Step 04, Step 05 remain easy to read for repeated work
 - Provide screenshots of the workbench sidebar and Admin desktop/mobile views.
 - Provide before/after Step 02 navigation screenshots or a short recording that
   demonstrates there is no layout shift.
