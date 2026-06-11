@@ -155,7 +155,10 @@
             <div class="stage-view hidden" id="reviewStage">
               <div class="review-top-actions">
                 <button class="ghost-button" id="backToAssetsButton" type="button">返回素材</button>
-                <button class="primary-button" type="submit" form="reviewForm">确认产品锁定</button>
+                <div class="review-confirm-cluster">
+                  <small id="reviewGateHint">需要 4 张参考图并确认产品锁定后才能进入脚本。</small>
+                  <button class="primary-button" id="confirmReviewButton" type="submit" form="reviewForm">确认并进入脚本</button>
+                </div>
               </div>
 
               <div class="section-heading">
@@ -177,6 +180,7 @@
                   <input name="tone" type="hidden" required>
                   <input name="shotsPerSegment" type="hidden" required>
                   <div class="review-control-box" id="reviewControlBox"></div>
+                  <p class="aspect-ratio-note">所选比例用于故事板内部镜头画幅和生成提示，不会强制改变外层故事板整张画布的比例。</p>
                   <label class="review-message-field">
                     <span>一句话主张</span>
                     <textarea class="message-box compact-message" name="coreMessage"
@@ -184,6 +188,8 @@
                     <small class="inline-help">不确定可以先留空，确认时会自动补一条适合当前鞋子的主张。</small>
                   </label>
                 </div>
+
+                <section class="product-lock-card" id="productLockCard" aria-live="polite"></section>
 
                 <details class="optional-review-details">
                   <summary>查看产品锁定细节</summary>

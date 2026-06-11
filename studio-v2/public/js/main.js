@@ -1,4 +1,4 @@
-import { el, showToast, state } from "./core.js";
+import { el, readProjectPreferences, saveProjectPreferences, showToast, state } from "./core.js";
 import { copyBlockText } from "./demo-loop.js";
 import {
   analyze,
@@ -89,6 +89,13 @@ function wireEvents() {
     if (event.target.id === "scriptForm") confirmScript(event);
   });
 
+  el("workspace").addEventListener("input", (event) => {
+    const textarea = event.target.closest("textarea[data-shot-field]");
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  });
+
   el("workspace").addEventListener("click", (event) => {
     const menuButton = event.target.closest("[data-review-menu]");
     if (menuButton) {
@@ -115,6 +122,16 @@ function wireEvents() {
         if (chip) chip.textContent = reviewOption.dataset.label || reviewOption.dataset.value || "";
         root?.querySelectorAll(".review-option").forEach((item) => item.classList.remove("selected"));
         reviewOption.classList.add("selected");
+        const preferences = readProjectPreferences(state.project);
+        const modifiedSettings = new Set(preferences.modifiedSettings || []);
+        modifiedSettings.add(name);
+        saveProjectPreferences(state.project, { modifiedSettings: [...modifiedSettings] });
+        const origin = root?.querySelector(".setting-origin");
+        if (origin) {
+          origin.textContent = "用户已修改";
+          origin.classList.remove("recommended");
+          origin.classList.add("modified");
+        }
       }
       document.querySelectorAll("[data-review-panel]").forEach((item) => item.classList.add("hidden"));
       document.querySelectorAll("[data-review-menu]").forEach((item) => item.setAttribute("aria-expanded", "false"));
@@ -159,6 +176,10 @@ function wireEvents() {
       },
       "view-export": () => {
         state.viewStatus = "export";
+        renderWorkspace();
+      },
+      "view-visual": () => {
+        state.viewStatus = "visual";
         renderWorkspace();
       },
       "confirm-and-generate-visual": () => confirmScriptAndGenerateVisual(),

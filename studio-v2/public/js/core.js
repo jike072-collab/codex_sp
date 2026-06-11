@@ -4,6 +4,7 @@ export const state = {
   viewStatus: null,
   busy: false,
   visualGenerationError: "",
+  workflowProgress: null,
   deletingProjectIds: new Set(),
   projectSelectionMode: false,
   selectedProjectIds: new Set(),
@@ -111,7 +112,11 @@ export function projectSetup(project = state.project) {
 export async function api(url, options = {}) {
   const response = await fetch(url, options);
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.error || `请求失败：${response.status}`);
+  if (!response.ok) {
+    const error = new Error(payload.error || `请求失败：${response.status}`);
+    Object.assign(error, payload, { status: response.status });
+    throw error;
+  }
   return payload;
 }
 
@@ -128,7 +133,7 @@ export function setBusy(value, message = "处理中...") {
   const canUpload = !value && state.project?.status === "assets";
   el("dropZone").disabled = !canUpload;
   el("fileInput").disabled = !canUpload;
-  el("analyzeButton").disabled = value || !state.project?.assets?.length;
+  el("analyzeButton").disabled = value || (state.project?.assets || []).length < 4;
   el("analyzeButton").textContent = value ? message : "识别并锁定产品";
   el("saveState").textContent = value ? message : "已保存到本机";
 }
@@ -158,8 +163,8 @@ export function statusLabel(status) {
     review: "产品锁定",
     market: "市场创意",
     script: "广告脚本",
-    visual: "视觉资产",
-    export: "交付导出"
+    visual: "故事板",
+    export: "最终交付"
   };
   return labels[status] || "商品素材";
 }
