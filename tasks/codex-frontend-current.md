@@ -1,6 +1,21 @@
 # Codex B Current Frontend Task
 
-Status: READY
+Status: CHANGES_REQUESTED - START NOW
+
+Target: 另一台前端电脑
+
+Published: 2026-06-11 18:25 Asia/Shanghai
+
+## 开工入口
+
+这是当前正式前端返工任务。前端电脑必须：
+
+1. `fetch/pull` GitHub 最新分支。
+2. 切换到 `codex/frontend-admin-provider-ux`。
+3. 先阅读本文件，再开始修改。
+4. 不要在本机后端对话执行此任务。
+
+本轮只修下面的 Admin 双绘图通道 P1 阻断问题，完成后直接推送同一前端分支。
 
 Route: complex
 

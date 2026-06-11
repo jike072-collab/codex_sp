@@ -29,7 +29,7 @@ Route: simple|standard|complex
 
 ## Codex A：后端
 
-状态：CHANGES_REQUESTED
+状态：READY_FOR_REVIEW
 
 任务入口：
 
@@ -62,11 +62,17 @@ Route: simple|standard|complex
 
 ## Codex B：前端
 
-状态：CHANGES_REQUESTED
+状态：CHANGES_REQUESTED - FRONTEND START NOW
 
 任务入口：
 
 - `tasks/codex-frontend-current.md`
+
+发布方式：
+
+- 只通过 GitHub 发给另一台前端电脑。
+- 前端电脑拉取 `codex/frontend-admin-provider-ux` 后立即处理。
+- 不发送到本机任何前端对话。
 
 任务分支：
 
