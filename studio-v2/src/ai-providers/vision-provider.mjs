@@ -86,6 +86,10 @@ export async function analyzeProject(project, { fetchImpl = fetch } = {}) {
 
   let payload;
   let content;
+  const requestText = [
+    "这些图片属于同一款鞋。请综合所有视角识别产品，并严格按系统要求输出 JSON。",
+    "如果只上传 1 个文件，也可能是一张包含正面、侧面、后跟、鞋底等角度的四视图拼图；请把这张拼图当作完整参考图综合判断，不要要求拆成多个文件。"
+  ].join("");
   if (isDrawEndpoint(apiUrl)) {
     payload = await postProviderJson({
       url: apiUrl,
@@ -105,7 +109,7 @@ export async function analyzeProject(project, { fetchImpl = fetch } = {}) {
             content: [
               {
                 type: "text",
-                text: "这些图片属于同一款鞋。请综合所有视角识别产品，并严格按系统要求输出 JSON。"
+                text: requestText
               },
               ...imageParts.map((image) => ({
                 type: "image_url",
@@ -134,7 +138,7 @@ export async function analyzeProject(project, { fetchImpl = fetch } = {}) {
           role: "user",
           parts: [
             {
-              text: "这些图片属于同一款鞋。请综合所有视角识别产品，并严格按系统要求输出 JSON。"
+              text: requestText
             },
             ...imageParts.map((image) => ({
               inlineData: image

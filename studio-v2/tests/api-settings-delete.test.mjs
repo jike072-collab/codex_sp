@@ -416,7 +416,7 @@ test("batch project deletion removes only the selected projects", async () => {
   assert.equal(remaining.body.project.name, "Batch delete B");
 });
 
-test("asset deletion removes one uploaded image before analysis", async () => {
+test("asset deletion removes the only uploaded image before analysis", async () => {
   const created = await request("/api/projects", {
     method: "POST",
     body: JSON.stringify({ name: "Asset cleanup" })
@@ -425,10 +425,7 @@ test("asset deletion removes one uploaded image before analysis", async () => {
   const uploaded = await request(`/api/projects/${projectId}/assets`, {
     method: "POST",
     body: JSON.stringify({
-      files: [
-        { name: "shoe-a.png", dataUrl: tinyPng },
-        { name: "shoe-b.png", dataUrl: tinyPng.replace("AScY42Y", "AScY42Y") }
-      ]
+      files: [{ name: "shoe-collage.png", dataUrl: tinyPng }]
     })
   });
   assert.equal(uploaded.response.status, 200);

@@ -19,7 +19,11 @@ The adapter builds
 `/v1beta/models/:model:generateContent` from the configured base endpoint.
 Uploaded images are sent inline and are not made publicly accessible. A
 configured `/draw/v1/chat/completions` URL remains supported for legacy keys
-that are authorized for the Draw channel.
+that are authorized for the Draw channel. The minimum analyze contract is one
+uploaded image file. That one file may already be a four-view collage
+containing front, side, heel, outsole, or other angles of the same shoe; the
+backend forwards the original collage image intact as a full reference image and
+does not require splitting it into separate files.
 
 ## Script
 

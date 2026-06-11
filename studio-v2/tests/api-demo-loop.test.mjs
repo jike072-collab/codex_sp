@@ -184,6 +184,129 @@ test("no-key mode keeps storyboard generation in Step 4 and blocks export", asyn
   assert.equal(exportResponse.status, 400);
 });
 
+test("single uploaded collage image can be analyzed by the vision provider", async () => {
+  const providerRequests = [];
+  const providerServer = http.createServer((req, res) => {
+    providerRequests.push(req.url);
+    let body = "";
+    req.setEncoding("utf8");
+    req.on("data", (chunk) => {
+      body += chunk;
+    });
+    req.on("end", () => {
+      const payload = JSON.parse(body);
+      const userParts = payload.contents?.[0]?.parts || [];
+      assert.equal(userParts.length, 2);
+      assert.match(
+        userParts[0].text,
+        /如果只上传 1 个文件，也可能是一张包含正面、侧面、后跟、鞋底等角度的四视图拼图/
+      );
+      assert.equal(typeof userParts[1].inlineData?.data, "string");
+      assert.equal(userParts[1].inlineData.data.length > 0, true);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        candidates: [{
+          content: {
+            parts: [{
+              text: JSON.stringify({
+                product_summary: {
+                  shoe_type: "running shoe",
+                  likely_usage: { value: "daily movement", evidence: "visible" },
+                  overall_style: "sport"
+                },
+                product_lock_manifest: {
+                  main_colors: ["blue"],
+                  supporting_colors: ["white"],
+                  upper_material_visible: "mesh",
+                  toe_shape: "rounded",
+                  lace_system: "standard",
+                  midsole_shape: "curved",
+                  outsole_color: "black",
+                  outsole_pattern: "visible tread",
+                  side_pattern_or_logo: "side logo",
+                  heel_structure: "padded",
+                  must_keep: ["exact silhouette"],
+                  must_not_change: ["do not change color"]
+                },
+                visible_selling_point_candidates: [],
+                image_quality: {
+                  usable: true,
+                  views_detected: ["front", "side", "heel", "outsole collage"],
+                  missing_or_unclear: [],
+                  notes: ["single collage accepted"]
+                }
+              })
+            }]
+          }
+        }]
+      }));
+    });
+  });
+  await new Promise((resolveListen, reject) => {
+    providerServer.once("error", reject);
+    providerServer.listen(0, "127.0.0.1", resolveListen);
+  });
+  const providerAddress = providerServer.address();
+  const providerBaseUrl = `http://127.0.0.1:${providerAddress.port}`;
+
+  const previousEnv = {
+    VISION_MODEL_API_KEY: process.env.VISION_MODEL_API_KEY,
+    VISION_API_URL: process.env.VISION_API_URL,
+    VISION_MODEL: process.env.VISION_MODEL
+  };
+  Object.assign(process.env, {
+    VISION_MODEL_API_KEY: "vision-collage-key",
+    VISION_API_URL: `${providerBaseUrl}/gemini`,
+    VISION_MODEL: "gemini-2.5-flash"
+  });
+
+  try {
+    const created = await jsonRequest("/api/projects", {
+      method: "POST",
+      body: JSON.stringify({ name: "Single collage analyze" })
+    });
+    const projectId = created.body.project.id;
+
+    const uploaded = await jsonRequest(`/api/projects/${projectId}/assets`, {
+      method: "POST",
+      body: JSON.stringify({
+        files: [{ name: "shoe-collage.png", dataUrl: tinyPng }]
+      })
+    });
+    assert.equal(uploaded.response.status, 200);
+    assert.equal(uploaded.body.project.assets.length, 1);
+
+    const analyzed = await jsonRequest(`/api/projects/${projectId}/analyze`, {
+      method: "POST"
+    });
+    assert.equal(analyzed.response.status, 200);
+    assert.equal(analyzed.body.project.status, "review");
+    assert.equal(analyzed.body.project.visionAnalysis.mode, "api");
+    assert.equal(providerRequests.length, 1);
+  } finally {
+    await new Promise((resolveClose) => providerServer.close(resolveClose));
+    for (const [key, value] of Object.entries(previousEnv)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
+
+test("analyze still rejects projects with zero uploaded images", async () => {
+  const created = await jsonRequest("/api/projects", {
+    method: "POST",
+    body: JSON.stringify({ name: "Analyze without assets" })
+  });
+  const projectId = created.body.project.id;
+
+  const response = await jsonRequest(`/api/projects/${projectId}/analyze`, {
+    method: "POST"
+  });
+  assert.equal(response.response.status, 400);
+  assert.equal(response.body.code, "ASSET_REQUIRED");
+  assert.match(response.body.error, /请先上传鞋子图片/);
+});
+
 test("script confirmation rejects a broken timeline", async () => {
   const created = await jsonRequest("/api/projects", {
     method: "POST",
