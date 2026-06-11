@@ -4,6 +4,31 @@ This file is the shared operating file for both Codex agents. Read it before
 editing. If it conflicts with a direct user instruction, ask or follow the
 newer user instruction. If it conflicts with an API contract, the contract wins.
 
+## Mandatory Skill Bootstrap
+
+At the beginning of every task or resumed task, all Codex roles MUST invoke:
+
+1. `$nadirclaw-model-router`
+2. `$superpowers-workflow`
+
+The invocation order is fixed. This applies to frontend, backend, coordinator,
+integration, review, documentation, Git operations, and test-only work.
+
+Before editing, report:
+
+```text
+Skills: nadirclaw-model-router, superpowers-workflow
+Route: simple|standard|complex
+```
+
+Before handoff, repeat the skill and route record together with checks run.
+Do not begin implementation if either skill is unavailable. Install the
+repository copies first:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-codex-skills.ps1
+```
+
 ## First Version Goal
 
 The first version is judged by one thing: the local no-key demo loop must run
@@ -151,14 +176,16 @@ Read `docs/MODEL-ROUTING.md` before delegating or starting a new task.
 
 Use this loop for every module:
 
-1. Sync: run `git fetch origin`, inspect ahead/behind status, and read this
+1. Bootstrap: invoke both mandatory skills and record the chosen route.
+2. Sync: run `git fetch origin`, inspect ahead/behind status, and read this
    file plus the active task file.
-2. Scope: confirm the files you will edit are inside your owned paths.
-3. Implement one small module at a time.
-4. Verify that module before moving to the next one.
-5. Commit after a passing module or coherent milestone.
-6. Push immediately after commit when GitHub authentication is available.
-7. Handoff with branch, commit, changed files, behavior, tests, and blockers.
+3. Scope: confirm the files you will edit are inside your owned paths.
+4. Implement one small module at a time.
+5. Verify that module before moving to the next one.
+6. Commit after a passing module or coherent milestone.
+7. Push immediately after commit when GitHub authentication is available.
+8. Handoff with skills, route, branch, commit, changed files, behavior, tests,
+   and blockers.
 
 Never revert, reset, overwrite, or reformat another agent's work to make your
 own branch cleaner.

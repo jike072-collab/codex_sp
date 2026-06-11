@@ -9,6 +9,26 @@
 
 任务文件、冻结后的后端契约和远端分支状态优先于聊天记录。
 
+每次任务或续接任务开始时，前端、后端和审核 Codex 都必须依次调用：
+
+1. `$nadirclaw-model-router`
+2. `$superpowers-workflow`
+
+开工状态更新和最终交接必须包含：
+
+```text
+Skills: nadirclaw-model-router, superpowers-workflow
+Route: simple|standard|complex
+```
+
+如果另一台电脑没有这两个技能，先运行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-codex-skills.ps1
+```
+
+安装后开启新线程，再领取任务。
+
 ## 当前开工状态
 
 - 后端 P0 已完成、通过回归测试并合入本轮 `main` 基线。
@@ -96,6 +116,8 @@ git pull --ff-only origin codex/frontend-p0-workbench-review
 
 PR/审核材料必须包括：
 
+- 已调用技能：`nadirclaw-model-router`、`superpowers-workflow`
+- 本次 Route
 - 改动说明和文件列表
 - 上传删除状态截图
 - Step 2 设置和 Product Lock 截图

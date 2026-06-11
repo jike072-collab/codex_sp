@@ -6,6 +6,20 @@ Base: latest `main` / `v2`.
 Route: standard.
 Status: complete, verified, and merged into the frontend work baseline.
 
+## Mandatory Skill Bootstrap
+
+Every backend, coordination, review, or resumed task must invoke in this order:
+
+1. `$nadirclaw-model-router`
+2. `$superpowers-workflow`
+
+Progress and handoff records must include:
+
+```text
+Skills: nadirclaw-model-router, superpowers-workflow
+Route: standard
+```
+
 Reference image:
 
 - `docs/reference/workbench-p0-user-feedback/07-storyboard-failure-step.png`

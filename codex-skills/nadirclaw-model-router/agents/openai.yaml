@@ -1,7 +1,7 @@
 interface:
   display_name: "NadirClaw Router"
-  short_description: "Route tasks by difficulty and token cost"
-  default_prompt: "Use $nadirclaw-model-router to choose the right model tier and reasoning effort for this task."
+  short_description: "Mandatory first-step task router"
+  default_prompt: "Always invoke $nadirclaw-model-router first on every task or resumed task, record the route, then invoke $superpowers-workflow."
 
 policy:
   allow_implicit_invocation: true

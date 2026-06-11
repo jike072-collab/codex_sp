@@ -1,9 +1,14 @@
 ---
 name: superpowers-workflow
-description: Use a Superpowers-style workflow for software tasks: read repo context first, break work into focused steps, keep changes small, coordinate parallel work, and validate before merging.
+description: Mandatory second skill for every task in this repository; after model routing, use the repository-first workflow for inspection, planning, owned-path implementation, verification, review, Git coordination, and handoff.
 ---
 
 # Superpowers Workflow
+
+## Repository Requirement
+
+Invoke this skill second on every task and resumed task, immediately after
+`$nadirclaw-model-router`.
 
 ## Use
 

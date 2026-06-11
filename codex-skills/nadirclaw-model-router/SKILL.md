@@ -1,9 +1,14 @@
 ---
 name: nadirclaw-model-router
-description: Route tasks by difficulty, cost, and risk; choose an appropriate model and reasoning effort for simple, medium, or hard work, and use this when the user wants automatic model selection or token-saving task routing.
+description: Mandatory first skill for every task in this repository; route work by difficulty, cost, and risk and choose the appropriate model and reasoning effort before any inspection, edit, review, Git operation, or test.
 ---
 
 # NadirClaw Model Router
+
+## Repository Requirement
+
+Invoke this skill first on every task and resumed task. After routing, invoke
+`$superpowers-workflow` before implementation.
 
 ## Use
 

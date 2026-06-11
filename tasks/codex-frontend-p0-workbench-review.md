@@ -6,6 +6,24 @@ Base: latest `main` after `codex/backend-p0-storyboard-state` is merged.
 Route: complex.
 Status: ready to start after the coordinator updates `main` and resets this branch to `origin/main`.
 
+## Mandatory Skill Bootstrap
+
+Before any inspection or edit, invoke in this order:
+
+1. `$nadirclaw-model-router`
+2. `$superpowers-workflow`
+
+The first progress update and final handoff must include:
+
+```text
+Skills: nadirclaw-model-router, superpowers-workflow
+Route: complex
+```
+
+If either skill is unavailable, run
+`.\scripts\install-codex-skills.ps1`, open a fresh Codex thread, and only then
+start this task.
+
 Reference images:
 
 - `docs/reference/workbench-p0-user-feedback/01-upload-delete-and-fourth-image.png`
@@ -244,6 +262,7 @@ Acceptance:
 
 The frontend PR must include:
 
+- mandatory skills invoked and route used
 - changed files
 - screenshots for upload/delete, Step 2 settings/Product Lock, Step 2 modal, Step 3 script editor, Step 4 partial/failure, Step 5 final
 - whether backend contract fields were assumed or observed
