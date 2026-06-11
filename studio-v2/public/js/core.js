@@ -135,7 +135,8 @@ export function setBusy(value, message = "处理中...") {
   el("fileInput").disabled = !canUpload;
   el("analyzeButton").disabled = value || (state.project?.assets || []).length < 4;
   el("analyzeButton").textContent = value ? message : "识别并锁定产品";
-  el("saveState").textContent = value ? message : "已保存到本机";
+  const saveState = el("saveState");
+  if (saveState) saveState.textContent = value ? message : "已保存到本机";
 }
 
 export function formatTime(value) {

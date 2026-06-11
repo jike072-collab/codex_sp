@@ -33,7 +33,7 @@ const STAGE_PANEL_COPY = {
   assets: "先上传清晰的同款鞋素材，后面的识别和锁定才会稳。",
   review: "确认产品锁定、受众、比例和创意方向。",
   market: "把已确认的产品信息整理成脚本输入。",
-  script: "保持两段 10 秒脚本清楚、可改、好对照。",
+  script: "按完整 20 秒时间线检查镜头、文案和节奏。",
   visual: "img2img 只生成两张故事板，成功的会保留。",
   export: "只保留两张故事板和对应脚本，方便直接交付。"
 };
@@ -56,52 +56,6 @@ const VISIBLE_STAGE_NUMBER = {
   visual: 4,
   export: 5
 };
-
-const STAGE_EXPERIENCE = {
-  assets: {
-    objective: "建立商品视觉基准，让后续画面始终像同一双鞋。",
-    dockTitle: "上传至少 4 张同款鞋参考图",
-    dockHint: "主视图、侧视图、后跟和鞋底越清楚，产品锁定越稳定。"
-  },
-  analyzing: {
-    objective: "正在读取鞋型、材质与不可改变的产品特征。",
-    dockTitle: "正在识别并建立 Product Lock",
-    dockHint: "识别完成后会自动进入人工审核。"
-  },
-  review: {
-    objective: "锁定产品身份，并确定这条广告面对谁、以什么画幅呈现。",
-    dockTitle: "确认产品设定，进入脚本制作",
-    dockHint: "检查 Product Lock、受众、画幅和创意方向。"
-  },
-  market: {
-    objective: "把产品设定整理成可直接驱动广告脚本的创意方向。",
-    dockTitle: "保存创意方向，进入脚本制作",
-    dockHint: "一句话主张将成为两段脚本的共同核心。"
-  },
-  script: {
-    objective: "把创意方向变成两段可编辑、可执行的 10 秒广告脚本。",
-    dockTitle: "完成脚本并进入故事板制作",
-    dockHint: "确认镜头、台词、画面和节奏后生成故事板。"
-  },
-  visual: {
-    objective: "使用商品参考图制作两张分段故事板，成功画面会被保留。",
-    dockTitle: "完成两张故事板",
-    dockHint: "生成中保持页面开启；失败时只补齐缺失画面。"
-  },
-  export: {
-    objective: "两张故事板与两段脚本已组成可直接使用的第一版广告交付。",
-    dockTitle: "制作完成",
-    dockHint: "预览故事板，并复制对应的两段脚本。"
-  }
-};
-
-function providerSummary() {
-  const providers = state.providerStatus || {};
-  const kinds = ["vision", "text", "image"];
-  const configuredCount = kinds.filter((kind) => providers[kind]?.configured).length;
-  if (!configuredCount) return "尚未配置";
-  return `${configuredCount}/3 已配置`;
-}
 
 function publicQualityNotes(analysis) {
   const notes = [
@@ -192,7 +146,7 @@ export function renderWorkspace() {
     analyzing: "正在识别鞋款，稍后会进入产品设定。",
     review: "确认产品信息、受众、比例和创意方向。",
     market: "整理创意 brief，准备生成两段脚本。",
-    script: "编辑两段 10 秒脚本，保持节奏清楚。",
+    script: "查看完整 20 秒中文脚本，按时间顺序检查镜头与文案。",
     visual: "img2img 只生成两张故事板。",
     export: "最终页只保留两张故事板和对应脚本。"
   };
@@ -225,88 +179,20 @@ export function renderWorkspace() {
   if (activeStatus === "script") renderScriptStage(project);
   if (activeStatus === "visual") renderVisualStage(project);
   if (activeStatus === "export") renderExportStage(project);
-  renderProductionExperience(project, activeStatus);
+  renderProductionExperience(activeStatus);
   if (project.reviewConfirmedAt) {
     el("confirmedTime").textContent = `确认时间：${formatTime(project.reviewConfirmedAt)}`;
   }
 
   lockStageForReview(isReviewingPast);
-  el("saveState").textContent = isReviewingPast
-    ? `正在回看：${statusLabel(activeStatus)}`
-    : "已保存到本机";
 }
 
-function completedStoryboardUrls(project) {
-  return (project?.imagePackage?.image_generation || [])
-    .filter((item) => item?.status === "done" && item?.generated_image?.url)
-    .map((item) => item.generated_image.url);
-}
-
-function productionMedia(project, activeStatus) {
-  const storyboardUrls = completedStoryboardUrls(project);
-  const assetUrls = (project?.assets || []).map((asset) => asset.url).filter(Boolean);
-  if (["visual", "export"].includes(activeStatus) && storyboardUrls.length) {
-    return [...storyboardUrls, ...assetUrls].slice(0, 4);
-  }
-  return [...assetUrls, ...storyboardUrls].slice(0, 4);
-}
-
-function productionProgress(activeStatus) {
-  if (state.workflowProgress?.active && state.workflowProgress.stage === activeStatus) {
-    return state.workflowProgress.percent;
-  }
-  if (activeStatus === "export") return 100;
+function renderProductionExperience(activeStatus) {
   const visibleStep = VISIBLE_STAGE_NUMBER[activeStatus] || 1;
-  return Math.max(12, Math.round((visibleStep / 5) * 100));
-}
-
-function renderProductionReel(project, activeStatus) {
-  const reel = el("productionReel");
-  if (!reel) return;
-  const media = productionMedia(project, activeStatus);
-  const placeholders = Math.max(0, 4 - media.length);
-  reel.innerHTML = [
-    ...media.map((url, index) => `
-      <span class="production-reel-frame ${index === 0 ? "featured" : ""}">
-        <img src="${escapeHtml(url)}" alt="">
-        <i>${String(index + 1).padStart(2, "0")}</i>
-      </span>
-    `),
-    ...Array.from({ length: placeholders }, (_, index) => `
-      <span class="production-reel-frame empty">
-        <b>${String(media.length + index + 1).padStart(2, "0")}</b>
-      </span>
-    `)
-  ].join("");
-}
-
-function dockTarget(activeStatus) {
-  const assets = state.project?.assets || [];
-  if (activeStatus === "assets" && assets.length < 4) return { id: "dropZone", label: "选择商品图片" };
-  if (activeStatus === "assets") return { id: "analyzeButton", label: "识别并锁定产品" };
-  if (activeStatus === "review") return { id: "confirmReviewButton", label: "确认并进入脚本" };
-  if (activeStatus === "market") return { id: "saveMarketButton", label: "保存创意方向" };
-  if (activeStatus === "script") {
-    if (state.project?.planningPackage) return { id: "confirmAndGenerateButton", label: "确认脚本并生成故事板" };
-    return { id: "generateScriptButton", label: "生成脚本" };
-  }
-  if (activeStatus === "visual") {
-    const exportButton = document.querySelector('#visualStage [data-action="view-export"]');
-    if (exportButton) return { selector: '#visualStage [data-action="view-export"]', label: "进入最终交付" };
-    return { id: "generateVisualButton", label: "继续制作故事板" };
-  }
-  return { label: "制作完成", disabled: true };
-}
-
-function renderProductionExperience(project, activeStatus) {
-  const experience = STAGE_EXPERIENCE[activeStatus] || STAGE_EXPERIENCE.assets;
-  const visibleStep = VISIBLE_STAGE_NUMBER[activeStatus] || 1;
-  const percent = productionProgress(activeStatus);
-  const dock = dockTarget(activeStatus);
   const workspace = el("workspace");
   const stageChanged = workspace.dataset.renderedStage !== activeStatus;
   workspace.dataset.stage = activeStatus;
-  workspace.dataset.status = project.status;
+  workspace.dataset.status = state.project?.status || activeStatus;
   workspace.dataset.renderedStage = activeStatus;
   if (stageChanged) {
     workspace.classList.remove("production-enter");
@@ -314,24 +200,6 @@ function renderProductionExperience(project, activeStatus) {
   }
 
   el("productionSceneLabel").textContent = `SCENE ${String(visibleStep).padStart(2, "0")} / 05`;
-  el("productionHeaderPercent").textContent = `${percent}%`;
-  el("productionHeaderProgress").style.width = `${percent}%`;
-  el("productionTimecode").textContent = `00:00:${String((visibleStep - 1) * 5).padStart(2, "0")}`;
-  el("productionObjective").textContent = experience.objective;
-  el("productionDockLabel").textContent = activeStatus === "export" ? "最终交付" : `当前任务 · SCENE ${String(visibleStep).padStart(2, "0")}`;
-  el("productionDockTitle").textContent = experience.dockTitle;
-  el("productionDockHint").textContent = state.workflowProgress?.active && state.workflowProgress.stage === activeStatus
-    ? state.workflowProgress.message
-    : experience.dockHint;
-
-  const dockButton = el("productionDockAction");
-  dockButton.textContent = dock.label;
-  dockButton.disabled = Boolean(dock.disabled);
-  dockButton.dataset.targetId = dock.id || "";
-  dockButton.dataset.targetSelector = dock.selector || "";
-  const target = dock.id ? el(dock.id) : dock.selector ? document.querySelector(dock.selector) : null;
-  if (target && "disabled" in target) dockButton.disabled = target.disabled;
-  renderProductionReel(project, activeStatus);
 }
 
 function renderWorkspacePanel(project, activeStatus) {
@@ -356,8 +224,6 @@ function renderWorkspacePanel(project, activeStatus) {
   const panelStageCopy = el("panelStageCopy");
   const panelAssetCount = el("panelAssetCount");
   const panelWorkflowState = el("panelWorkflowState");
-  const panelSaveState = el("panelSaveState");
-  const panelApiState = el("panelApiState");
   const panelProgressBar = el("panelProgressBar");
   const panelProgressText = el("panelProgressText");
   if (panelStageKicker) panelStageKicker.textContent = `STEP 0${visibleStep}`;
@@ -365,12 +231,83 @@ function renderWorkspacePanel(project, activeStatus) {
   if (panelStageCopy) panelStageCopy.textContent = STAGE_PANEL_COPY[activeStatus] || "";
   if (panelAssetCount) panelAssetCount.textContent = `${assets.length} 张`;
   if (panelWorkflowState) panelWorkflowState.textContent = statusLabel(activeStatus);
-  if (panelSaveState) panelSaveState.textContent = state.busy ? "处理中" : "已保存";
-  if (panelApiState) panelApiState.textContent = providerSummary();
   if (panelProgressBar) panelProgressBar.style.width = `${completedPercent}%`;
   if (panelProgressText) panelProgressText.textContent = workflowProgress?.active && workflowProgress.stage === activeStatus
     ? workflowProgress.message
     : readinessText;
+  renderPanelStageVisual(project, activeStatus);
+}
+
+function renderPanelStageVisual(project, activeStatus) {
+  const container = el("panelStageVisual");
+  if (!container) return;
+  const assets = project.assets || [];
+  const script = project.planningPackage?.script_20s || {};
+  const shotCount = [
+    ...(script.segment_a_0_10s?.shots || []),
+    ...(script.segment_b_10_20s?.shots || [])
+  ].length;
+  const generated = (project.imagePackage?.image_generation || [])
+    .filter((item) => item?.status === "done" && item?.generated_image?.url).length;
+
+  if (activeStatus === "script") {
+    container.innerHTML = `
+      <div class="stage-visual-heading">
+        <span>20 秒时间线</span>
+        <strong>${escapeHtml(shotCount || 10)} 镜头</strong>
+      </div>
+      <div class="script-segment-chart">
+        <div><span>0-10s</span><i></i></div>
+        <div><span>10-20s</span><i></i></div>
+      </div>
+      <div class="shot-tick-chart" aria-hidden="true">
+        ${Array.from({ length: shotCount || 10 }, (_, index) => `<i style="--tick:${index}"></i>`).join("")}
+      </div>
+      <div class="stage-visual-stats">
+        <div><strong>20s</strong><span>总时长</span></div>
+        <div><strong>2</strong><span>交付分段</span></div>
+        <div><strong>${escapeHtml(shotCount || 10)}</strong><span>镜头总数</span></div>
+      </div>
+    `;
+    return;
+  }
+
+  if (activeStatus === "visual" || activeStatus === "export") {
+    container.innerHTML = `
+      <div class="stage-visual-heading">
+        <span>故事板交付</span>
+        <strong>${escapeHtml(generated)}/2</strong>
+      </div>
+      <div class="storyboard-mini-grid">
+        ${[0, 1].map((index) => `
+          <div data-complete="${index < generated}">
+            <span>${index === 0 ? "0-10s" : "10-20s"}</span>
+            <i></i>
+          </div>
+        `).join("")}
+      </div>
+      <div class="stage-visual-stats">
+        <div><strong>${escapeHtml(generated)}</strong><span>已完成</span></div>
+        <div><strong>${escapeHtml(2 - generated)}</strong><span>待生成</span></div>
+      </div>
+    `;
+    return;
+  }
+
+  const readyAssets = Math.min(4, assets.length);
+  container.innerHTML = `
+    <div class="stage-visual-heading">
+      <span>${activeStatus === "review" || activeStatus === "market" ? "产品锁定检查" : "素材完整度"}</span>
+      <strong>${escapeHtml(readyAssets)}/4</strong>
+    </div>
+    <div class="asset-readiness-chart">
+      ${Array.from({ length: 4 }, (_, index) => `<i data-ready="${index < readyAssets}"></i>`).join("")}
+    </div>
+    <div class="stage-visual-stats">
+      <div><strong>${escapeHtml(assets.length)}</strong><span>参考图</span></div>
+      <div><strong>${readyAssets === 4 ? "完成" : "准备中"}</strong><span>四图门禁</span></div>
+    </div>
+  `;
 }
 
 export function renderStepper(activeStatus = viewStatus()) {
@@ -452,7 +389,7 @@ function renderCompletionList(status) {
     analyzing: ["等待识别完成", "保留原始素材", "准备进入人工审核"],
     review: ["目标人群和尺寸已选择", "创意方向和核心信息已整理", "产品锁定已确认"],
     market: ["目标国家已选择", "目标人群已确认", "创意主题、核心信息和语气已填写"],
-    script: ["产品锁定和创意方向已保存", "选择每个 10 秒段落的镜头数", "生成脚本后可继续编辑"],
+    script: ["完整 20 秒脚本已生成", "全部镜头按时间顺序可审核", "确认后按两个 10 秒分段生成故事板"],
     visual: ["脚本已确认", "故事板方向清晰", "准备生成两张分段故事板"],
     export: ["两张故事板已整理", "两段 10 秒脚本可复制", "第一版交付内容已就绪"]
   };
@@ -535,21 +472,21 @@ function renderReviewControls(setup) {
   const groups = [
     {
       name: "targetCountry",
-      icon: "国",
+      icon: "地",
       label: "国家",
       value: countryLabel,
       options: compactOptionsHtml("targetCountry", marketCountryOptions, setup.targetCountry)
     },
     {
       name: "audience",
-      icon: "人",
+      icon: "众",
       label: "人群",
       value: setup.audience,
       options: compactOptionsHtml("audience", audienceOptions.map(([value, label, description]) => [label, label, description]), setup.audience)
     },
     {
       name: "output_aspect_ratio",
-      icon: "比",
+      icon: "幅",
       label: "尺寸",
       value: setup.outputAspectRatio,
       options: compactOptionsHtml("output_aspect_ratio", aspectRatioOptions, setup.outputAspectRatio, { valueAsLabel: true, withIcons: true })

@@ -68,14 +68,15 @@ P1: Admin 必须适配后端返回的双绘图通道，不得再把 image provid
 6. Step 03 脚本区改成更像表格的展示，一张镜头卡片只出现一次，信息按行/列清楚展开。
 7. 右侧裁切、局部显示不全、内容被挡住的问题要一起修掉。
 8. 管理后台也要和主工作台统一风格，别像另一套系统。
-9. 全部可见界面文案保持中文，技术值可以保留原样。
+9. Admin 仍要兼容后端模型列表接口：模型只能选择，不能自由填空；Key 只能显示脱敏值。
+10. 全部可见界面文案保持中文，技术值可以保留原样。
 
 ## Scope
 
 Allowed:
 
 - `studio-v2/public/**`
-- `studio-v2/admin/**`（只在确有必要时）
+- `studio-v2/admin/**`
 
 Do not edit:
 
@@ -103,6 +104,7 @@ Do not edit:
 - Verify no horizontal page scroll and no clipped right edge.
 - Verify all visible text is Chinese.
 - Verify the admin page uses the same visual language as the workbench.
+- Verify model options load as selections and key display is masked only.
 - Provide screenshots of the updated workbench and admin page.
 
 ## Delivery

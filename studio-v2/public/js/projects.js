@@ -365,9 +365,8 @@ async function waitForMinimumFeedback(startedAt, minimumMs = 1800) {
 
 function updateProductionProgressDom(progress) {
   if (!progress?.active) return;
-  if (el("productionHeaderPercent")) el("productionHeaderPercent").textContent = `${progress.percent}%`;
-  if (el("productionHeaderProgress")) el("productionHeaderProgress").style.width = `${progress.percent}%`;
-  if (el("productionDockHint")) el("productionDockHint").textContent = progress.message;
+  if (el("panelProgressBar")) el("panelProgressBar").style.width = `${progress.percent}%`;
+  if (el("panelProgressText")) el("panelProgressText").textContent = progress.message;
 }
 
 function setScriptProgress(active) {

@@ -62,22 +62,34 @@ function providerText(provider) {
   };
 }
 
-function maskedKeyPreview(provider) {
-  const preview = String(provider.config?.keyPreview || "").trim();
+function channelConfig(provider, channelId) {
+  return provider.config?.channels?.find((channel) => channel.id === channelId) || null;
+}
+
+function fieldConfig(provider, field) {
+  return field.channelId ? channelConfig(provider, field.channelId) : provider.config;
+}
+
+function maskedKeyPreview(provider, field) {
+  const preview = String(fieldConfig(provider, field)?.keyPreview || "").trim();
   if (!preview) return "当前未保存可用密钥";
   const suffix = preview.match(/([a-z0-9]{4})\s*$/i)?.[1];
   return suffix ? `当前密钥：•••• ${suffix}` : `当前密钥：${preview}`;
 }
 
-function modelState(provider) {
+function modelState(provider, field = {}) {
   const discovery = modelProviders[provider.id];
   if (!discovery) return { status: "loading", models: [] };
+  if (field.channelId) {
+    return discovery.channels?.find((channel) => channel.id === field.channelId)
+      || { status: discovery.status || "error", models: [] };
+  }
   return discovery;
 }
 
-function modelOptions(provider) {
-  const discovery = modelState(provider);
-  const current = discovery.currentModel || provider.config?.model || "";
+function modelOptions(provider, field) {
+  const discovery = modelState(provider, field);
+  const current = discovery.currentModel || fieldConfig(provider, field)?.model || "";
   const options = discovery.models || [];
   const unique = new Map(options.filter((option) => option?.id).map((option) => [
     option.id,
@@ -93,16 +105,17 @@ function renderModelField(provider, field, wrapper) {
   select.name = field.valueKey;
   select.required = true;
   select.dataset.fieldType = "select";
-  for (const optionData of modelOptions(provider)) {
+  const discovery = modelState(provider, field);
+  const currentModel = discovery.currentModel || fieldConfig(provider, field)?.model || "";
+  for (const optionData of modelOptions(provider, field)) {
     const option = document.createElement("option");
     option.value = optionData.id;
     option.textContent = optionData.label;
-    option.selected = optionData.id === (modelState(provider).currentModel || provider.config.model);
+    option.selected = optionData.id === currentModel;
     select.append(option);
   }
   wrapper.append(select);
 
-  const discovery = modelState(provider);
   const help = document.createElement("small");
   help.className = "model-status";
   help.dataset.status = discovery.status || "error";
@@ -115,7 +128,7 @@ function renderInputField(provider, field, wrapper) {
   input.id = field.valueKey;
   input.name = field.valueKey;
   input.type = field.type === "secret" ? "password" : "url";
-  input.value = field.type === "secret" ? "" : provider.config.apiUrl || "";
+  input.value = field.type === "secret" ? "" : fieldConfig(provider, field)?.apiUrl || "";
   input.autocomplete = field.type === "secret" ? "new-password" : "off";
   input.dataset.fieldType = field.type;
   input.placeholder = field.type === "secret" ? "留空表示保持当前密钥" : "";
@@ -124,7 +137,7 @@ function renderInputField(provider, field, wrapper) {
 
   const help = document.createElement("small");
   help.textContent = field.type === "secret"
-    ? maskedKeyPreview(provider)
+    ? maskedKeyPreview(provider, field)
     : "保存后将用于此供应商的请求。";
   wrapper.append(help);
 
@@ -143,6 +156,7 @@ function renderInputField(provider, field, wrapper) {
 function renderField(provider, field) {
   const wrapper = document.createElement("div");
   wrapper.className = "field";
+  if (field.channelId) wrapper.dataset.channelId = field.channelId;
 
   const label = document.createElement("label");
   label.htmlFor = field.valueKey;
@@ -155,6 +169,41 @@ function renderField(provider, field) {
     renderInputField(provider, field, wrapper);
   }
   return wrapper;
+}
+
+function renderImageChannel(provider, channel) {
+  const config = channelConfig(provider, channel.id) || {};
+  const section = document.createElement("section");
+  section.className = "channel-card";
+  section.dataset.channelId = channel.id;
+
+  const header = document.createElement("div");
+  header.className = "channel-header";
+  const titleBlock = document.createElement("div");
+  const title = document.createElement("h3");
+  title.textContent = channel.title;
+  const description = document.createElement("p");
+  description.textContent = channel.description;
+  titleBlock.append(title, description);
+
+  const segment = document.createElement("span");
+  segment.className = "channel-segment";
+  segment.textContent = channel.segmentId;
+  header.append(titleBlock, segment);
+
+  const fields = document.createElement("div");
+  fields.className = "field-list channel-fields";
+  for (const field of provider.fields.filter((item) => item.channelId === channel.id)) {
+    fields.append(renderField(provider, field));
+  }
+
+  const state = document.createElement("div");
+  state.className = "channel-state";
+  state.dataset.configured = String(Boolean(config.configured));
+  state.textContent = config.configured ? "通道已配置" : "通道缺少密钥";
+
+  section.append(header, fields, state);
+  return section;
 }
 
 function renderProvider(provider) {
@@ -171,7 +220,9 @@ function renderProvider(provider) {
   const badge = document.createElement("span");
   badge.className = "badge";
   badge.dataset.configured = String(provider.config.configured);
-  badge.textContent = provider.config.configured ? "已配置" : "缺少密钥";
+  badge.textContent = provider.id === "image" && provider.config.channels?.length
+    ? `${provider.config.configuredChannels || 0}/${provider.config.requiredChannels || 2} 通道已配置`
+    : provider.config.configured ? "已配置" : "缺少密钥";
   titleRow.append(title, badge);
 
   const meta = document.createElement("div");
@@ -187,10 +238,18 @@ function renderProvider(provider) {
   }
   header.append(titleRow, meta);
 
-  const fields = document.createElement("div");
-  fields.className = "field-list";
-  for (const field of provider.fields) fields.append(renderField(provider, field));
-  card.append(header, fields);
+  if (provider.id === "image" && provider.channels?.length) {
+    card.classList.add("provider-card-wide");
+    const channels = document.createElement("div");
+    channels.className = "channel-list";
+    for (const channel of provider.channels) channels.append(renderImageChannel(provider, channel));
+    card.append(header, channels);
+  } else {
+    const fields = document.createElement("div");
+    fields.className = "field-list";
+    for (const field of provider.fields) fields.append(renderField(provider, field));
+    card.append(header, fields);
+  }
   return card;
 }
 
@@ -211,7 +270,17 @@ async function loadModels({ refresh = false } = {}) {
   if (!currentSchema) return;
   modelProviders = Object.fromEntries(currentSchema.providers.map((provider) => [
     provider.id,
-    { status: "loading", currentModel: provider.config.model, models: [] }
+    provider.id === "image" && provider.config.channels?.length
+      ? {
+          status: "loading",
+          channels: provider.config.channels.map((channel) => ({
+            id: channel.id,
+            status: "loading",
+            currentModel: channel.model,
+            models: []
+          }))
+        }
+      : { status: "loading", currentModel: provider.config.model, models: [] }
   ]));
   renderProviders();
   refreshModelsButton.disabled = true;
@@ -223,11 +292,21 @@ async function loadModels({ refresh = false } = {}) {
   } catch {
     modelProviders = Object.fromEntries(currentSchema.providers.map((provider) => [
       provider.id,
-      {
-        status: "error",
-        currentModel: provider.config.model,
-        models: [{ id: provider.config.model, label: provider.config.model }]
-      }
+      provider.id === "image" && provider.config.channels?.length
+        ? {
+            status: "error",
+            channels: provider.config.channels.map((channel) => ({
+              id: channel.id,
+              status: "error",
+              currentModel: channel.model,
+              models: [{ id: channel.model, label: channel.model }]
+            }))
+          }
+        : {
+            status: "error",
+            currentModel: provider.config.model,
+            models: [{ id: provider.config.model, label: provider.config.model }]
+          }
     ]));
   } finally {
     renderProviders();
