@@ -16,20 +16,20 @@ Route: simple|standard|complex
 
 ## 任务发布方式
 
-- 本机后端任务：协调端写入任务文件、推送 GitHub 后，同时直接发送到本地后端 Codex 对话执行。
-- 另一台电脑前端任务：协调端只通过 GitHub 发布任务文件和任务分支；前端电脑自行 fetch/pull 后开工并直接推送 GitHub。
-- 不再为另一台电脑的前端任务寻找或使用本机前端对话。
-- 前端交付以 GitHub 分支提交、任务文件状态和回报为准。
+- 本机后端任务：协调端写入任务文件，并直接发到本地后端 Codex 对话。
+- 另一台电脑前端任务：协调端只通过任务文件和 GitHub 分支发布；前端机自行 fetch/pull 后直接推送 GitHub。
+- 另一台电脑的前端任务不走本机对话，本机只做后端、协调和审核。
+- 前端交付以 GitHub 分支、任务文件状态和回报为准。
 
 ## 当前基线
 
 - 正式基线：`f996758`
 - 正式分支：`main / v2 / ui-v2`
-- 协调端负责发布任务、审核、回归测试与正式分支同步。
+- 协调端负责发布任务、审查、回归测试与正式分支同步。
 
 ## Codex A：后端
 
-状态：READY
+状态：CHANGES_REQUESTED
 
 任务入口：
 
@@ -39,30 +39,30 @@ Route: simple|standard|complex
 
 - `codex/backend-storyboard-524-model-discovery`
 
-负责：
+负责内容：
 
-- 定位两张故事板并发时一张成功、一张 `HTTP 524` 的真实原因。
-- 保持两张缺失故事板同时发起。
-- 增加不泄密的 provider 请求诊断。
-- 判断是否真的需要第二个画图接口；只有证据表明当前通道存在单请求/单并发容量限制时，才新增第二画图通道配置。
-- 提供 Admin 模型自动发现接口。
-- 提供中文 provider schema 和脱敏当前 Key。
+- 审核阻断修复：模型发现缓存必须绑定当前 key 的安全指纹，换 key 后不能复用旧模型列表。
+- 故事板图片生成改为两个独立 key / 两条绘图通道。
+- 两张故事板仍保持并发发起，partial success 保留成功图，只补缺失图。
+- 后台模型列表读取当前 key 可调用的真实模型，支持刷新与切换。
+- 保持 masked key preview、中文 schema、无密钥泄露。
+- 继续排查 524 的真实原因，并补足诊断与测试。
 
-只允许修改：
+允许修改：
 
 - `studio-v2/src/**`
 - `studio-v2/tests/**`
 - `docs/contracts/**`
 - `schemas/**`
 
-不得修改：
+禁止修改：
 
 - `studio-v2/public/**`
 - `studio-v2/admin/**`
 
 ## Codex B：前端
 
-状态：READY
+状态：CHANGES_REQUESTED
 
 任务入口：
 
@@ -72,20 +72,23 @@ Route: simple|standard|complex
 
 - `codex/frontend-admin-provider-ux`
 
-负责：
+负责内容：
 
-- 删除普通工作台左下角供应商状态块。
-- Admin 页面完整中文化。
-- 修复最右侧内容被裁切与横向溢出。
-- 模型改为从后端读取后的下拉选择，不允许自由填空。
-- 显示脱敏当前 Key，并保留替换/清除能力。
+- 审核阻断修复：Admin 必须按绘图通道 A/B 分组渲染 URL、模型、Key，不能继续按单 image provider 读取。
+- 工作台顶部四个小块改成更有用、可读性更强的内容。
+- Step 02 的每个选项卡前缀改成图标或徽标式表达，不能留空白占位。
+- 去掉底部重复出现的新增块。
+- Step 03 脚本区改成更像表格的展示，不再重复堆同一张卡片。
+- 统一中文显示，提升字号、对比度和可读性，避免页面过暗。
+- 管理后台风格也要和主工作台统一，不要像另一套系统。
+- 修复右侧裁切和布局抖动。
 
 允许修改：
 
-- `studio-v2/admin/**`
-- `studio-v2/public/**`，但只用于本任务明确的侧边栏状态块删除
+- `studio-v2/public/**`
+- `studio-v2/admin/**`（仅在确有必要时）
 
-不得修改：
+禁止修改：
 
 - `studio-v2/src/**`
 - `studio-v2/tests/**`
@@ -94,23 +97,8 @@ Route: simple|standard|complex
 
 ## 固定产品规则
 
-- 生图只能 img2img，不允许 prompt-only fallback 或降级图。
-- 两张缺失故事板应同时发起生成。
-- partial success 必须保留成功图片，重试只补缺失图片。
-- `HTTP 524` 可能已扣费，不允许未经用户确认自动重试。
-- Step 5 只保留两张故事板图片和两段脚本/复制控件。
-- 不恢复 JSON、ZIP、CSV、Flow Omni 下载按钮。
-- 外层 storyboard sheet 不强行套视频比例；内部 shot frames 按第二步比例构图。
-- 浏览器不得读取或显示完整 API Key，只能显示脱敏值。
-
-## 审核要求
-
-协调端合并前必须：
-
-- 检查后端、前端修改范围不重叠。
-- 审核 524 诊断证据，不接受无证据猜测。
-- 运行全部后端测试。
-- 运行全部前端/Admin JS 语法检查。
-- 启动本地服务，检查工作台与 `/admin/`。
-- 验证模型列表来自真实 provider 能力或明确标记不支持，不得虚构模型。
-- 验证页面无横向溢出、完整中文、Key 仅脱敏显示。
+- 生图只能 img2img，不允许 prompt-only fallback。
+- 两张故事板必须同时发起；成功图保留，重试只补缺失。
+- 最终交付只保留两张故事板图片和两段脚本/复制控件。
+- 不恢复 JSON / ZIP / CSV / Flow Omni 下载按钮。
+- 外层 storyboard sheet 不强行套视频比例；内部 shot frames 才按第二步比例构图。
