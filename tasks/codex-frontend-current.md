@@ -23,6 +23,26 @@ Route: complex
 
 把工作台前端做成更清楚、更像正式工具的样子，重点修掉“太小、重复、留空、发黑、被裁切”的问题，并让管理后台和主工作台统一成一套视觉语言。
 
+## Review Blocker To Fix
+
+P1: Admin 必须适配后端返回的双绘图通道，不得再把 image provider 当成单通道渲染。
+
+- 位置：`studio-v2/admin/admin.js` 以及必要的 Admin 样式。
+- 后端现契约：
+  - `/api/admin/providers` 的 `image` provider 有 `config.channels[]`，每个通道有 `id/title/segmentId/apiUrl/model/configured/keyPreview`。
+  - `image.fields[]` 中每个字段带 `channelId`，包括 `imageApiUrl/imageModel/imageApiKey` 和 `imageSecondaryApiUrl/imageSecondaryModel/imageSecondaryApiKey`。
+  - `/api/admin/providers/models` 的 `providers.image.channels[]` 按通道返回模型列表和状态。
+- 现状风险：
+  - Admin 仍按 `provider.config.apiUrl/model/keyPreview` 渲染，B 通道会显示 A 通道值或拿不到模型选项。
+- 要求：
+  - image provider 要按 A/B 两个通道分组显示，每组都有独立 API 地址、模型选择、Key 脱敏提示、清除 key。
+  - 模型下拉要按 `field.channelId` 匹配 `providers.image.channels[]`，不能所有 image 字段共用同一组模型。
+  - API 地址输入要按 `field.valueKey` 从对应 channel 读值，不能全部用 `provider.config.apiUrl`。
+  - Key helper 要显示对应 channel 的 masked key，不能全部用 `provider.config.keyPreview`。
+  - 保存 payload 必须仍按各字段 valueKey 提交。
+  - 全部文案中文化，并保持和主工作台统一风格。
+  - 补人工验证截图：Admin 中能清楚看到“绘图通道 A / 0-10s”和“绘图通道 B / 10-20s”，两个 key preview 后四位不同也能分别显示。
+
 ## Frontend Work
 
 1. 工作台顶部那四个小块替换成更有用的内容，不要再放意义不大的小字块。

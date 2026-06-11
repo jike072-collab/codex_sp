@@ -29,7 +29,7 @@ Route: simple|standard|complex
 
 ## Codex A：后端
 
-状态：READY
+状态：CHANGES_REQUESTED
 
 任务入口：
 
@@ -41,6 +41,7 @@ Route: simple|standard|complex
 
 负责内容：
 
+- 审核阻断修复：模型发现缓存必须绑定当前 key 的安全指纹，换 key 后不能复用旧模型列表。
 - 故事板图片生成改为两个独立 key / 两条绘图通道。
 - 两张故事板仍保持并发发起，partial success 保留成功图，只补缺失图。
 - 后台模型列表读取当前 key 可调用的真实模型，支持刷新与切换。
@@ -61,7 +62,7 @@ Route: simple|standard|complex
 
 ## Codex B：前端
 
-状态：READY
+状态：CHANGES_REQUESTED
 
 任务入口：
 
@@ -73,6 +74,7 @@ Route: simple|standard|complex
 
 负责内容：
 
+- 审核阻断修复：Admin 必须按绘图通道 A/B 分组渲染 URL、模型、Key，不能继续按单 image provider 读取。
 - 工作台顶部四个小块改成更有用、可读性更强的内容。
 - Step 02 的每个选项卡前缀改成图标或徽标式表达，不能留空白占位。
 - 去掉底部重复出现的新增块。
