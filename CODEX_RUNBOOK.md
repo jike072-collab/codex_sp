@@ -147,6 +147,12 @@ through Codex A before implementing competing behavior.
 Frontend work may happen on another computer. From now on, frontend coordination
 must use GitHub repository state, not chat thread memory.
 
+- Local backend tasks are published in two places: the coordinator updates and
+  pushes the task file/branch, then directly sends the same assignment to the
+  local backend Codex thread.
+- Remote frontend tasks are published only through GitHub task files and task
+  branches. The other computer fetches, implements, and pushes back to GitHub.
+- Do not route remote frontend tasks through local frontend threads.
 - Codex B uses only the current task file in `tasks/`, the frozen contracts, and
   its branch commits as the source of truth.
 - Before claiming or continuing frontend work, Codex B must fetch the repository,
