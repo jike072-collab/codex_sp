@@ -21,6 +21,20 @@ Route: complex
 
 把后端改成“两个故事板 key / 两条绘图通道 + 真实模型发现”的正式实现，并保住并发、部分成功和无密钥泄露。
 
+## Review Blocker To Fix
+
+P1: 模型发现缓存必须绑定“当前 key”，不能只区分是否已配置。
+
+- 位置：`studio-v2/src/ai-providers/provider-models.mjs`
+- 现状：缓存 key 只包含 provider、url、model 和 `configured/missing-key`。
+- 风险：用户更换 API Key 后，不带 `refresh=1` 时可能继续看到上一个 key 能调用的模型列表。
+- 要求：
+  - 缓存 key 必须随实际 key 改变而改变。
+  - 不能把完整 API Key 写进日志、响应、诊断或可读缓存。
+  - 可使用安全哈希/短指纹作为内部缓存 key 的一部分。
+  - 补测试：同 provider/url/model 下更换 key 后，普通读取也必须重新请求模型列表；旧 key 的模型列表不能复用给新 key。
+  - 保留 `refresh=1` 强制刷新能力。
+
 ## Backend Work
 
 1. 故事板图片生成直接改为两个独立 key / 两条绘图通道。
