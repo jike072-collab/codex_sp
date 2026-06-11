@@ -40,24 +40,6 @@ function marketTitle(project) {
   return `${country} · ${theme}`;
 }
 
-function shotSummaryText(shot) {
-  return SHOT_FIELDS.map(([field, label]) => `${label}：${shot[field] || ""}`).join("\n");
-}
-
-function parseShotSummary(value, previousShot) {
-  const nextShot = { ...previousShot };
-  const lines = String(value || "").split(/\r?\n/);
-  for (const [field, label] of SHOT_FIELDS) {
-    const prefix = `${label}：`;
-    const line = lines.find((item) => item.trim().startsWith(prefix));
-    if (line) nextShot[field] = clean(line.slice(prefix.length));
-  }
-  if (!lines.some((line) => line.includes("："))) {
-    nextShot.visual = clean(value) || nextShot.visual;
-  }
-  return nextShot;
-}
-
 function segmentCopy(segment) {
   const shots = Array.isArray(segment?.shots) ? segment.shots : [];
   return [
@@ -87,12 +69,18 @@ function renderShotEditor(segmentKey, shot, shotIndex) {
   return `
     <article class="shot-card compact-shot">
       <div class="shot-meta">
+        <span class="shot-number">镜头 ${shotIndex + 1}</span>
         <strong>${escapeHtml(shot.start_sec)}-${escapeHtml(shot.end_sec)}s</strong>
-        <span>镜头 ${shotIndex + 1}</span>
       </div>
-      <textarea class="shot-summary-box" data-segment="${escapeHtml(segmentKey)}"
-        data-shot-index="${shotIndex}"
-        data-shot-summary="true">${escapeHtml(shotSummaryText(shot))}</textarea>
+      <div class="shot-field-grid">
+        ${SHOT_FIELDS.map(([field, label]) => `
+          <label class="shot-field shot-field-${escapeHtml(field)}">
+            <span>${escapeHtml(label)}</span>
+            <textarea rows="1" data-segment="${escapeHtml(segmentKey)}"
+              data-shot-index="${shotIndex}" data-shot-field="${escapeHtml(field)}">${escapeHtml(shot[field] || "")}</textarea>
+          </label>
+        `).join("")}
+      </div>
     </article>
   `;
 }
@@ -108,7 +96,7 @@ function renderSegmentEditor(segmentKey, segment) {
         </div>
         <span class="requirement">${escapeHtml(segment.duration_sec || 10)} 秒</span>
       </div>
-      <label>
+      <label class="segment-theme-field">
         <span>分段主题</span>
         <input data-segment="${escapeHtml(segmentKey)}"
           data-field="theme"
@@ -136,9 +124,9 @@ function renderGenerateScript(project) {
         </div>
       </div>
       <div class="script-progress" id="scriptProgress" hidden>
-        <span><i></i></span>
+        <span><i class="workflow-progress-fill"></i></span>
         <strong>0%</strong>
-        <p>正在生成两个 10 秒脚本段落，请稍候...</p>
+        <p class="workflow-progress-message">正在整理市场语言与产品锁定...</p>
       </div>
       <div class="button-row">
         <button class="ghost-button" type="button" data-action="edit-market">返回第二步调整</button>
@@ -156,7 +144,7 @@ function renderScriptEditor(project) {
       <div>
         <p class="section-index">STEP 03</p>
         <h2>编辑广告脚本</h2>
-        <p>脚本结构按“画面、动作、镜头、卖点、口播/字幕、音效、转场”整理。确认后会直接进入最终交付页并生成两张故事板。</p>
+        <p>界面标签使用中文便于审核；镜头内容和提交给后端的文案仍保持目标国家对应语言。确认后进入 Step 4 生成两张故事板。</p>
       </div>
       <span class="requirement">20 秒</span>
     </div>
@@ -189,6 +177,12 @@ export function renderScriptStage(project = state.project) {
   container.innerHTML = project.planningPackage
     ? renderScriptEditor(project)
     : renderGenerateScript(project);
+  window.requestAnimationFrame(() => {
+    container.querySelectorAll("textarea[data-shot-field]").forEach((textarea) => {
+      textarea.style.height = "auto";
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    });
+  });
 }
 
 export function planningPackageFromForm(project = state.project) {
@@ -200,10 +194,14 @@ export function planningPackageFromForm(project = state.project) {
     const themeInput = document.querySelector(`[data-segment="${segmentKey}"][data-field="theme"]`);
     segment.theme = clean(themeInput?.value);
     segment.shots = segment.shots.map((shot, shotIndex) => {
-      const summaryInput = document.querySelector(
-        `[data-segment="${segmentKey}"][data-shot-index="${shotIndex}"][data-shot-summary="true"]`
-      );
-      return parseShotSummary(summaryInput?.value, shot);
+      const nextShot = { ...shot };
+      for (const [field] of SHOT_FIELDS) {
+        const fieldInput = document.querySelector(
+          `[data-segment="${segmentKey}"][data-shot-index="${shotIndex}"][data-shot-field="${field}"]`
+        );
+        nextShot[field] = clean(fieldInput?.value);
+      }
+      return nextShot;
     });
   }
   return planning;
@@ -228,9 +226,35 @@ export function validatePlanningPackage(planning) {
 export function renderVisualStage(project = state.project) {
   const container = el("visualStageContent");
   if (!container || !project) return;
-  const completedItems = locallyStoredStoryboardItems(project);
+  const completedItems = completedStoryboardItems(project);
+  const entries = storyboardEntries(project);
   const failure = project.visualGenerationFailure;
-  if (failure) {
+  const needsRealImages = project.status === "export" && completedItems.length < 2;
+  const progress = state.workflowProgress?.active && state.workflowProgress.stage === "visual"
+    ? state.workflowProgress
+    : null;
+  if (progress) {
+    container.innerHTML = `
+      <div class="section-heading compact-stage-heading">
+        <div>
+          <p class="section-index">STEP 04</p>
+          <h2>正在生成故事板</h2>
+          <p>两张图片由后端并发执行。每张都使用已上传商品图进行 img2img，完成项会立即保留。</p>
+        </div>
+        <span class="requirement" id="visualProgressCount">${completedItems.length}/2</span>
+      </div>
+      <div class="script-progress active storyboard-progress" id="visualProgress">
+        <span><i class="workflow-progress-fill" style="width:${progress.percent}%"></i></span>
+        <strong>${progress.percent}%</strong>
+        <p class="workflow-progress-message">${escapeHtml(progress.message)}</p>
+      </div>
+      <div class="storyboard-grid">
+        ${["0-10s", "10-20s"].map((segmentId) => renderStoryboardStateCard(project, segmentId, entries.find((item) => item.segment_id === segmentId), true)).join("")}
+      </div>
+    `;
+    return;
+  }
+  if (failure || needsRealImages || entries.some((item) => item?.status === "failed") || state.visualGenerationError) {
     container.innerHTML = `
       <div class="section-heading">
         <div>
@@ -240,13 +264,13 @@ export function renderVisualStage(project = state.project) {
         </div>
         <span class="requirement">${completedItems.length}/2</span>
       </div>
-      ${completedItems.length ? `
-        <div class="storyboard-grid partial-deliverable-grid">
-          ${completedItems.map((item) => renderStoryboardCard(project, item)).join("")}
-        </div>
-      ` : ""}
+      <div class="storyboard-grid partial-deliverable-grid">
+        ${["0-10s", "10-20s"].map((segmentId) => renderStoryboardStateCard(project, segmentId, entries.find((item) => item.segment_id === segmentId))).join("")}
+      </div>
       <div class="visual-error-card">
-        <p class="error-message">${escapeHtml(failure.message || state.visualGenerationError || "图片生成失败。")}</p>
+        <p class="error-message">${escapeHtml(failure?.message || state.visualGenerationError || (needsRealImages
+          ? "当前项目还没有两张可交付的真实故事板图片。请配置图片 API 后继续生成。"
+          : "图片生成失败。"))}</p>
         <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">
           继续生成缺失图片
         </button>
@@ -259,13 +283,13 @@ export function renderVisualStage(project = state.project) {
       <div class="section-heading compact-stage-heading">
         <div>
           <p class="section-index">STEP 04</p>
-          <h2>生成故事板</h2>
+          <h2>故事板生成完成</h2>
           <p>两张分段故事板已保存。可预览或下载图片，完整对应脚本保留在导出页。</p>
         </div>
         <span class="requirement">2/2 已完成</span>
       </div>
       <div class="storyboard-grid">
-        ${completedItems.map((item) => renderStoryboardCard(project, item)).join("")}
+        ${["0-10s", "10-20s"].map((segmentId) => renderStoryboardCard(project, completedItems.find((item) => item.segment_id === segmentId))).join("")}
       </div>
       <div class="stage-actions compact-stage-actions">
         <p>故事板只展示图片与必要信息，避免重复堆叠完整脚本。</p>
@@ -278,7 +302,7 @@ export function renderVisualStage(project = state.project) {
     <div class="future-content">
       <p class="section-index">STEP 04</p>
       <h2>故事板图片</h2>
-      <p>此步骤只生成两个分段故事板。生成时会直接进入最终交付页显示进度。</p>
+      <p>此步骤生成两个分段故事板，并在这里展示 0/2、1/2、2/2、失败与重试状态。只有两张完成后才能进入最终交付。</p>
       <div class="confirmed-card">
         <span>✓</span>
         <div>
@@ -287,21 +311,6 @@ export function renderVisualStage(project = state.project) {
         </div>
       </div>
       <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">生成故事板图片</button>
-    </div>
-  `;
-}
-
-function renderExportProgress(project) {
-  return `
-    <div class="future-content script-start-panel">
-      <p class="section-index">STEP 05</p>
-      <h2>正在生成故事板图片</h2>
-      <p>会生成两个故事板：0-10 秒和 10-20 秒。每个分镜画面按第二步选择的 ${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")} 构图，外层故事板按实际生成尺寸展示。</p>
-      <div class="script-progress active">
-        <span><i></i></span>
-        <strong>生成中</strong>
-        <p>正在调用图片模型生成故事板，请稍候...</p>
-      </div>
     </div>
   `;
 }
@@ -318,34 +327,16 @@ function selectedStoryboardItems(project) {
     .filter(Boolean);
 }
 
-function locallyStoredStoryboardItems(project) {
-  return selectedStoryboardItems(project)
-    .filter((item) => item.generated_image?.url?.startsWith("/uploads/"));
+function storyboardEntries(project) {
+  return selectedStoryboardItems(project);
 }
 
-function renderExportMismatch(project) {
-  const selectedRatio = project.marketBrief?.outputAspectRatio || "9:16";
-  return `
-    <div class="future-content script-start-panel visual-error-card">
-      <p class="section-index">STEP 05</p>
-      <h2>故事板分镜比例需要重新生成</h2>
-      <p>这个项目里保存的是旧版视觉结果，内部画面和第二步选择的 ${escapeHtml(selectedRatio)} 不一致。点击下面按钮会覆盖旧结果，并按该分镜比例重新生成两张故事板。</p>
-      <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">重新生成当前尺寸故事板</button>
-    </div>
-  `;
+function completedStoryboardItems(project) {
+  return storyboardEntries(project).filter((item) => item.status === "done" && item.generated_image?.url);
 }
 
-function renderExportError(project) {
-  const completedItems = locallyStoredStoryboardItems(project);
-  return `
-    <div class="future-content script-start-panel visual-error-card">
-      <p class="section-index">STEP 05</p>
-      <h2>故事板生成未完成</h2>
-      <p>已完成 ${completedItems.length}/2 张。内部分镜仍按第二步选择的 ${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")} 构图，继续时只生成缺失图片。</p>
-      <div class="error-message">${escapeHtml(state.visualGenerationError)}</div>
-      <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">继续生成缺失图片</button>
-    </div>
-  `;
+export function hasReadyStoryboards(project = state.project) {
+  return completedStoryboardItems(project).length === 2;
 }
 
 function renderStoryboardImage(item) {
@@ -362,6 +353,7 @@ function renderStoryboardImage(item) {
 }
 
 function renderStoryboardCard(project, item) {
+  if (!item) return "";
   const segment = scriptSegmentById(project, item.segment_id) || {};
   const shotCount = Array.isArray(segment.shots) ? segment.shots.length : 0;
   return `
@@ -383,6 +375,23 @@ function renderStoryboardCard(project, item) {
         <a class="ghost-button storyboard-download" href="${escapeHtml(item.generated_image.url)}"
           download="${escapeHtml(item.asset_id || `${item.segment_id}-storyboard`)}">下载图片</a>
       ` : ""}
+    </article>
+  `;
+}
+
+function renderStoryboardStateCard(project, segmentId, item, generating = false) {
+  if (item?.status === "done" && item.generated_image?.url) return renderStoryboardCard(project, item);
+  const segment = scriptSegmentById(project, segmentId) || {};
+  const failed = item?.status === "failed";
+  return `
+    <article class="storyboard-card storyboard-state-card ${failed ? "failed" : "pending"}">
+      <div class="storyboard-card-heading">
+        <div><p class="section-index">${escapeHtml(segmentId)}</p><h3>${escapeHtml(segment.theme || `${segmentId} 故事板`)}</h3></div>
+        <span class="storyboard-status">${failed ? "生成失败" : generating ? "生成中" : "等待生成"}</span>
+      </div>
+      <div class="storyboard-skeleton ${generating ? "active" : ""}"><i></i><span>${failed ? "该分段尚无图片，重试只会补这一张。" : "正在准备 img2img 故事板画面"}</span></div>
+      <div class="storyboard-meta"><span>时长 10s</span><span>分镜比例 ${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")}</span><span>镜头 ${escapeHtml(segment.shots?.length || 0)} 个</span></div>
+      ${failed && item.error?.message ? `<p class="storyboard-item-error">${escapeHtml(item.error.message)}</p>` : ""}
     </article>
   `;
 }
@@ -410,14 +419,16 @@ export function renderExportStage(project = state.project) {
   const container = el("exportStageContent");
   if (!container || !project) return;
 
-  const rawImageItems = project.imagePackage?.image_generation || [];
-  const imageItems = selectedStoryboardItems(project);
+  const imageItems = completedStoryboardItems(project);
   if (imageItems.length !== 2) {
-    container.innerHTML = state.visualGenerationError
-      ? renderExportError(project)
-      : rawImageItems.length
-      ? renderExportMismatch(project)
-      : renderExportProgress(project);
+    container.innerHTML = `
+      <div class="future-content script-start-panel visual-error-card">
+        <p class="section-index">STEP 05</p>
+        <h2>最终交付尚未就绪</h2>
+        <p>Step 5 只展示完整交付。请回到 Step 4 完成两张真实故事板图片。</p>
+        <button class="primary-button" type="button" data-action="view-visual">返回故事板</button>
+      </div>
+    `;
     return;
   }
   container.innerHTML = `

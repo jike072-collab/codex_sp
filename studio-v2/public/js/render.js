@@ -9,6 +9,7 @@ import {
   lines,
   marketCountryOptions,
   projectSetup,
+  readProjectPreferences,
   saveProjectPreferences,
   state,
   statusLabel,
@@ -16,6 +17,7 @@ import {
   valueAt
 } from "./core.js";
 import {
+  hasReadyStoryboards,
   renderExportStage,
   renderScriptStage,
   renderVisualStage
@@ -71,6 +73,7 @@ function viewStatus() {
 
 function isStageReached(step) {
   if (!state.project) return false;
+  if (step === "export" && !hasReadyStoryboards(state.project)) return false;
   const currentStatus = state.project.status === "analyzing" ? "assets" : state.project.status;
   const current = STAGE_ORDER.indexOf(currentStatus);
   const target = STAGE_ORDER.indexOf(step);
@@ -127,7 +130,8 @@ export function renderWorkspace() {
   const project = state.project;
   if (!project) return;
   const activeStatus = viewStatus();
-  const isReviewingPast = activeStatus !== project.status && isStageReached(activeStatus);
+  const needsStoryboardCompletion = project.status === "export" && activeStatus === "visual" && !hasReadyStoryboards(project);
+  const isReviewingPast = !needsStoryboardCompletion && activeStatus !== project.status && isStageReached(activeStatus);
 
   el("projectTitle").textContent = project.name;
   el("projectState").textContent = isReviewingPast
@@ -186,7 +190,10 @@ function renderWorkspacePanel(project, activeStatus) {
   const totalSteps = 5;
   const visibleStep = VISIBLE_STAGE_NUMBER[activeStatus] || 1;
   const progressStep = visibleStep;
-  const completedPercent = activeStatus === "export"
+  const workflowProgress = state.workflowProgress;
+  const completedPercent = workflowProgress?.active && workflowProgress.stage === activeStatus
+    ? workflowProgress.percent
+    : activeStatus === "export"
     ? 100
     : Math.max(10, Math.min(100, Math.round((progressStep / totalSteps) * 100)));
   const readinessText = (() => {
@@ -212,14 +219,16 @@ function renderWorkspacePanel(project, activeStatus) {
   if (panelSaveState) panelSaveState.textContent = state.busy ? "处理中" : "已保存";
   if (panelApiState) panelApiState.textContent = providerSummary();
   if (panelProgressBar) panelProgressBar.style.width = `${completedPercent}%`;
-  if (panelProgressText) panelProgressText.textContent = readinessText;
+  if (panelProgressText) panelProgressText.textContent = workflowProgress?.active && workflowProgress.stage === activeStatus
+    ? workflowProgress.message
+    : readinessText;
 }
 
 export function renderStepper(activeStatus = viewStatus()) {
-  const current = Math.max(0, STAGE_ORDER.indexOf(state.project.status));
   const active = Math.max(0, STAGE_ORDER.indexOf(activeStatus));
   document.querySelectorAll("#stepper li").forEach((item, index) => {
-    const reached = index <= current;
+    const reached = isStageReached(item.dataset.step);
+    const current = Math.max(0, STAGE_ORDER.indexOf(state.project.status));
     item.classList.toggle("active", index === active);
     item.classList.toggle("complete", index < current);
     item.classList.toggle("available", reached);
@@ -247,12 +256,12 @@ export function renderAssets() {
   `).join("");
   el("assetHint").textContent = project?.status !== "assets"
     ? "当前项目已进入后续步骤，素材已锁定；如需上传新鞋图，请新建项目。"
-    : assets.length
-      ? `已上传 ${assets.length} 张图片。确认都属于同一款鞋后开始识别。`
-      : "至少上传一张图片后才能开始识别。";
+    : assets.length >= 4
+      ? `已上传 ${assets.length} 张图片。第四张检查点已完成，可以开始识别。`
+      : `已上传 ${assets.length} 张，还需 ${4 - assets.length} 张参考图才能开始识别。`;
   el("dropZone").disabled = !canUpload;
   el("fileInput").disabled = !canUpload;
-  el("analyzeButton").disabled = state.busy || !assets.length;
+  el("analyzeButton").disabled = state.busy || assets.length < 4;
 }
 
 export function canViewStep(step) {
@@ -277,6 +286,9 @@ function lockStageForReview(value) {
 
   visibleStage.classList.add("readonly-stage");
   visibleStage.querySelectorAll("button, input, textarea, select").forEach((control) => {
+    if (control.matches('[data-preview-image], [data-copy-target], [data-action="view-export"], [data-action="view-visual"]')) {
+      return;
+    }
     control.dataset.reviewLocked = "true";
     control.dataset.wasDisabled = String(control.disabled);
     control.dataset.wasReadonly = String(control.readOnly);
@@ -296,6 +308,15 @@ function renderCompletionList(status) {
     export: ["两张故事板已整理", "两段 10 秒脚本可复制", "第一版交付内容已就绪"]
   };
   const items = itemsByStatus[status] || itemsByStatus.assets;
+  if (status === "visual") {
+    const ratio = state.project?.marketBrief?.outputAspectRatio || "9:16";
+    const entries = (state.project?.imagePackage?.image_generation || []).filter((item) =>
+      item.type === "storyboard_board" && item.aspect_ratio === ratio
+    );
+    const complete = entries.filter((item) => item.status === "done" && item.generated_image?.url).length;
+    items[1] = `故事板完成 ${complete}/2`;
+    items[2] = complete === 2 ? "可进入最终交付" : "成功图片保留，缺失项可继续生成";
+  }
   el("completionList").innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
 }
 
@@ -361,6 +382,7 @@ function renderReviewControls(setup) {
   const countryLabel = countryNames[setup.targetCountry] || setup.targetCountry;
   const themeLabel = labelFor(creativeThemeOptions, setup.creativeTheme);
   const toneLabel = labelFor(toneOptions, setup.tone);
+  const modifiedSettings = new Set(readProjectPreferences(state.project).modifiedSettings || []);
   const groups = [
     {
       name: "targetCountry",
@@ -409,7 +431,13 @@ function renderReviewControls(setup) {
     <div class="review-menu" data-review-menu-root="${escapeHtml(group.name)}">
       <button class="review-chip" type="button" data-review-menu="${escapeHtml(group.name)}" aria-expanded="false">
         <i aria-hidden="true">${escapeHtml(group.icon)}</i>
-        <span><small>${escapeHtml(group.label)}</small><strong>${escapeHtml(group.value)}</strong></span>
+        <span>
+          <small>${escapeHtml(group.label)}</small>
+          <strong>${escapeHtml(group.value)}</strong>
+          <em class="setting-origin ${modifiedSettings.has(group.name) ? "modified" : "recommended"}">
+            ${modifiedSettings.has(group.name) ? "用户已修改" : "AI 建议"}
+          </em>
+        </span>
         <b>⌄</b>
       </button>
       <div class="review-popover hidden" data-review-panel="${escapeHtml(group.name)}">
@@ -417,6 +445,32 @@ function renderReviewControls(setup) {
       </div>
     </div>
   `).join("");
+}
+
+function renderProductLockCard(analysis) {
+  const container = el("productLockCard");
+  if (!container) return;
+  const lock = analysis?.product_lock_manifest || {};
+  const confidence = lock.confidence || analysis?.confidence || analysis?.product_summary?.confidence;
+  const rows = [
+    ["产品类型", valueAt(analysis, "product_summary.shoe_type")],
+    ["主色", displayValue(lock.main_colors)],
+    ["鞋型轮廓", [lock.toe_shape, lock.lace_system].filter(Boolean).join("；")],
+    ["鞋底 / 外底", [lock.midsole_shape, lock.outsole_color, lock.outsole_pattern].filter(Boolean).join("；")],
+    ["材质 / 纹理", lock.upper_material_visible],
+    ["Logo / 图案", [lock.side_pattern_or_logo, lock.heel_structure].filter(Boolean).join("；")],
+    ["必须保持", displayValue(lock.must_keep)],
+    ["禁止修改", displayValue(lock.must_not_change)]
+  ];
+  container.innerHTML = `
+    <div class="product-lock-heading">
+      <div><span class="product-lock-icon">锁</span><div><small>PRODUCT LOCK</small><h3>产品身份锁定</h3></div></div>
+      <span class="lock-confidence">${confidence ? `置信度 ${escapeHtml(confidence)}` : "人工确认前"}</span>
+    </div>
+    <div class="product-lock-grid">
+      ${rows.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(displayValue(value))}</dd></div>`).join("")}
+    </div>
+  `;
 }
 
 export function syncReviewSummaries() {
@@ -484,6 +538,7 @@ export function fillReviewForm(analysis) {
   }
   syncReviewSummaries();
   el("autoAnalysisSummary").innerHTML = renderAutoAnalysisSummary(analysis);
+  renderProductLockCard(analysis);
   el("mustKeepPreview").textContent = displayValue(lock.must_keep);
   el("mustNotChangePreview").textContent = displayValue(lock.must_not_change);
   el("analysisMode").textContent = analysis?.mode === "api"
@@ -491,9 +546,17 @@ export function fillReviewForm(analysis) {
     : hasAnalysis
       ? "演示识别 · 请修改"
       : "正在识别 · 请稍候";
+  const hasCheckpoint = (state.project?.assets || []).length >= 4;
   document.querySelectorAll("#reviewForm button[type='submit'], button[form='reviewForm']").forEach((button) => {
-    button.disabled = !hasAnalysis || state.busy;
+    button.disabled = !hasAnalysis || !hasCheckpoint || state.busy;
   });
+  const gateHint = el("reviewGateHint");
+  if (gateHint) {
+    gateHint.textContent = hasCheckpoint
+      ? "第四张参考图检查点已完成，确认后进入脚本。"
+      : `还需 ${Math.max(0, 4 - (state.project?.assets || []).length)} 张参考图；当前不能进入脚本。`;
+    gateHint.classList.toggle("ready", hasCheckpoint);
+  }
 
   const warnings = analysis?.image_quality?.missing_or_unclear || [];
   const notes = analysis?.image_quality?.notes || [];

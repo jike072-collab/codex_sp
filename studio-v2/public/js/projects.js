@@ -11,6 +11,7 @@ import {
   toneOptions
 } from "./core.js";
 import {
+  hasReadyStoryboards,
   planningPackageFromForm,
   setWorkflowBusy,
   validatePlanningPackage
@@ -36,7 +37,9 @@ export async function loadProjects() {
 export async function openProject(projectId) {
   const data = await api(`/api/projects/${encodeURIComponent(projectId)}`);
   state.project = data.project;
-  state.viewStatus = data.project.status;
+  state.viewStatus = data.project.status === "export" && !hasReadyStoryboards(data.project)
+    ? "visual"
+    : data.project.status;
   state.visualGenerationError = "";
   el("emptyScreen").classList.add("hidden");
   el("workspace").classList.remove("hidden");
@@ -205,6 +208,10 @@ export async function uploadFiles(fileList) {
 }
 
 export async function analyze() {
+  if ((state.project?.assets || []).length < 4) {
+    showToast("请先上传至少 4 张同款商品参考图，完成第四张检查点。");
+    return;
+  }
   state.viewStatus = "review";
   renderWorkspace();
   setBusy(true, "正在识别鞋款...");
@@ -264,6 +271,12 @@ export async function createProject(event) {
 
 export async function confirmReview(event) {
   event.preventDefault();
+  if ((state.project?.assets || []).length < 4) {
+    const message = "第四张参考图检查点尚未完成，暂时不能进入脚本。";
+    el("reviewGateHint").textContent = message;
+    showToast(message);
+    return;
+  }
   const marketBrief = marketBriefFromReviewForm();
   setBusy(true, "正在确认产品与创意...");
   try {
@@ -322,6 +335,7 @@ export async function saveMarketBrief(event) {
 export async function generateScript() {
   el("briefSummaryDialog")?.close();
   const shotsPerSegment = projectSetup(state.project).shotsPerSegment;
+  const progressStartedAt = Date.now();
   setWorkflowBusy(true, "generateScriptButton", "正在生成脚本...", "生成演示脚本");
   setScriptProgress(true);
   try {
@@ -330,6 +344,7 @@ export async function generateScript() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ shotsPerSegment })
     });
+    await waitForMinimumFeedback(progressStartedAt);
     state.project = data.project;
     state.viewStatus = data.project.status;
     renderWorkspace();
@@ -343,6 +358,11 @@ export async function generateScript() {
   }
 }
 
+async function waitForMinimumFeedback(startedAt, minimumMs = 1800) {
+  const remaining = minimumMs - (Date.now() - startedAt);
+  if (remaining > 0) await new Promise((resolve) => window.setTimeout(resolve, remaining));
+}
+
 function setScriptProgress(active) {
   const progress = el("scriptProgress");
   if (!progress) return;
@@ -352,15 +372,111 @@ function setScriptProgress(active) {
   if (!label) return;
   window.clearInterval(setScriptProgress.timer);
   if (!active) {
+    state.workflowProgress = null;
     label.textContent = "0%";
     return;
   }
   let percent = 12;
+  const message = progress.querySelector(".workflow-progress-message");
+  const fill = progress.querySelector(".workflow-progress-fill");
+  state.workflowProgress = { active: true, stage: "script", percent, message: "正在整理市场语言与产品锁定..." };
   label.textContent = `${percent}%`;
+  if (fill) fill.style.width = `${percent}%`;
   setScriptProgress.timer = window.setInterval(() => {
     percent = Math.min(92, percent + Math.ceil((100 - percent) / 9));
+    const status = percent < 42
+      ? "正在整理市场语言与产品锁定..."
+      : percent < 72
+        ? "正在生成两个 10 秒镜头序列..."
+        : "正在校验 20 秒时间线与字段完整性...";
+    state.workflowProgress = { active: true, stage: "script", percent, message: status };
     label.textContent = `${percent}%`;
+    if (fill) fill.style.width = `${percent}%`;
+    if (message) message.textContent = status;
   }, 420);
+}
+
+function visualCompletedCount(project = state.project) {
+  const ratio = project?.marketBrief?.outputAspectRatio || "9:16";
+  return (project?.imagePackage?.image_generation || []).filter((item) =>
+    item.type === "storyboard_board" && item.aspect_ratio === ratio &&
+    item.status === "done" && item.generated_image?.url
+  ).length;
+}
+
+function updateVisualProgressDom() {
+  const progress = state.workflowProgress;
+  if (!progress?.active || progress.stage !== "visual") return;
+  const root = el("visualProgress");
+  const fill = root?.querySelector(".workflow-progress-fill");
+  const label = root?.querySelector("strong");
+  const message = root?.querySelector(".workflow-progress-message");
+  if (fill) fill.style.width = `${progress.percent}%`;
+  if (label) label.textContent = `${progress.percent}%`;
+  if (message) message.textContent = progress.message;
+  if (el("visualProgressCount")) el("visualProgressCount").textContent = `${progress.completed}/2`;
+  if (el("panelProgressBar")) el("panelProgressBar").style.width = `${progress.percent}%`;
+  if (el("panelProgressText")) el("panelProgressText").textContent = progress.message;
+}
+
+function startVisualProgress() {
+  window.clearInterval(startVisualProgress.timer);
+  let percent = 8;
+  let ticks = 0;
+  state.workflowProgress = {
+    active: true,
+    stage: "visual",
+    percent,
+    completed: visualCompletedCount(),
+    message: "0/2 · 正在提交两张 img2img 故事板任务..."
+  };
+  startVisualProgress.timer = window.setInterval(async () => {
+    ticks += 1;
+    const completed = visualCompletedCount();
+    percent = Math.min(94, Math.max(percent + Math.ceil((96 - percent) / 18), completed === 1 ? 58 : 0));
+    const message = completed === 1
+      ? "1/2 · 已保留完成图片，继续等待另一张..."
+      : percent < 35
+        ? "0/2 · 正在提交两张 img2img 故事板任务..."
+        : percent < 70
+          ? "0/2 · 图片模型正在并发生成，请保持页面开启..."
+          : "0/2 · 正在等待供应商返回并保存本地图片...";
+    state.workflowProgress = { active: true, stage: "visual", percent, completed, message };
+    updateVisualProgressDom();
+    if (ticks % 3 === 0 && !startVisualProgress.polling && state.project?.id) {
+      startVisualProgress.polling = true;
+      try {
+        const latest = await api(`/api/projects/${encodeURIComponent(state.project.id)}`);
+        if (state.workflowProgress?.active) {
+          const previousCount = visualCompletedCount();
+          state.project = latest.project;
+          if (visualCompletedCount() !== previousCount) {
+            state.viewStatus = "visual";
+            renderWorkspace();
+          }
+        }
+      } catch {
+        // The primary generation request remains authoritative.
+      } finally {
+        startVisualProgress.polling = false;
+      }
+    }
+  }, 650);
+}
+
+function stopVisualProgress() {
+  window.clearInterval(startVisualProgress.timer);
+  startVisualProgress.polling = false;
+  state.workflowProgress = null;
+}
+
+async function restoreVisualProject() {
+  try {
+    const latest = await api(`/api/projects/${encodeURIComponent(state.project.id)}`);
+    state.project = latest.project;
+  } catch {
+    // Keep the last usable project snapshot when refresh also fails.
+  }
 }
 
 export async function confirmScript(event) {
@@ -408,6 +524,7 @@ export async function confirmScriptAndGenerateVisual() {
     "确认脚本并生成故事版图片"
   );
   let scriptConfirmed = false;
+  let visualStartedAt = 0;
   try {
     state.visualGenerationError = "";
     const confirmed = await api(`/api/projects/${encodeURIComponent(state.project.id)}/script/confirm`, {
@@ -416,8 +533,10 @@ export async function confirmScriptAndGenerateVisual() {
       body: JSON.stringify({ planningPackage })
     });
     state.project = confirmed.project;
-    state.viewStatus = "export";
+    state.viewStatus = "visual";
     scriptConfirmed = true;
+    visualStartedAt = Date.now();
+    startVisualProgress();
     renderWorkspace();
     await loadProjects();
 
@@ -426,15 +545,21 @@ export async function confirmScriptAndGenerateVisual() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({})
     });
+    await waitForMinimumFeedback(visualStartedAt);
     state.project = visual.project;
-    state.viewStatus = "export";
-    state.visualGenerationError = "";
+    stopVisualProgress();
+    state.viewStatus = "visual";
+    state.visualGenerationError = hasReadyStoryboards(state.project)
+      ? ""
+      : "当前没有可交付的真实故事板图片。请配置图片 API 后继续生成。";
     renderWorkspace();
     await loadProjects();
-    showToast("故事版图片已生成。");
+    showToast(hasReadyStoryboards(state.project) ? "故事板图片已生成。" : state.visualGenerationError);
   } catch (error) {
     if (scriptConfirmed) {
-      state.viewStatus = "export";
+      stopVisualProgress();
+      await restoreVisualProject();
+      state.viewStatus = "visual";
       state.visualGenerationError = error.message;
       renderWorkspace();
       showToast(`脚本已确认，图片生成失败：${error.message}`);
@@ -448,32 +573,42 @@ export async function confirmScriptAndGenerateVisual() {
       "正在生成故事版图片...",
       "确认脚本并生成故事版图片"
     );
+    renderWorkspace();
   }
 }
 
 export async function generateVisual() {
+  const progressStartedAt = Date.now();
   setWorkflowBusy(true, "generateVisualButton", "正在生成故事版图片...", "生成故事版图片");
   try {
     state.visualGenerationError = "";
-    state.viewStatus = "export";
+    state.viewStatus = "visual";
+    startVisualProgress();
     renderWorkspace();
     const data = await api(`/api/projects/${encodeURIComponent(state.project.id)}/visual/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({})
     });
+    await waitForMinimumFeedback(progressStartedAt);
     state.project = data.project;
-    state.viewStatus = "export";
-    state.visualGenerationError = "";
+    stopVisualProgress();
+    state.viewStatus = "visual";
+    state.visualGenerationError = hasReadyStoryboards(state.project)
+      ? ""
+      : "当前没有可交付的真实故事板图片。请配置图片 API 后继续生成。";
     renderWorkspace();
     await loadProjects();
-    showToast("故事版图片已生成。");
+    showToast(hasReadyStoryboards(state.project) ? "故事板图片已生成。" : state.visualGenerationError);
   } catch (error) {
+    stopVisualProgress();
+    await restoreVisualProject();
     state.visualGenerationError = error.message;
-    state.viewStatus = "export";
+    state.viewStatus = "visual";
     renderWorkspace();
     showToast(error.message);
   } finally {
     setWorkflowBusy(false, "generateVisualButton", "正在生成故事版图片...", "生成故事版图片");
+    renderWorkspace();
   }
 }
