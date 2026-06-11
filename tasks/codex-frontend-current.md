@@ -1,171 +1,129 @@
 # Codex B Current Frontend Task
 
-Status: COMPLETE
+Status: READY
 
 Route: complex
 
-Base branch: `codex/integration-p0-admin-review`
+Base commit: `f996758`
 
-Base commit: `ff893df`
+Branch: `codex/frontend-admin-provider-ux`
 
-Backend/Admin commit included: `9607599 Add admin provider settings console`
-
-Frontend P0 commit included: `656d7b7 Fix frontend P0 workbench review`
-
-Frontend Admin follow-up commit included:
-`aea0fff Hide provider settings from workbench`
-
-## Coordination Source
-
-Frontend work happens from another computer and must be coordinated through the
-GitHub repository. Do not rely on chat thread memory, local-only notes, or stale
-branch content.
-
-This task was assigned as a follow-up from coordinator review. The backend/Admin
-branch, frontend P0 branch, and frontend Admin follow-up now merge cleanly and
-pass coordinator checks.
+Backend dependency branch: `codex/backend-storyboard-524-model-discovery`
 
 ## Required Skills
 
-At the start of the task, invoke and report:
+Start every task or resumed task with:
 
 ```text
 Skills: nadirclaw-model-router, superpowers-workflow
 Route: complex
 ```
 
-If those skills are missing on the frontend computer, run:
+## Goals
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-codex-skills.ps1
+- Remove the supplier-ready block from the lower-left workbench sidebar.
+- Make the Admin page fully Chinese.
+- Fix the Admin page right edge being clipped at common desktop widths.
+- Replace free-text model inputs with model selection controls.
+- Show the currently saved API key as a masked value.
+
+## Main Workbench
+
+Remove the lower-left supplier status block shown as:
+
+- `供应商就绪 3/3`
+- `识图、脚本、图片供应商均已就绪`
+- `管理供应商`
+
+The normal five-step workbench does not need this block. Do not restore API
+editing, model editing, URL editing, or key editing in `studio-v2/public/**`.
+
+## Admin Page
+
+- Translate every visible Admin label, status, helper, button, validation
+  message, provider title, role, channel, field label, and save state into
+  natural Chinese.
+- Keep technical values such as model ids and URLs unchanged.
+- Fix card/input overflow so the right-most provider card and its controls are
+  fully visible at 1280px, 1366px, 1440px, and 1920px desktop widths.
+- Also verify a narrow/mobile viewport.
+- Long API URLs must not force the card wider than its grid track.
+- Use a responsive grid with stable minimums; do not create horizontal page
+  scrolling.
+
+## Model Control
+
+Use the backend contract:
+
+```text
+GET /api/admin/providers/models
+GET /api/admin/providers/models?refresh=1
 ```
 
-Then start a fresh Codex session and continue.
+- Render model fields as a `<select>` or equivalent accessible menu.
+- Populate each provider's options from the backend response.
+- Select the current configured model.
+- Provide a Chinese refresh-model-list action.
+- Show Chinese `读取中 / 已同步 / 不支持自动读取 / 读取失败` states.
+- Do not provide a free-text model field.
+- If discovery is unsupported or fails, show the current model as the only
+  selectable option; do not invent model names.
 
-## Goal
+## API Key Control
 
-Move hidden provider configuration out of the main five-step workbench.
+- Show the backend-provided masked current key, for example `•••• 9744`.
+- Never display or request the full existing key.
+- Keep a separate optional replacement input:
+  - blank means unchanged
+  - entering a new key replaces it
+  - clear checkbox removes it
+- Use Chinese helper text and clear confirmation.
 
-The normal workbench may show provider readiness only. It must not show or edit:
+## Scope
 
-- API keys
-- API URLs
-- model names
-- provider admin fields
+Allowed:
 
-All provider editing must happen in the separate Admin page served at `/admin/`.
-
-## Interface Contracts
-
-Use these backend routes from the included backend/Admin commit:
-
-- `GET /api/settings/providers/status`
-  - public workbench status only
-  - returns `providers`, `configuredCount`, and `total`
-  - does not return `apiUrl`, `model`, `keyPreview`, or API keys
-
-- `GET /api/admin/providers`
-  - Admin page schema and redacted configuration
-  - for `/admin/` only
-
-- `PUT /api/admin/providers`
-  - Admin page save route only
-
-The old workbench write route is intentionally disabled:
-
-- `PUT /api/settings/providers` returns 405
-
-## What To Fix
-
-- Remove the visible `API 设置` button from the main workbench header.
-- Remove the main workbench API settings dialog, API key fields, clear-key
-  checkboxes, secret toggles, and save logic.
-- Update `studio-v2/public/js/settings.js` so the main workbench only reads
-  `GET /api/settings/providers/status`.
-- Do not call `PUT /api/settings/providers` anywhere in `studio-v2/public/**`.
-- Keep the sidebar/right-panel provider readiness display, but show only simple
-  status such as configured count or missing providers.
-- If an entry point is needed, use a low-priority link/button to `/admin/` that
-  does not expose secrets or admin fields in the workbench itself.
-- Keep all previous P0 frontend fixes from `656d7b7` intact:
-  - upload delete button clickable
-  - fourth uploaded image fully visible
-  - top stepper text not blocked
-  - Step 2 gating before Step 3
-  - Step 3 Chinese-readable script editor cards
-  - progress bars with ongoing feedback
-  - Step 4 partial success/failure/retry states
-  - Step 5 only two storyboard images and two script/copy controls
-  - no JSON/ZIP/CSV/Flow Omni buttons
-
-## Allowed Scope
-
-Allowed to edit:
-
-- `studio-v2/public/**`
+- `studio-v2/admin/**`
+- `studio-v2/public/**` only for removing the lower-left supplier block
 
 Do not edit:
 
 - `studio-v2/src/**`
-- `studio-v2/server.mjs`
-- `studio-v2/admin/**`
 - `studio-v2/tests/**`
+- `docs/contracts/**`
 - `schemas/**`
-- `prompts/**`
-- root collaboration documents
-- product runtime data, uploads, generated outputs, logs, PID files, `.env`, or
-  API keys
+- root coordination files
+- `.env`, API keys, runtime data, uploads, generated images, logs, or PID files
 
-## Start Commands
+## Coordination
 
-```powershell
-git fetch origin
-git switch -c codex/frontend-admin-hide-workbench-settings origin/codex/integration-p0-admin-review
-```
+- The localization/layout/sidebar work may begin from `f996758`.
+- Model dropdown integration must use the frozen backend contract above.
+- Before final delivery, merge or rebase the completed backend branch so the
+  browser verification uses the real model discovery API.
+- Keep all frontend changes in `codex/frontend-admin-provider-ux`.
 
-If the branch already exists:
+## Verification
 
-```powershell
-git switch codex/frontend-admin-hide-workbench-settings
-git pull --ff-only origin codex/frontend-admin-hide-workbench-settings
-git merge --ff-only origin/codex/integration-p0-admin-review
-```
-
-## Acceptance Checks
-
-Run:
-
-```powershell
-$files = Get-ChildItem -LiteralPath ".\studio-v2\public\js" -Filter *.js
-foreach ($file in $files) { node --check $file.FullName; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
-```
-
-Start the local service and verify:
-
-- `http://127.0.0.1:8810/` returns 200.
-- `http://127.0.0.1:8810/admin/` returns 200.
-- Main workbench no longer has API key/API URL/model editing UI.
-- Main workbench does not call `PUT /api/settings/providers`.
-- Provider readiness still displays from `/api/settings/providers/status`.
-- `/admin/` remains the place where API URL, model, and key can be edited.
-- User feedback screenshots still look fixed, especially upload, Step 2, Step 3,
-  Step 4, and Step 5.
+- Run syntax checks for every JS file under `studio-v2/public/js` and
+  `studio-v2/admin`.
+- Start the local service.
+- Verify the workbench no longer shows the lower-left supplier block.
+- Verify Admin at 1280px, 1366px, 1440px, 1920px, and a narrow viewport.
+- Verify no horizontal page scroll and no clipped right-most card.
+- Verify all visible Admin interface text is Chinese.
+- Verify model options load, refresh, select, save, and resync.
+- Verify masked current key, replacement, unchanged blank, and clear states.
+- Provide screenshots of the workbench sidebar and Admin desktop/mobile views.
 
 ## Delivery
 
-Push:
-
-```powershell
-git push -u origin codex/frontend-admin-hide-workbench-settings
-```
-
-Report:
+Push `codex/frontend-admin-provider-ux` and report:
 
 - Skills and route
 - Commit hash
 - Changed files
-- Confirmation that only `studio-v2/public/**` changed
-- JS syntax check result
-- Browser/service checks
-- Screenshots or short visual notes for the main workbench and `/admin/`
-- Any remaining risk
+- JS checks
+- Browser viewport checks
+- Screenshots
+- Confirmation that no backend files or secrets were changed
