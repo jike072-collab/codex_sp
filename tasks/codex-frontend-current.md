@@ -1,13 +1,16 @@
 # Codex B Current Frontend Task
 
-Status: COMPLETE
+Status: REWORK_REQUIRED
 
-Route: standard
+Route: complex
 
-Base commit: `9aa1915` (`Document remote frontend coordination`)
+Base branch: `codex/integration-p0-admin-review`
 
-There is a new frontend refinement round. Keep every change inside
-`studio-v2/public/**`.
+Base commit: `ff893df`
+
+Backend/Admin commit included: `9607599 Add admin provider settings console`
+
+Frontend P0 commit included: `656d7b7 Fix frontend P0 workbench review`
 
 ## Coordination Source
 
@@ -15,34 +18,82 @@ Frontend work happens from another computer and must be coordinated through the
 GitHub repository. Do not rely on chat thread memory, local-only notes, or stale
 branch content.
 
+This task is a follow-up from coordinator review. The backend/Admin branch and
+the frontend P0 branch merge cleanly and tests pass, but the combined product is
+not ready for `main` because the main workbench still exposes API editing.
+
+## Required Skills
+
+At the start of the task, invoke and report:
+
+```text
+Skills: nadirclaw-model-router, superpowers-workflow
+Route: complex
+```
+
+If those skills are missing on the frontend computer, run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-codex-skills.ps1
+```
+
+Then start a fresh Codex session and continue.
+
+## Goal
+
+Move hidden provider configuration out of the main five-step workbench.
+
+The normal workbench may show provider readiness only. It must not show or edit:
+
+- API keys
+- API URLs
+- model names
+- provider admin fields
+
+All provider editing must happen in the separate Admin page served at `/admin/`.
+
+## Interface Contracts
+
+Use these backend routes from the included backend/Admin commit:
+
+- `GET /api/settings/providers/status`
+  - public workbench status only
+  - returns `providers`, `configuredCount`, and `total`
+  - does not return `apiUrl`, `model`, `keyPreview`, or API keys
+
+- `GET /api/admin/providers`
+  - Admin page schema and redacted configuration
+  - for `/admin/` only
+
+- `PUT /api/admin/providers`
+  - Admin page save route only
+
+The old workbench write route is intentionally disabled:
+
+- `PUT /api/settings/providers` returns 405
+
 ## What To Fix
 
-- Remove the JSON download button from final delivery.
-- Keep only the last two storyboard images and their matching scripts.
-- Make the sidebar delete action reliable.
-- Replace the unclear delete-side spinner/history icon with a labeled control.
-- Add batch-delete UI for old projects.
-- Make Step 02 directly editable without an extra click-through feel.
-- Turn the Step 02 controls into direct inline fields instead of drawer-style
-  reveal panels.
-- Keep the one-line promise field empty by default and auto-fill it from the
-  project if the user leaves it blank.
-- Keep the product summary dialog fully visible, with Chinese labels only.
-- Move the shot-count choice into Step 02 and use it for script generation.
-- Keep the script page focused on editing and confirmation, not on re-picking
-  the count.
-- Show the two 10-second script blocks side by side when space allows.
-- Merge repeated per-shot labels so each shot is easier to scan.
-- Put the script actions at the top.
-- Turn the progress indicator into a percent-style bar.
-- Polish motion and interaction details with tasteful animation.
-
-## References To Study
-
-- `greensock/GSAP`
-- `greensock/gsap-skills`
-- `Leonxlnx/taste-skill`
-- `obra/superpowers`
+- Remove the visible `API 设置` button from the main workbench header.
+- Remove the main workbench API settings dialog, API key fields, clear-key
+  checkboxes, secret toggles, and save logic.
+- Update `studio-v2/public/js/settings.js` so the main workbench only reads
+  `GET /api/settings/providers/status`.
+- Do not call `PUT /api/settings/providers` anywhere in `studio-v2/public/**`.
+- Keep the sidebar/right-panel provider readiness display, but show only simple
+  status such as configured count or missing providers.
+- If an entry point is needed, use a low-priority link/button to `/admin/` that
+  does not expose secrets or admin fields in the workbench itself.
+- Keep all previous P0 frontend fixes from `656d7b7` intact:
+  - upload delete button clickable
+  - fourth uploaded image fully visible
+  - top stepper text not blocked
+  - Step 2 gating before Step 3
+  - Step 3 Chinese-readable script editor cards
+  - progress bars with ongoing feedback
+  - Step 4 partial success/failure/retry states
+  - Step 5 only two storyboard images and two script/copy controls
+  - no JSON/ZIP/CSV/Flow Omni buttons
 
 ## Allowed Scope
 
@@ -54,39 +105,64 @@ Do not edit:
 
 - `studio-v2/src/**`
 - `studio-v2/server.mjs`
+- `studio-v2/admin/**`
+- `studio-v2/tests/**`
 - `schemas/**`
 - `prompts/**`
 - root collaboration documents
 - product runtime data, uploads, generated outputs, logs, PID files, `.env`, or
   API keys
 
-## Current Guardrails
+## Start Commands
 
-- Do not continue an older placeholder branch unless a new task explicitly
-  restores it.
-- Do not carry forward old branch behavior or local changes as current scope.
-- Use only the current task file, frozen contracts, and branch commits as the
-  coordination record.
-- Sync from GitHub before starting: fetch, then rebase or merge the latest
-  `main`.
+```powershell
+git fetch origin
+git switch -c codex/frontend-admin-hide-workbench-settings origin/codex/integration-p0-admin-review
+```
 
-## Required Future Task Shape
+If the branch already exists:
 
-Every future frontend task must include:
+```powershell
+git switch codex/frontend-admin-hide-workbench-settings
+git pull --ff-only origin codex/frontend-admin-hide-workbench-settings
+git merge --ff-only origin/codex/integration-p0-admin-review
+```
 
-- Base commit: exact `main` commit hash to start from.
-- Goal: the user-facing behavior to implement or verify.
-- Interface contracts: contract files, routes, payloads, schemas, and status
-  names that apply.
-- File scope: exact allowed write paths.
-- Acceptance checks: narrow syntax checks, browser checks, and any user-visible
-  verification required.
-- Progress format: how to update task status while working.
-- Delivery format: branch name, commit hash, changed files, behavior, checks,
-  known risks, and whether anything needs Codex A integration.
+## Acceptance Checks
 
-## Delivery When Assigned
+Run:
 
-When a new task is assigned, create or update a `codex/<task>` frontend branch,
-keep changes inside `studio-v2/public/**`, push the branch, and report through
-GitHub-visible commits or task-file status.
+```powershell
+$files = Get-ChildItem -LiteralPath ".\studio-v2\public\js" -Filter *.js
+foreach ($file in $files) { node --check $file.FullName; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
+```
+
+Start the local service and verify:
+
+- `http://127.0.0.1:8810/` returns 200.
+- `http://127.0.0.1:8810/admin/` returns 200.
+- Main workbench no longer has API key/API URL/model editing UI.
+- Main workbench does not call `PUT /api/settings/providers`.
+- Provider readiness still displays from `/api/settings/providers/status`.
+- `/admin/` remains the place where API URL, model, and key can be edited.
+- User feedback screenshots still look fixed, especially upload, Step 2, Step 3,
+  Step 4, and Step 5.
+
+## Delivery
+
+Push:
+
+```powershell
+git push -u origin codex/frontend-admin-hide-workbench-settings
+```
+
+Report:
+
+- Skills and route
+- Commit hash
+- Changed files
+- Confirmation that only `studio-v2/public/**` changed
+- JS syntax check result
+- Browser/service checks
+- Screenshots or short visual notes for the main workbench and `/admin/`
+- Any remaining risk
