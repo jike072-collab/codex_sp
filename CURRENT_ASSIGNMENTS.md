@@ -14,12 +14,45 @@ Route: simple|standard|complex
 
 任务文件、冻结契约和 GitHub 分支提交优先于聊天记录。
 
+## 任务读取唯一入口
+
+所有电脑、所有 Codex 对话都只从 GitHub 仓库读取任务，不以聊天记录、截图或本地旧文件为准。
+
+开工前固定读取顺序：
+
+1. `CURRENT_ASSIGNMENTS.md`：确认自己是后端、前端还是协调端。
+2. `tasks/README.md`：确认任务文件、分支、提交和回报规则。
+3. 自己角色的当前任务文件：
+   - 后端：`tasks/codex-backend-current.md`
+   - 前端：`tasks/codex-frontend-current.md`
+4. 对应任务分支的最新提交。
+
+如果聊天里说了新任务，但 GitHub 上这三个文件还没更新，视为任务未正式发布，不开工；提醒协调端先发布任务文件。
+
 ## 任务发布方式
 
 - 本机后端任务：协调端写入任务文件，并直接发到本地后端 Codex 对话。
 - 另一台电脑前端任务：协调端只通过任务文件和 GitHub 分支发布；前端机自行 fetch/pull 后直接推送 GitHub。
 - 另一台电脑的前端任务不走本机对话，本机只做后端、协调和审核。
 - 前端交付以 GitHub 分支、任务文件状态和回报为准。
+
+协调端发布新任务必须同时完成：
+
+1. 更新 `CURRENT_ASSIGNMENTS.md` 的状态、任务入口和任务分支。
+2. 更新对应 `tasks/codex-*-current.md`。
+3. 必要时更新 `tasks/README.md`。
+4. 提交并推送到 `main / v2 / ui-v2`。
+5. 创建或更新对应任务分支。
+6. 本机后端任务再额外发送到本地后端对话；前端任务不发送到本机前端对话。
+
+前端电脑找任务时只认：
+
+- `origin/main:CURRENT_ASSIGNMENTS.md`
+- `origin/main:tasks/README.md`
+- `origin/main:tasks/codex-frontend-current.md`
+- `origin/codex/frontend-*:tasks/codex-frontend-current.md`
+
+前端如果找不到任务，先执行 fetch，再看 `origin/main` 上的上述文件；不要从旧分支、旧工作区或聊天摘要里找。
 
 ## 当前基线
 
