@@ -113,6 +113,23 @@ Requirements:
 - Never invent supported models.
 - Never return a full API key.
 
+## Capacity Decision
+
+The current public docs only show that `/v1/images/generations` returns one
+image result per request. They do not prove a one-image-only limitation.
+
+Therefore:
+
+- First prove whether `HTTP 524` is caused by provider timeout, per-key
+  concurrency, per-account load, payload size, or a segment-specific request.
+- Only if the evidence shows a hard single in-flight limit should you add a
+  second configurable draw channel.
+- If a second draw channel is needed, make it explicit in backend config as a
+  separate provider/endpoint/key pair rather than silently changing the current
+  one.
+- Keep the existing concurrent two-shot product rule unless the provider
+  contract itself forbids it.
+
 Update `GET /api/admin/providers`:
 
 - Use Chinese labels/titles/roles/channel descriptions suitable for direct UI
