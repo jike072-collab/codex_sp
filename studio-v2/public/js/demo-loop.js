@@ -65,59 +65,61 @@ function scriptSegmentById(project, segmentId) {
     : script.segment_b_10_20s;
 }
 
-function renderShotTable(segmentKey, shots) {
+function renderTimelineRow(segmentKey, segmentLabel, shot, shotIndex, timelineIndex) {
   return `
-    <div class="shot-table-wrap">
-      <table class="shot-table">
-        <thead>
-          <tr>
-            <th scope="col">字段</th>
-            ${shots.map((shot, shotIndex) => `
-              <th scope="col">
-                <span>镜头 ${shotIndex + 1}</span>
-                <small>${escapeHtml(shot.start_sec)}-${escapeHtml(shot.end_sec)}s</small>
-              </th>
-            `).join("")}
-          </tr>
-        </thead>
-        <tbody>
-          ${SHOT_FIELDS.map(([field, label]) => `
-            <tr>
-              <th scope="row">${escapeHtml(label)}</th>
-              ${shots.map((shot, shotIndex) => `
-                <td>
-                  <textarea rows="1" aria-label="镜头 ${shotIndex + 1} ${escapeHtml(label)}"
-                    data-segment="${escapeHtml(segmentKey)}"
-                    data-shot-index="${shotIndex}"
-                    data-shot-field="${escapeHtml(field)}">${escapeHtml(shot[field] || "")}</textarea>
-                </td>
-              `).join("")}
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
-    </div>
+    <tr data-script-segment="${escapeHtml(segmentKey)}">
+      <th scope="row">
+        <span>${String(timelineIndex + 1).padStart(2, "0")}</span>
+        <strong>${escapeHtml(shot.start_sec)}-${escapeHtml(shot.end_sec)}s</strong>
+        <small>${escapeHtml(segmentLabel)}</small>
+      </th>
+      ${SHOT_FIELDS.map(([field, label]) => `
+        <td>
+          <textarea rows="1" aria-label="${escapeHtml(segmentLabel)} 镜头 ${shotIndex + 1} ${escapeHtml(label)}"
+            data-segment="${escapeHtml(segmentKey)}"
+            data-shot-index="${shotIndex}"
+            data-shot-field="${escapeHtml(field)}">${escapeHtml(shot[field] || "")}</textarea>
+        </td>
+      `).join("")}
+    </tr>
   `;
 }
 
-function renderSegmentEditor(segmentKey, segment) {
-  const shots = Array.isArray(segment?.shots) ? segment.shots : [];
+function renderScriptTimeline(script) {
+  let timelineIndex = 0;
   return `
-    <section class="segment-card compact-segment">
-      <div class="segment-heading">
-        <div>
-          <p class="section-index">${escapeHtml(segment.segment_id || "")}</p>
-          <h3>${escapeHtml(segment.theme || "脚本分段")}</h3>
-        </div>
-        <span class="requirement">${escapeHtml(segment.duration_sec || 10)} 秒</span>
+    <section class="script-timeline-card">
+      <div class="script-theme-grid">
+        ${SEGMENTS.map(([segmentKey, segmentLabel]) => {
+          const segment = script[segmentKey] || {};
+          return `
+            <label>
+              <span>${escapeHtml(segmentLabel)} 主题</span>
+              <input data-segment="${escapeHtml(segmentKey)}"
+                data-field="theme"
+                value="${escapeHtml(segment.theme || "")}">
+            </label>
+          `;
+        }).join("")}
       </div>
-      <label class="segment-theme-field">
-        <span>分段主题</span>
-        <input data-segment="${escapeHtml(segmentKey)}"
-          data-field="theme"
-          value="${escapeHtml(segment.theme || "")}">
-      </label>
-      ${renderShotTable(segmentKey, shots)}
+      <div class="script-timeline-table-wrap">
+        <table class="script-timeline-table">
+          <thead>
+            <tr>
+              <th scope="col">时间</th>
+              ${SHOT_FIELDS.map(([, label]) => `<th scope="col">${escapeHtml(label)}</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${SEGMENTS.flatMap(([segmentKey, segmentLabel]) => {
+              const shots = Array.isArray(script[segmentKey]?.shots) ? script[segmentKey].shots : [];
+              return shots.map((shot, shotIndex) =>
+                renderTimelineRow(segmentKey, segmentLabel, shot, shotIndex, timelineIndex++)
+              );
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
     </section>
   `;
 }
@@ -156,8 +158,8 @@ function renderScriptEditor(project) {
     <div class="section-heading">
       <div>
         <p class="section-index">STEP 03</p>
-        <h2>编辑广告脚本</h2>
-        <p>界面标签使用中文便于审核；镜头内容和提交给后端的文案仍保持目标国家对应语言。确认后进入 Step 4 生成两张故事板。</p>
+        <h2>编辑 20 秒广告脚本</h2>
+        <p>全部镜头按时间顺序集中编辑；确认后仍按 0-10 秒和 10-20 秒生成两张故事板与两段交付脚本。</p>
       </div>
       <span class="requirement">20 秒</span>
     </div>
@@ -177,9 +179,7 @@ function renderScriptEditor(project) {
         </div>
         <p>${escapeHtml(project.marketBrief?.coreMessage || "")}</p>
       </div>
-      <div class="script-segments-grid">
-        ${SEGMENTS.map(([segmentKey]) => renderSegmentEditor(segmentKey, script[segmentKey] || {})).join("")}
-      </div>
+      ${renderScriptTimeline(script)}
     </form>
   `;
 }
@@ -460,7 +460,8 @@ export function setWorkflowBusy(value, buttonId, busyText, idleText) {
     button.disabled = value;
     button.textContent = value ? busyText : idleText;
   }
-  el("saveState").textContent = value ? busyText : "已保存到本机";
+  const saveState = el("saveState");
+  if (saveState) saveState.textContent = value ? busyText : "已保存到本机";
 }
 
 export async function copyBlockText(targetId) {

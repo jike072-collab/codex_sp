@@ -144,6 +144,7 @@ export function setMarketSaving(value) {
     button.disabled = value;
     button.textContent = value ? "正在保存..." : "保存市场创意";
   }
-  el("saveState").textContent = value ? "正在保存市场创意..." : "已保存到本机";
+  const saveState = el("saveState");
+  if (saveState) saveState.textContent = value ? "正在保存市场创意..." : "已保存到本机";
   el("marketHint").textContent = value ? "正在提交 market brief。" : "保存后进入广告脚本阶段。";
 }

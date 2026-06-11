@@ -33,7 +33,7 @@ const STAGE_PANEL_COPY = {
   assets: "先上传清晰的同款鞋素材，后面的识别和锁定才会稳。",
   review: "确认产品锁定、受众、比例和创意方向。",
   market: "把已确认的产品信息整理成脚本输入。",
-  script: "保持两段 10 秒脚本清楚、可改、好对照。",
+  script: "按完整 20 秒时间线检查镜头、文案和节奏。",
   visual: "img2img 只生成两张故事板，成功的会保留。",
   export: "只保留两张故事板和对应脚本，方便直接交付。"
 };
@@ -71,7 +71,7 @@ const STAGE_EXPERIENCE = {
     objective: "把产品设定整理成可直接驱动广告脚本的创意方向。"
   },
   script: {
-    objective: "把创意方向变成两段可编辑、可执行的 10 秒广告脚本。"
+    objective: "把创意方向变成一份连续、可编辑的 20 秒广告脚本。"
   },
   visual: {
     objective: "使用商品参考图制作两张分段故事板，成功画面会被保留。"
@@ -178,7 +178,7 @@ export function renderWorkspace() {
     analyzing: "正在识别鞋款，稍后会进入产品设定。",
     review: "确认产品信息、受众、比例和创意方向。",
     market: "整理创意 brief，准备生成两段脚本。",
-    script: "编辑两段 10 秒脚本，保持节奏清楚。",
+    script: "编辑完整 20 秒脚本，按时间顺序检查镜头与文案。",
     visual: "img2img 只生成两张故事板。",
     export: "最终页只保留两张故事板和对应脚本。"
   };
@@ -211,87 +211,21 @@ export function renderWorkspace() {
   if (activeStatus === "script") renderScriptStage(project);
   if (activeStatus === "visual") renderVisualStage(project);
   if (activeStatus === "export") renderExportStage(project);
-  renderProductionExperience(project, activeStatus);
+  renderProductionExperience(activeStatus);
   if (project.reviewConfirmedAt) {
     el("confirmedTime").textContent = `确认时间：${formatTime(project.reviewConfirmedAt)}`;
   }
 
   lockStageForReview(isReviewingPast);
-  el("saveState").textContent = isReviewingPast
-    ? `正在回看：${statusLabel(activeStatus)}`
-    : "已保存到本机";
 }
 
-function completedStoryboardUrls(project) {
-  return (project?.imagePackage?.image_generation || [])
-    .filter((item) => item?.status === "done" && item?.generated_image?.url)
-    .map((item) => item.generated_image.url);
-}
-
-function productionProgress(activeStatus) {
-  if (state.workflowProgress?.active && state.workflowProgress.stage === activeStatus) {
-    return state.workflowProgress.percent;
-  }
-  if (activeStatus === "export") return 100;
-  const visibleStep = VISIBLE_STAGE_NUMBER[activeStatus] || 1;
-  return Math.max(12, Math.round((visibleStep / 5) * 100));
-}
-
-function renderProductionReel(project) {
-  const reel = el("productionReel");
-  if (!reel) return;
-  const assetCount = project?.assets?.length || 0;
-  const storyboardCount = completedStoryboardUrls(project).length;
-  const stats = [
-    {
-      icon: "素",
-      label: "参考素材",
-      value: `${assetCount} 张`,
-      detail: assetCount >= 4 ? "四图门禁已满足" : `还需 ${Math.max(0, 4 - assetCount)} 张`,
-      complete: assetCount >= 4
-    },
-    {
-      icon: "锁",
-      label: "产品锁定",
-      value: project?.reviewConfirmedAt ? "已确认" : "待确认",
-      detail: project?.reviewConfirmedAt ? "产品身份已固定" : "等待人工审核",
-      complete: Boolean(project?.reviewConfirmedAt)
-    },
-    {
-      icon: "稿",
-      label: "广告脚本",
-      value: project?.planningPackage ? "2 段" : "待生成",
-      detail: project?.planningPackage ? "共 20 秒可编辑" : "产品确认后生成",
-      complete: Boolean(project?.planningPackage)
-    },
-    {
-      icon: "图",
-      label: "故事板",
-      value: `${storyboardCount}/2`,
-      detail: storyboardCount === 2 ? "最终画面已就绪" : storyboardCount ? "成功画面已保留" : "等待脚本确认",
-      complete: storyboardCount === 2
-    }
-  ];
-  reel.innerHTML = stats.map((stat) => `
-    <article class="production-stat" data-complete="${stat.complete}">
-      <span class="production-stat-icon" aria-hidden="true">${stat.icon}</span>
-      <div>
-        <small>${stat.label}</small>
-        <strong>${stat.value}</strong>
-        <em>${stat.detail}</em>
-      </div>
-    </article>
-  `).join("");
-}
-
-function renderProductionExperience(project, activeStatus) {
+function renderProductionExperience(activeStatus) {
   const experience = STAGE_EXPERIENCE[activeStatus] || STAGE_EXPERIENCE.assets;
   const visibleStep = VISIBLE_STAGE_NUMBER[activeStatus] || 1;
-  const percent = productionProgress(activeStatus);
   const workspace = el("workspace");
   const stageChanged = workspace.dataset.renderedStage !== activeStatus;
   workspace.dataset.stage = activeStatus;
-  workspace.dataset.status = project.status;
+  workspace.dataset.status = state.project?.status || activeStatus;
   workspace.dataset.renderedStage = activeStatus;
   if (stageChanged) {
     workspace.classList.remove("production-enter");
@@ -299,11 +233,8 @@ function renderProductionExperience(project, activeStatus) {
   }
 
   el("productionSceneLabel").textContent = `SCENE ${String(visibleStep).padStart(2, "0")} / 05`;
-  el("productionHeaderPercent").textContent = `${percent}%`;
-  el("productionHeaderProgress").style.width = `${percent}%`;
   el("productionTimecode").textContent = `00:00:${String((visibleStep - 1) * 5).padStart(2, "0")}`;
   el("productionObjective").textContent = experience.objective;
-  renderProductionReel(project);
 }
 
 function renderWorkspacePanel(project, activeStatus) {
@@ -424,7 +355,7 @@ function renderCompletionList(status) {
     analyzing: ["等待识别完成", "保留原始素材", "准备进入人工审核"],
     review: ["目标人群和尺寸已选择", "创意方向和核心信息已整理", "产品锁定已确认"],
     market: ["目标国家已选择", "目标人群已确认", "创意主题、核心信息和语气已填写"],
-    script: ["产品锁定和创意方向已保存", "选择每个 10 秒段落的镜头数", "生成脚本后可继续编辑"],
+    script: ["完整 20 秒脚本已生成", "全部镜头按时间顺序可编辑", "确认后按两个 10 秒分段生成故事板"],
     visual: ["脚本已确认", "故事板方向清晰", "准备生成两张分段故事板"],
     export: ["两张故事板已整理", "两段 10 秒脚本可复制", "第一版交付内容已就绪"]
   };
