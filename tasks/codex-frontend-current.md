@@ -26,6 +26,8 @@ Route: complex
 - Fix the Admin page right edge being clipped at common desktop widths.
 - Replace free-text model inputs with model selection controls.
 - Show the currently saved API key as a masked value.
+- Add a final visual polish pass so the workbench and Admin pages feel like a
+  stable finished product rather than a patched prototype.
 
 ## Main Workbench
 
@@ -65,6 +67,38 @@ editing, model editing, URL editing, or key editing in `studio-v2/public/**`.
 - Long API URLs must not force the card wider than its grid track.
 - Use a responsive grid with stable minimums; do not create horizontal page
   scrolling.
+
+## Visual Polish Pass
+
+Make the current pages visually cleaner and more consistent without changing the
+workflow or backend contract.
+
+Allowed polish targets:
+
+- Workbench spacing, alignment, density, button states, card borders, shadows,
+  typography scale, and hover/focus feedback.
+- Step navigation clarity and stability.
+- Step 02 control cards and product-lock presentation.
+- Step 03 script editor card hierarchy and scanability.
+- Step 04 partial-success/failure/retry states.
+- Step 05 final two-image/two-script delivery layout.
+- Admin provider cards, form controls, badges, model selector, key area, and
+  save/sync states.
+
+Polish rules:
+
+- Keep the product as an actual app screen, not a landing page.
+- Do not add marketing hero sections, decorative blobs, oversized cards, or
+  one-note color themes.
+- Do not place cards inside other cards.
+- Do not introduce layout movement when switching steps or changing states.
+- Buttons and controls must keep stable dimensions across loading, hover,
+  disabled, success, and error states.
+- Long Chinese text, model ids, URLs, and error messages must wrap cleanly
+  without covering neighboring content.
+- Maintain the existing five-step workflow and all current product rules.
+- Do not restore API editing in the normal workbench.
+- Do not restore JSON, ZIP, CSV, or Flow Omni export buttons.
 
 ## Model Control
 
@@ -132,9 +166,17 @@ Do not edit:
 - Verify all visible Admin interface text is Chinese.
 - Verify model options load, refresh, select, save, and resync.
 - Verify masked current key, replacement, unchanged blank, and clear states.
+- Verify visual polish on desktop and narrow/mobile widths:
+  - no overlapping text
+  - no clipped controls
+  - no horizontal scrolling
+  - no page jump when switching steps
+  - button text fits in every state
 - Provide screenshots of the workbench sidebar and Admin desktop/mobile views.
 - Provide before/after Step 02 navigation screenshots or a short recording that
   demonstrates there is no layout shift.
+- Provide final screenshots for Step 02, Step 03, Step 04 partial/failure state,
+  Step 05 delivery, and Admin provider settings.
 
 ## Delivery
 
