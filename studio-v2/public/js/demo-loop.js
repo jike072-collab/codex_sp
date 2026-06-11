@@ -207,6 +207,16 @@ function renderScriptTimeline(script) {
       </div>
       <div class="script-timeline-table-wrap">
         <table class="script-timeline-table">
+          <colgroup>
+            <col class="timeline-col-time">
+            <col class="timeline-col-visual">
+            <col class="timeline-col-action">
+            <col class="timeline-col-camera">
+            <col class="timeline-col-selling">
+            <col class="timeline-col-caption">
+            <col class="timeline-col-sound">
+            <col class="timeline-col-transition">
+          </colgroup>
           <thead>
             <tr>
               <th scope="col">时间</th>

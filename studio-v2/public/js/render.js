@@ -235,6 +235,79 @@ function renderWorkspacePanel(project, activeStatus) {
   if (panelProgressText) panelProgressText.textContent = workflowProgress?.active && workflowProgress.stage === activeStatus
     ? workflowProgress.message
     : readinessText;
+  renderPanelStageVisual(project, activeStatus);
+}
+
+function renderPanelStageVisual(project, activeStatus) {
+  const container = el("panelStageVisual");
+  if (!container) return;
+  const assets = project.assets || [];
+  const script = project.planningPackage?.script_20s || {};
+  const shotCount = [
+    ...(script.segment_a_0_10s?.shots || []),
+    ...(script.segment_b_10_20s?.shots || [])
+  ].length;
+  const generated = (project.imagePackage?.image_generation || [])
+    .filter((item) => item?.status === "done" && item?.generated_image?.url).length;
+
+  if (activeStatus === "script") {
+    container.innerHTML = `
+      <div class="stage-visual-heading">
+        <span>20 秒时间线</span>
+        <strong>${escapeHtml(shotCount || 10)} 镜头</strong>
+      </div>
+      <div class="script-segment-chart">
+        <div><span>0-10s</span><i></i></div>
+        <div><span>10-20s</span><i></i></div>
+      </div>
+      <div class="shot-tick-chart" aria-hidden="true">
+        ${Array.from({ length: shotCount || 10 }, (_, index) => `<i style="--tick:${index}"></i>`).join("")}
+      </div>
+      <div class="stage-visual-stats">
+        <div><strong>20s</strong><span>总时长</span></div>
+        <div><strong>2</strong><span>交付分段</span></div>
+        <div><strong>${escapeHtml(shotCount || 10)}</strong><span>镜头总数</span></div>
+      </div>
+    `;
+    return;
+  }
+
+  if (activeStatus === "visual" || activeStatus === "export") {
+    container.innerHTML = `
+      <div class="stage-visual-heading">
+        <span>故事板交付</span>
+        <strong>${escapeHtml(generated)}/2</strong>
+      </div>
+      <div class="storyboard-mini-grid">
+        ${[0, 1].map((index) => `
+          <div data-complete="${index < generated}">
+            <span>${index === 0 ? "0-10s" : "10-20s"}</span>
+            <i></i>
+          </div>
+        `).join("")}
+      </div>
+      <div class="stage-visual-stats">
+        <div><strong>${escapeHtml(generated)}</strong><span>已完成</span></div>
+        <div><strong>${escapeHtml(2 - generated)}</strong><span>待生成</span></div>
+      </div>
+    `;
+    return;
+  }
+
+  const readyAssets = Math.min(4, assets.length);
+  container.innerHTML = `
+    <div class="stage-visual-heading">
+      <span>${activeStatus === "review" || activeStatus === "market" ? "产品锁定检查" : "素材完整度"}</span>
+      <strong>${escapeHtml(readyAssets)}/4</strong>
+    </div>
+    <div class="asset-readiness-chart">
+      ${Array.from({ length: 4 }, (_, index) => `<i data-ready="${index < readyAssets}"></i>`).join("")}
+    </div>
+    <div class="stage-visual-stats">
+      <div><strong>${escapeHtml(assets.length)}</strong><span>参考图</span></div>
+      <div><strong>${readyAssets === 4 ? "完成" : "准备中"}</strong><span>四图门禁</span></div>
+    </div>
+  `;
 }
 
 export function renderStepper(activeStatus = viewStatus()) {
