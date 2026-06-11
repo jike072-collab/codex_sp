@@ -1,6 +1,6 @@
 # Codex B Current Frontend Task
 
-Status: REWORK_REQUIRED
+Status: COMPLETE
 
 Route: complex
 
@@ -12,15 +12,18 @@ Backend/Admin commit included: `9607599 Add admin provider settings console`
 
 Frontend P0 commit included: `656d7b7 Fix frontend P0 workbench review`
 
+Frontend Admin follow-up commit included:
+`aea0fff Hide provider settings from workbench`
+
 ## Coordination Source
 
 Frontend work happens from another computer and must be coordinated through the
 GitHub repository. Do not rely on chat thread memory, local-only notes, or stale
 branch content.
 
-This task is a follow-up from coordinator review. The backend/Admin branch and
-the frontend P0 branch merge cleanly and tests pass, but the combined product is
-not ready for `main` because the main workbench still exposes API editing.
+This task was assigned as a follow-up from coordinator review. The backend/Admin
+branch, frontend P0 branch, and frontend Admin follow-up now merge cleanly and
+pass coordinator checks.
 
 ## Required Skills
 
