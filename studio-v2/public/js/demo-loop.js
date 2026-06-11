@@ -65,23 +65,38 @@ function scriptSegmentById(project, segmentId) {
     : script.segment_b_10_20s;
 }
 
-function renderShotEditor(segmentKey, shot, shotIndex) {
+function renderShotTable(segmentKey, shots) {
   return `
-    <article class="shot-card compact-shot">
-      <div class="shot-meta">
-        <span class="shot-number">镜头 ${shotIndex + 1}</span>
-        <strong>${escapeHtml(shot.start_sec)}-${escapeHtml(shot.end_sec)}s</strong>
-      </div>
-      <div class="shot-field-grid">
-        ${SHOT_FIELDS.map(([field, label]) => `
-          <label class="shot-field shot-field-${escapeHtml(field)}">
-            <span>${escapeHtml(label)}</span>
-            <textarea rows="1" data-segment="${escapeHtml(segmentKey)}"
-              data-shot-index="${shotIndex}" data-shot-field="${escapeHtml(field)}">${escapeHtml(shot[field] || "")}</textarea>
-          </label>
-        `).join("")}
-      </div>
-    </article>
+    <div class="shot-table-wrap">
+      <table class="shot-table">
+        <thead>
+          <tr>
+            <th scope="col">字段</th>
+            ${shots.map((shot, shotIndex) => `
+              <th scope="col">
+                <span>镜头 ${shotIndex + 1}</span>
+                <small>${escapeHtml(shot.start_sec)}-${escapeHtml(shot.end_sec)}s</small>
+              </th>
+            `).join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${SHOT_FIELDS.map(([field, label]) => `
+            <tr>
+              <th scope="row">${escapeHtml(label)}</th>
+              ${shots.map((shot, shotIndex) => `
+                <td>
+                  <textarea rows="1" aria-label="镜头 ${shotIndex + 1} ${escapeHtml(label)}"
+                    data-segment="${escapeHtml(segmentKey)}"
+                    data-shot-index="${shotIndex}"
+                    data-shot-field="${escapeHtml(field)}">${escapeHtml(shot[field] || "")}</textarea>
+                </td>
+              `).join("")}
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
   `;
 }
 
@@ -102,9 +117,7 @@ function renderSegmentEditor(segmentKey, segment) {
           data-field="theme"
           value="${escapeHtml(segment.theme || "")}">
       </label>
-      <div class="shot-list">
-        ${shots.map((shot, index) => renderShotEditor(segmentKey, shot, index)).join("")}
-      </div>
+      ${renderShotTable(segmentKey, shots)}
     </section>
   `;
 }
@@ -177,12 +190,6 @@ export function renderScriptStage(project = state.project) {
   container.innerHTML = project.planningPackage
     ? renderScriptEditor(project)
     : renderGenerateScript(project);
-  window.requestAnimationFrame(() => {
-    container.querySelectorAll("textarea[data-shot-field]").forEach((textarea) => {
-      textarea.style.height = "auto";
-      textarea.style.height = `${textarea.scrollHeight}px`;
-    });
-  });
 }
 
 export function planningPackageFromForm(project = state.project) {

@@ -367,7 +367,6 @@ function updateProductionProgressDom(progress) {
   if (!progress?.active) return;
   if (el("productionHeaderPercent")) el("productionHeaderPercent").textContent = `${progress.percent}%`;
   if (el("productionHeaderProgress")) el("productionHeaderProgress").style.width = `${progress.percent}%`;
-  if (el("productionDockHint")) el("productionDockHint").textContent = progress.message;
 }
 
 function setScriptProgress(active) {
