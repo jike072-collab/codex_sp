@@ -11,6 +11,7 @@ export class ProviderError extends Error {
     {
       code = "PROVIDER_ERROR",
       providerStatus,
+      providerRequestId,
       possiblyBilled = false,
       retryable = false,
       cause
@@ -21,6 +22,7 @@ export class ProviderError extends Error {
     this.code = code;
     this.statusCode = 502;
     this.providerStatus = providerStatus;
+    this.providerRequestId = providerRequestId;
     this.possiblyBilled = possiblyBilled;
     this.retryable = retryable;
   }
@@ -28,6 +30,12 @@ export class ProviderError extends Error {
 
 export function hasUsableApiKey(value) {
   return !PLACEHOLDER_KEYS.has(String(value || "").trim().toLowerCase());
+}
+
+export function maskedApiKeyPreview(value) {
+  const key = String(value || "").trim();
+  if (!hasUsableApiKey(key)) return "";
+  return `•••• ${key.slice(-4)}`;
 }
 
 export function positiveInteger(value, fallback) {
@@ -70,6 +78,20 @@ function retryableErrorCode(errorCode, suffix) {
     : errorCode;
 }
 
+function safeProviderRequestId(headers) {
+  for (const name of [
+    "x-request-id",
+    "x-correlation-id",
+    "x-trace-id",
+    "cf-ray",
+    "request-id"
+  ]) {
+    const value = headers?.get?.(name);
+    if (value) return String(value).slice(0, 120);
+  }
+  return undefined;
+}
+
 export async function postProviderJson({
   url,
   apiKey,
@@ -77,6 +99,7 @@ export async function postProviderJson({
   timeoutMs,
   providerLabel,
   errorCode,
+  includeProviderDetail = true,
   headers,
   fetchImpl = fetch
 }) {
@@ -111,7 +134,7 @@ export async function postProviderJson({
     } catch {
       // Provider error bodies are not guaranteed to be JSON.
     }
-    const suffix = detail ? `：${String(detail).slice(0, 180)}` : "";
+    const suffix = includeProviderDetail && detail ? `：${String(detail).slice(0, 180)}` : "";
     const overloaded = retryableProviderDetail(detail);
     throw new ProviderError(
       `${providerLabel}调用失败（HTTP ${response.status}）${suffix}`,
@@ -122,6 +145,7 @@ export async function postProviderJson({
             ? retryableErrorCode(errorCode, "_OVERLOADED")
             : errorCode,
         providerStatus: response.status,
+        providerRequestId: safeProviderRequestId(response.headers),
         possiblyBilled: timedOut,
         retryable: timedOut || overloaded
       }
@@ -134,6 +158,7 @@ export async function postProviderJson({
     throw new ProviderError(`${providerLabel}返回了无效响应。`, {
       code: errorCode,
       providerStatus: response.status,
+      providerRequestId: safeProviderRequestId(response.headers),
       cause: error
     });
   }

@@ -27,6 +27,7 @@ import {
 import { generateProjectScript } from "../ai-providers/text-provider.mjs";
 import { confirmPlanningPackage } from "../workflow-domain/script-review.mjs";
 import { generateProjectVisuals } from "../ai-providers/image-provider.mjs";
+import { discoverAdminProviderModels } from "../ai-providers/provider-models.mjs";
 import { ProviderError } from "../ai-providers/provider-utils.mjs";
 import { buildExportPackage } from "../workflow-domain/export-package.mjs";
 import { recordVisualGenerationFailure } from "../workflow-domain/visual-package.mjs";
@@ -63,6 +64,15 @@ export async function handleApi(request, response, url) {
     if (request.method === "PUT") {
       const body = await readJsonBody(request, 64 * 1024);
       return sendJson(response, 200, await updateAdminProviderSettings(body));
+    }
+    return sendJson(response, 405, { error: "Unsupported operation." });
+  }
+
+  if (url.pathname === "/api/admin/providers/models") {
+    if (request.method === "GET") {
+      return sendJson(response, 200, await discoverAdminProviderModels({
+        refresh: url.searchParams.get("refresh") === "1"
+      }));
     }
     return sendJson(response, 405, { error: "Unsupported operation." });
   }

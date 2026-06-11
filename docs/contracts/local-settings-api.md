@@ -93,26 +93,26 @@ Response:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "providers": [
     {
       "id": "vision",
-      "title": "Vision recognition",
+      "title": "识图模型",
       "provider": "Right Code",
-      "role": "Product image analysis",
-      "channel": "Gemini (/gemini)",
+      "role": "商品识别与产品锁定",
+      "channel": "Gemini 识图通道",
       "fields": [
         {
           "name": "apiUrl",
-          "label": "API URL",
+          "label": "API 地址",
           "type": "url",
           "valueKey": "visionApiUrl",
           "clearable": false
         },
         {
           "name": "model",
-          "label": "Model",
-          "type": "text",
+          "label": "模型",
+          "type": "select",
           "valueKey": "visionModel",
           "clearable": false
         },
@@ -128,12 +128,153 @@ Response:
         "model": "gemini-2.5-flash",
         "apiUrl": "https://right.codes/gemini",
         "configured": false,
-        "keyPreview": ""
+        "keyPreview": "•••• 9744"
+      }
+    },
+    {
+      "id": "image",
+      "title": "故事板图片模型",
+      "provider": "Right Code",
+      "role": "img2img 故事板生成",
+      "channel": "双绘图通道",
+      "channels": [
+        {
+          "id": "primary",
+          "title": "绘图通道 A",
+          "description": "固定用于 0-10s 故事板",
+          "segmentId": "0-10s"
+        },
+        {
+          "id": "secondary",
+          "title": "绘图通道 B",
+          "description": "固定用于 10-20s 故事板",
+          "segmentId": "10-20s"
+        }
+      ],
+      "fields": [
+        {
+          "name": "model",
+          "label": "模型",
+          "type": "select",
+          "channelId": "primary",
+          "valueKey": "imageModel",
+          "clearable": false
+        },
+        {
+          "name": "model",
+          "label": "模型",
+          "type": "select",
+          "channelId": "secondary",
+          "valueKey": "imageSecondaryModel",
+          "clearable": false
+        }
+      ],
+      "config": {
+        "configured": false,
+        "configuredChannels": 1,
+        "requiredChannels": 2,
+        "channels": [
+          {
+            "id": "primary",
+            "title": "绘图通道 A",
+            "segmentId": "0-10s",
+            "model": "gpt-image-2",
+            "apiUrl": "https://www.right.codes/draw/v1/images/generations",
+            "configured": true,
+            "keyPreview": "•••• 1111"
+          },
+          {
+            "id": "secondary",
+            "title": "绘图通道 B",
+            "segmentId": "10-20s",
+            "model": "gpt-image-2",
+            "apiUrl": "https://www.right.codes/draw/v1/images/generations",
+            "configured": false,
+            "keyPreview": ""
+          }
+        ]
       }
     }
   ]
 }
 ```
+
+`keyPreview` is empty when no usable key is configured. Otherwise it is masked
+as `•••• <last4>` and never contains the full API key.
+
+## Admin Provider Model Discovery
+
+```http
+GET /api/admin/providers/models
+GET /api/admin/providers/models?refresh=1
+```
+
+The backend attempts real provider model-list discovery through configured
+provider endpoints and keys. It never invents models. Successful discoveries
+may be cached briefly; `refresh=1` forces a new discovery attempt.
+
+Response:
+
+```json
+{
+  "providers": {
+    "vision": {
+      "status": "ok",
+      "currentModel": "gemini-2.5-flash",
+      "models": [
+        { "id": "gemini-2.5-flash", "label": "gemini-2.5-flash" }
+      ],
+      "source": "provider"
+    },
+    "image": {
+      "status": "partial",
+      "source": "mixed",
+      "channels": [
+        {
+          "id": "primary",
+          "title": "绘图通道 A",
+          "segmentId": "0-10s",
+          "status": "ok",
+          "currentModel": "gpt-image-2",
+          "models": [
+            { "id": "gpt-image-2", "label": "gpt-image-2" }
+          ],
+          "source": "provider"
+        },
+        {
+          "id": "secondary",
+          "title": "绘图通道 B",
+          "segmentId": "10-20s",
+          "status": "unsupported",
+          "currentModel": "gpt-image-2",
+          "models": [
+            { "id": "gpt-image-2", "label": "gpt-image-2" }
+          ],
+          "source": "current",
+          "message": "供应商未提供可用的模型列表端点。"
+        }
+      ]
+    }
+  }
+}
+```
+
+For `image`, model discovery is channel-specific because each storyboard draw
+channel uses its own explicit key and endpoint. The backend never invents
+channel models and never returns full API keys.
+
+Statuses:
+
+- `ok`: models came from a real provider model-list response.
+- `unsupported`: no supported model-list endpoint was available or the provider
+  returned `404`/`405`; only the current configured model is returned.
+- `error`: discovery failed safely; only the current configured model is
+  returned.
+- `partial`: mixed channel results, for example one draw channel supports model
+  discovery while the other only falls back to its current configured model.
+
+No response includes a full API key, provider response body, prompt, image
+content, or base64 payload.
 
 ## Update Admin Provider Settings
 
@@ -154,16 +295,19 @@ Request fields are optional and independent:
   "deepSeekApiKey": "official-deepseek-key",
   "imageApiUrl": "https://www.right.codes/draw/v1/images/generations",
   "imageModel": "gpt-image-2",
-  "imageApiKey": "right-code-image-key"
+  "imageApiKey": "right-code-image-key-a",
+  "imageSecondaryApiUrl": "https://www.right.codes/draw/v1/images/generations",
+  "imageSecondaryModel": "gpt-image-2",
+  "imageSecondaryApiKey": "right-code-image-key-b"
 }
 ```
 
 Rules:
 
-- `visionApiUrl`, `textApiUrl`, and `imageApiUrl` must be valid `http` or
-  `https` URLs.
-- `visionModel`, `textModel`, and `imageModel` must be non-empty strings with no
-  line breaks.
+- `visionApiUrl`, `textApiUrl`, `imageApiUrl`, and `imageSecondaryApiUrl` must
+  be valid `http` or `https` URLs.
+- `visionModel`, `textModel`, `imageModel`, and `imageSecondaryModel` must be
+  non-empty strings with no line breaks.
 - API key fields accept a non-empty string to replace the key.
 - API key fields accept `null` to clear the local key.
 - Omitted fields keep their current values.

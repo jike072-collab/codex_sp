@@ -127,7 +127,8 @@
             },
             "possiblyBilled": { "type": "boolean" },
             "retryable": { "type": "boolean" },
-            "providerStatus": { "type": "integer" }
+            "providerStatus": { "type": "integer" },
+            "providerDiagnostics": { "$ref": "#/$defs/providerDiagnosticsSummary" }
           },
           "additionalProperties": false
         }
@@ -282,6 +283,7 @@
           },
           "additionalProperties": false
         },
+        "provider_diagnostics": { "$ref": "#/$defs/providerDiagnostic" },
         "script_copy": { "type": "string" },
         "generated_image": {
           "type": "object",
@@ -291,7 +293,10 @@
             "model": { "type": "string", "minLength": 1 },
             "url": { "type": "string", "minLength": 1 },
             "size": { "type": "string", "minLength": 1 },
-            "referenceMode": { "type": "string", "minLength": 1 }
+            "referenceMode": { "type": "string", "minLength": 1 },
+            "storedName": { "type": "string", "minLength": 1 },
+            "mimeType": { "type": "string", "minLength": 1 },
+            "sourceUrl": { "type": "string", "minLength": 1 }
           },
           "additionalProperties": false
         }
@@ -319,6 +324,98 @@
           "items": { "type": "string", "minLength": 1 }
         }
       }
+    },
+    "providerDiagnostic": {
+      "type": "object",
+      "required": [
+        "projectId",
+        "segmentId",
+        "assetId",
+        "attemptId",
+        "startedAt",
+        "model",
+        "requestedSize",
+        "referenceImageCount",
+        "referenceImageTotalBytes",
+        "promptCharCount"
+      ],
+      "properties": {
+        "projectId": { "type": "string", "minLength": 1 },
+        "segmentId": { "enum": ["0-10s", "10-20s"] },
+        "assetId": { "type": "string", "minLength": 1 },
+        "attemptId": { "type": "string", "minLength": 1 },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "elapsedMs": { "type": "integer", "minimum": 0 },
+        "model": { "type": "string", "minLength": 1 },
+        "requestedSize": { "type": "string", "minLength": 1 },
+        "referenceImageCount": { "type": "integer", "minimum": 0 },
+        "referenceImageTotalBytes": { "type": "integer", "minimum": 0 },
+        "promptCharCount": { "type": "integer", "minimum": 0 },
+        "drawChannelId": { "type": "string", "minLength": 1 },
+        "drawChannelTitle": { "type": "string", "minLength": 1 },
+        "keyPreview": { "type": "string" },
+        "providerHost": { "type": "string" },
+        "providerPath": { "type": "string" },
+        "responseFormat": { "type": "string", "minLength": 1 },
+        "providerStatus": { "type": "integer" },
+        "providerRequestId": { "type": "string", "minLength": 1 },
+        "outcome": { "enum": ["success", "failed"] },
+        "errorCode": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "providerDiagnosticsSummary": {
+      "type": "object",
+      "required": ["attempts", "evidence"],
+      "properties": {
+        "attempts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/providerDiagnostic" }
+        },
+        "evidence": {
+          "type": "object",
+          "required": [
+            "concurrentAttemptCount",
+            "sameModel",
+            "sameRequestedSize",
+            "sameReferencePayload",
+            "sameKeyPreview",
+            "sameEndpoint",
+            "drawChannelIds",
+            "keyPreviews",
+            "promptCharCounts",
+            "providerStatuses",
+            "conclusion"
+          ],
+          "properties": {
+            "concurrentAttemptCount": { "type": "integer", "minimum": 0 },
+            "sameModel": { "type": "boolean" },
+            "sameRequestedSize": { "type": "boolean" },
+            "sameReferencePayload": { "type": "boolean" },
+            "sameKeyPreview": { "type": "boolean" },
+            "sameEndpoint": { "type": "boolean" },
+            "drawChannelIds": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "keyPreviews": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "promptCharCounts": {
+              "type": "array",
+              "items": { "type": "integer", "minimum": 0 }
+            },
+            "providerStatuses": {
+              "type": "array",
+              "items": { "type": "integer" }
+            },
+            "conclusion": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": true

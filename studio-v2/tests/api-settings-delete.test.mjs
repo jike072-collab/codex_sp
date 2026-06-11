@@ -22,7 +22,10 @@ const providerEnvKeys = [
   "TEXT_MODEL",
   "IMAGE_MODEL_API_KEY",
   "IMAGE_API_URL",
-  "IMAGE_MODEL"
+  "IMAGE_MODEL",
+  "IMAGE_SECONDARY_API_KEY",
+  "IMAGE_SECONDARY_API_URL",
+  "IMAGE_SECONDARY_MODEL"
 ];
 
 async function request(path, options = {}) {
@@ -40,6 +43,10 @@ async function request(path, options = {}) {
 
 function providerById(body, id) {
   return body.providers.find((provider) => provider.id === id);
+}
+
+function imageChannel(provider, channelId) {
+  return provider.config.channels.find((channel) => channel.id === channelId);
 }
 
 before(async () => {
@@ -92,13 +99,24 @@ test("public provider status stays redacted while admin settings persist locally
 
   const schema = await request("/api/admin/providers");
   assert.equal(schema.response.status, 200);
-  assert.equal(schema.body.schemaVersion, 1);
+  assert.equal(schema.body.schemaVersion, 2);
   assert.deepEqual(
     schema.body.providers.map((provider) => provider.id),
     ["vision", "text", "image"]
   );
+  assert.equal(providerById(schema.body, "vision").title, "识图模型");
   assert.equal(providerById(schema.body, "vision").fields.some(
-    (field) => field.valueKey === "visionApiUrl"
+    (field) => field.valueKey === "visionApiUrl" && field.label === "API 地址"
+  ), true);
+  assert.equal(providerById(schema.body, "vision").fields.some(
+    (field) => field.valueKey === "visionModel" && field.type === "select"
+  ), true);
+  assert.deepEqual(providerById(schema.body, "image").channels.map((channel) => channel.id), [
+    "primary",
+    "secondary"
+  ]);
+  assert.equal(providerById(schema.body, "image").fields.some(
+    (field) => field.valueKey === "imageSecondaryModel" && field.type === "select"
   ), true);
   assert.equal(JSON.stringify(schema.body).includes("VISION_MODEL_API_KEY"), false);
 
@@ -111,9 +129,12 @@ test("public provider status stays redacted while admin settings persist locally
       textApiUrl: "https://text.example.test/chat/completions",
       textModel: "deepseek-test",
       deepSeekApiKey: "deepseek-secret",
-      imageApiUrl: "https://image.example.test/draw/v1/images/generations",
-      imageModel: "image-test",
-      imageApiKey: "image-secret"
+      imageApiUrl: "https://image-a.example.test/draw/v1/images/generations",
+      imageModel: "image-a-test",
+      imageApiKey: "image-primary-secret",
+      imageSecondaryApiUrl: "https://image-b.example.test/draw/v1/images/generations",
+      imageSecondaryModel: "image-b-test",
+      imageSecondaryApiKey: "image-secondary-secret"
     })
   });
   assert.equal(updated.response.status, 200);
@@ -122,10 +143,13 @@ test("public provider status stays redacted while admin settings persist locally
   assert.equal(providerById(updated.body, "image").config.configured, true);
   assert.equal(providerById(updated.body, "vision").config.apiUrl, "https://vision.example.test/gemini");
   assert.equal(providerById(updated.body, "text").config.model, "deepseek-test");
-  assert.equal(providerById(updated.body, "image").config.keyPreview, "saved, ending cret");
+  assert.equal(imageChannel(providerById(updated.body, "image"), "primary").keyPreview, "•••• cret");
+  assert.equal(imageChannel(providerById(updated.body, "image"), "secondary").keyPreview, "•••• cret");
+  assert.equal(providerById(updated.body, "image").config.configuredChannels, 2);
   assert.equal(JSON.stringify(updated.body).includes("vision-secret"), false);
   assert.equal(JSON.stringify(updated.body).includes("deepseek-secret"), false);
-  assert.equal(JSON.stringify(updated.body).includes("image-secret"), false);
+  assert.equal(JSON.stringify(updated.body).includes("image-primary-secret"), false);
+  assert.equal(JSON.stringify(updated.body).includes("image-secondary-secret"), false);
 
   let stored = await readFile(envPath, "utf8");
   assert.match(stored, /VISION_API_URL=https:\/\/vision\.example\.test\/gemini/);
@@ -134,9 +158,12 @@ test("public provider status stays redacted while admin settings persist locally
   assert.match(stored, /TEXT_API_URL=https:\/\/text\.example\.test\/chat\/completions/);
   assert.match(stored, /TEXT_MODEL=deepseek-test/);
   assert.match(stored, /TEXT_MODEL_API_KEY=deepseek-secret/);
-  assert.match(stored, /IMAGE_API_URL=https:\/\/image\.example\.test\/draw\/v1\/images\/generations/);
-  assert.match(stored, /IMAGE_MODEL=image-test/);
-  assert.match(stored, /IMAGE_MODEL_API_KEY=image-secret/);
+  assert.match(stored, /IMAGE_API_URL=https:\/\/image-a\.example\.test\/draw\/v1\/images\/generations/);
+  assert.match(stored, /IMAGE_MODEL=image-a-test/);
+  assert.match(stored, /IMAGE_MODEL_API_KEY=image-primary-secret/);
+  assert.match(stored, /IMAGE_SECONDARY_API_URL=https:\/\/image-b\.example\.test\/draw\/v1\/images\/generations/);
+  assert.match(stored, /IMAGE_SECONDARY_MODEL=image-b-test/);
+  assert.match(stored, /IMAGE_SECONDARY_API_KEY=image-secondary-secret/);
 
   const publicAfterUpdate = await request("/api/settings/providers/status");
   assert.equal(publicAfterUpdate.body.configuredCount, 3);
@@ -155,19 +182,22 @@ test("public provider status stays redacted while admin settings persist locally
   stored = await readFile(envPath, "utf8");
   assert.match(stored, /VISION_MODEL_API_KEY=new-vision-secret/);
   assert.match(stored, /VISION_MODEL=gemini-new/);
-  assert.match(stored, /IMAGE_MODEL_API_KEY=image-secret/);
+  assert.match(stored, /IMAGE_MODEL_API_KEY=image-primary-secret/);
+  assert.match(stored, /IMAGE_SECONDARY_API_KEY=image-secondary-secret/);
 
   const independentKeysUpdated = await request("/api/admin/providers", {
     method: "PUT",
     body: JSON.stringify({
       visionApiKey: "independent-vision-key",
-      imageApiKey: "independent-image-key"
+      imageApiKey: "independent-image-key-a",
+      imageSecondaryApiKey: "independent-image-key-b"
     })
   });
   assert.equal(independentKeysUpdated.response.status, 200);
   stored = await readFile(envPath, "utf8");
   assert.match(stored, /VISION_MODEL_API_KEY=independent-vision-key/);
-  assert.match(stored, /IMAGE_MODEL_API_KEY=independent-image-key/);
+  assert.match(stored, /IMAGE_MODEL_API_KEY=independent-image-key-a/);
+  assert.match(stored, /IMAGE_SECONDARY_API_KEY=independent-image-key-b/);
 
   const visionCleared = await request("/api/admin/providers", {
     method: "PUT",
@@ -182,7 +212,8 @@ test("public provider status stays redacted while admin settings persist locally
     body: JSON.stringify({
       visionApiKey: null,
       deepSeekApiKey: null,
-      imageApiKey: null
+      imageApiKey: null,
+      imageSecondaryApiKey: null
     })
   });
   assert.equal(providerById(allCleared.body, "vision").config.configured, false);
@@ -209,6 +240,109 @@ test("admin provider settings validate URLs and serve the admin page", async () 
   assert.equal(adminPage.status, 200);
   assert.match(adminPage.headers.get("content-type"), /text\/html/);
   assert.match(await adminPage.text(), /供应商配置后台/);
+});
+
+test("admin provider models API discovers models and honors refresh", async () => {
+  const providerRequests = [];
+  const providerServer = http.createServer((req, res) => {
+    providerRequests.push(req.url);
+    if (req.url.includes("/vision/gemini/v1beta/models")) {
+      assert.equal(req.headers["x-goog-api-key"], "vision-secret");
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        models: [{ name: "models/gemini-2.5-flash", displayName: "Gemini Flash" }]
+      }));
+      return;
+    }
+    if (req.url.includes("/text/models")) {
+      assert.equal(req.headers.authorization, "Bearer text-secret");
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        data: [{ id: "deepseek-v4-pro" }]
+      }));
+      return;
+    }
+    if (req.url.includes("/image-a/draw/v1/models")) {
+      assert.equal(req.headers.authorization, "Bearer image-primary-secret");
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        data: [{ id: "gpt-image-2" }, { id: "gpt-image-3" }]
+      }));
+      return;
+    }
+    if (req.url.includes("/image-b/draw/v1/models")) {
+      assert.equal(req.headers.authorization, "Bearer image-secondary-secret");
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "missing" }));
+      return;
+    }
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "unexpected" }));
+  });
+  await new Promise((resolveListen, reject) => {
+    providerServer.once("error", reject);
+    providerServer.listen(0, "127.0.0.1", resolveListen);
+  });
+  const address = providerServer.address();
+  const providerBase = `http://127.0.0.1:${address.port}`;
+
+  const previous = {
+    VISION_MODEL_API_KEY: process.env.VISION_MODEL_API_KEY,
+    VISION_API_URL: process.env.VISION_API_URL,
+    VISION_MODEL: process.env.VISION_MODEL,
+    TEXT_MODEL_API_KEY: process.env.TEXT_MODEL_API_KEY,
+    TEXT_API_URL: process.env.TEXT_API_URL,
+    TEXT_MODEL: process.env.TEXT_MODEL,
+    IMAGE_MODEL_API_KEY: process.env.IMAGE_MODEL_API_KEY,
+    IMAGE_API_URL: process.env.IMAGE_API_URL,
+    IMAGE_MODEL: process.env.IMAGE_MODEL,
+    IMAGE_SECONDARY_API_KEY: process.env.IMAGE_SECONDARY_API_KEY,
+    IMAGE_SECONDARY_API_URL: process.env.IMAGE_SECONDARY_API_URL,
+    IMAGE_SECONDARY_MODEL: process.env.IMAGE_SECONDARY_MODEL
+  };
+  Object.assign(process.env, {
+    VISION_MODEL_API_KEY: "vision-secret",
+    VISION_API_URL: `${providerBase}/vision/gemini`,
+    VISION_MODEL: "gemini-2.5-flash",
+    TEXT_MODEL_API_KEY: "text-secret",
+    TEXT_API_URL: `${providerBase}/text/chat/completions`,
+    TEXT_MODEL: "deepseek-v4-pro",
+    IMAGE_MODEL_API_KEY: "image-primary-secret",
+    IMAGE_API_URL: `${providerBase}/image-a/draw/v1/images/generations`,
+    IMAGE_MODEL: "gpt-image-2",
+    IMAGE_SECONDARY_API_KEY: "image-secondary-secret",
+    IMAGE_SECONDARY_API_URL: `${providerBase}/image-b/draw/v1/images/generations`,
+    IMAGE_SECONDARY_MODEL: "gpt-image-2"
+  });
+
+  try {
+    const first = await request("/api/admin/providers/models");
+    assert.equal(first.response.status, 200);
+    assert.equal(first.body.providers.vision.status, "ok");
+    assert.equal(first.body.providers.text.status, "ok");
+    assert.equal(first.body.providers.image.status, "partial");
+    assert.equal(first.body.providers.image.channels[0].status, "ok");
+    assert.equal(first.body.providers.image.channels[1].status, "unsupported");
+    assert.ok(first.body.providers.image.channels[0].models.some((model) => model.id === "gpt-image-3"));
+    assert.ok(first.body.providers.image.channels[1].models.some((model) => model.id === "gpt-image-2"));
+    const firstRequestCount = providerRequests.length;
+    assert.equal(firstRequestCount >= 4, true);
+
+    const cached = await request("/api/admin/providers/models");
+    assert.deepEqual(cached.body, first.body);
+    assert.equal(providerRequests.length, firstRequestCount + 1);
+
+    const refreshed = await request("/api/admin/providers/models?refresh=1");
+    assert.equal(refreshed.response.status, 200);
+    assert.equal(refreshed.body.providers.vision.status, "ok");
+    assert.equal(providerRequests.length > firstRequestCount + 1, true);
+  } finally {
+    await new Promise((resolveClose) => providerServer.close(resolveClose));
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
 });
 
 test("project deletion removes only the selected project and its uploads", async () => {

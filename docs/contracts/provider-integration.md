@@ -40,9 +40,12 @@ and confirmed product-lock validation before it can be persisted.
 
 - Workflow route: `POST /api/projects/:projectId/visual/generate`
 - Provider: Right Code OpenAI-compatible image endpoint
-- Default endpoint: `https://www.right.codes/draw/v1/images/generations`
-- Default model: `gpt-image-2`
-- Authentication: `Authorization: Bearer <IMAGE_MODEL_API_KEY>`
+- Draw channel A default endpoint: `https://www.right.codes/draw/v1/images/generations`
+- Draw channel A default model: `gpt-image-2`
+- Draw channel A authentication: `Authorization: Bearer <IMAGE_MODEL_API_KEY>`
+- Draw channel B default endpoint: `https://www.right.codes/draw/v1/images/generations`
+- Draw channel B default model: `gpt-image-2`
+- Draw channel B authentication: `Authorization: Bearer <IMAGE_SECONDARY_API_KEY>`
 - Request fields: `model`, `prompt`, optional `image`, pixel `size`, and
   `response_format: "url"`.
 - No usable key or `IMAGE_MODEL_PROVIDER=manual`: local demo package only; no
@@ -51,24 +54,35 @@ and confirmed product-lock validation before it can be persisted.
 
 The provider receives all uploaded product views as plain base64 reference
 strings in the `image` array, without a `data:<mime>;base64,` prefix. Two
-requests are made, one for each storyboard sheet. The provider `size` is the
-outer storyboard sheet canvas size, not the Step 02 video ratio. Step 02
-`marketBrief.outputAspectRatio` is expressed in the prompt and persisted
-`image_generation[].aspect_ratio` as the internal shot-frame composition ratio.
-Successful results are stored as optional `generated_image` metadata on each
-image-generation item.
+requests are made, one for each storyboard sheet, and they remain concurrent.
+`0-10s` is bound to draw channel A and `10-20s` is bound to draw channel B.
+The provider `size` is the outer storyboard sheet canvas size, not the Step 02
+video ratio. Step 02 `marketBrief.outputAspectRatio` is expressed in the prompt
+and persisted `image_generation[].aspect_ratio` as the internal shot-frame
+composition ratio. Successful results are stored as optional `generated_image`
+metadata on each image-generation item.
 
 Real image generation is img2img only. Every storyboard call must include the
 uploaded shoe reference images. If Right Code returns HTTP `403` while reference
 images are included, surface the error and save a retryable visual generation
 failure; do not retry prompt-only generation.
 
+When a storyboard request returns `HTTP 524`, preserve the successful storyboard
+item, do not auto-retry the failed one, and persist safe per-item diagnostics
+for coordinator review. Diagnostics may include project id, segment id,
+attempt id, timing, draw channel id/title, masked key preview, model, requested
+size, provider host/path, reference image count/bytes, prompt character count,
+provider status, and safe request-id headers. Diagnostics must never include
+full API keys, prompts, base64 image bodies, uploaded image contents, or
+provider response bodies.
+
 ## Secret And Failure Rules
 
 - API keys are read only from the ignored root `.env` or process environment.
 - Vision, text, and image credentials are configured independently.
 - The old single `rightCodesApiKey` update field is no longer part of the
-  settings contract. Use `visionApiKey` and `imageApiKey` separately.
+  settings contract. Use `visionApiKey`, `imageApiKey`, and
+  `imageSecondaryApiKey` separately.
 - Keys must never be persisted in project JSON, exports, logs, or responses.
 - A configured provider failure must return a stable error instead of silently
   falling back to demo output.
@@ -84,3 +98,8 @@ failure; do not retry prompt-only generation.
 - Right Code image generations:
   `https://docs.right.codes/docs/rc_extension/draw/images-generations.html`
 - DeepSeek API quick start: `https://api-docs.deepseek.com/`
+
+No public provider documentation was found for a model-list endpoint or for an
+asynchronous draw-job endpoint during this task. The Admin model-discovery API
+therefore falls back to the current configured model whenever a provider does
+not explicitly support discovery.
