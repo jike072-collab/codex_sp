@@ -6,6 +6,7 @@ export const state = {
   visualGenerationError: "",
   workflowProgress: null,
   deletingProjectIds: new Set(),
+  deletingAssetIds: new Set(),
   projectSelectionMode: false,
   selectedProjectIds: new Set(),
   providerStatus: {}
@@ -133,7 +134,7 @@ export function setBusy(value, message = "处理中...") {
   const canUpload = !value && state.project?.status === "assets";
   el("dropZone").disabled = !canUpload;
   el("fileInput").disabled = !canUpload;
-  el("analyzeButton").disabled = value || (state.project?.assets || []).length < 4;
+  el("analyzeButton").disabled = value || (state.project?.assets || []).length < 1;
   el("analyzeButton").textContent = value ? message : "识别并锁定产品";
   const saveState = el("saveState");
   if (saveState) saveState.textContent = value ? message : "已保存到本机";

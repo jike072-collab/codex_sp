@@ -30,7 +30,7 @@ import {
 const STAGE_ORDER = ["assets", "review", "market", "script", "visual", "export"];
 
 const STAGE_PANEL_COPY = {
-  assets: "先上传清晰的同款鞋素材，后面的识别和锁定才会稳。",
+  assets: "上传 1 张四视图拼图即可开始识别，补充更多角度会更稳。",
   review: "确认产品锁定、受众、比例和创意方向。",
   market: "把已确认的产品信息整理成脚本输入。",
   script: "按完整 20 秒时间线检查镜头、文案和节奏。",
@@ -142,7 +142,7 @@ export function renderWorkspace() {
     ? `${statusLabel(project.status)} · 回看${statusLabel(activeStatus)}`
     : statusLabel(project.status);
   const subtitleByStatus = {
-    assets: "先上传清晰素材，再进入识别和锁定。",
+    assets: "上传 1 张四视图拼图即可进入识别和锁定，更多角度只是建议。",
     analyzing: "正在识别鞋款，稍后会进入产品设定。",
     review: "确认产品信息、受众、比例和创意方向。",
     market: "整理创意 brief，准备生成两段脚本。",
@@ -216,7 +216,7 @@ function renderWorkspacePanel(project, activeStatus) {
   const readinessText = (() => {
     if (activeStatus !== "assets" && activeStatus !== "analyzing") return `${statusLabel(activeStatus)} 已进入后续流程`;
     if (!assets.length) return "等待上传素材";
-    if (assets.length < 4) return `已上传 ${assets.length} 张，建议继续补充`;
+    if (assets.length === 1) return "已上传 1 张，可以开始识别";
     return `已上传 ${assets.length} 张，可以开始识别`;
   })();
   const panelStageKicker = el("panelStageKicker");
@@ -294,18 +294,29 @@ function renderPanelStageVisual(project, activeStatus) {
     return;
   }
 
-  const readyAssets = Math.min(4, assets.length);
+  const canIdentify = assets.length >= 1;
   container.innerHTML = `
     <div class="stage-visual-heading">
-      <span>${activeStatus === "review" || activeStatus === "market" ? "产品锁定检查" : "素材完整度"}</span>
-      <strong>${escapeHtml(readyAssets)}/4</strong>
+      <span>素材状态</span>
+      <strong>${escapeHtml(canIdentify ? "可以识别" : "等待上传")}</strong>
     </div>
     <div class="asset-readiness-chart">
-      ${Array.from({ length: 4 }, (_, index) => `<i data-ready="${index < readyAssets}"></i>`).join("")}
+      <div data-ready="${assets.length >= 1}">
+        <span>已上传</span>
+        <strong>${escapeHtml(assets.length)} 张</strong>
+      </div>
+      <div data-ready="${canIdentify}">
+        <span>当前状态</span>
+        <strong>${escapeHtml(canIdentify ? "可以识别" : "继续上传")}</strong>
+      </div>
+      <div data-ready="true">
+        <span>补图建议</span>
+        <strong>${escapeHtml(assets.length ? "侧面 / 后跟 / 鞋底更稳" : "1 张即可开始")}</strong>
+      </div>
     </div>
     <div class="stage-visual-stats">
-      <div><strong>${escapeHtml(assets.length)}</strong><span>参考图</span></div>
-      <div><strong>${readyAssets === 4 ? "完成" : "准备中"}</strong><span>四图门禁</span></div>
+      <div><strong>${escapeHtml(assets.length)}</strong><span>已上传</span></div>
+      <div><strong>${escapeHtml(canIdentify ? "可以识别" : "待上传")}</strong><span>识别状态</span></div>
     </div>
   `;
 }
@@ -329,25 +340,28 @@ export function renderAssets() {
   const project = state.project;
   const assets = state.project?.assets || [];
   const canUpload = project?.status === "assets" && !state.busy;
-  el("assetGrid").innerHTML = assets.map((asset) => `
-    <article class="asset-card">
-      <div class="asset-card-actions">
+  el("assetGrid").innerHTML = assets.map((asset) => {
+    const deleting = state.deletingAssetIds.has(asset.id);
+    return `
+      <article class="asset-card">
+        <div class="asset-card-actions">
         <button class="asset-icon-button danger" type="button"
           data-delete-asset-id="${escapeHtml(asset.id)}" aria-label="删除 ${escapeHtml(asset.name)}"
-          ${canUpload ? "" : "disabled"}>×</button>
-      </div>
-      <img src="${escapeHtml(asset.url)}" alt="${escapeHtml(asset.name)}">
-      <span>${escapeHtml(asset.name)}</span>
-    </article>
-  `).join("");
+          aria-busy="${deleting}" ${canUpload && !deleting ? "" : "disabled"}>${deleting ? "…" : "×"}</button>
+        </div>
+        <img src="${escapeHtml(asset.url)}" alt="${escapeHtml(asset.name)}">
+        <span>${escapeHtml(asset.name)}</span>
+      </article>
+    `;
+  }).join("");
   el("assetHint").textContent = project?.status !== "assets"
     ? "当前项目已进入后续步骤，素材已锁定；如需上传新鞋图，请新建项目。"
-    : assets.length >= 4
-      ? `已上传 ${assets.length} 张图片。第四张检查点已完成，可以开始识别。`
-      : `已上传 ${assets.length} 张，还需 ${4 - assets.length} 张参考图才能开始识别。`;
+    : assets.length >= 1
+      ? `已上传 ${assets.length} 张图片，识别已可开始。建议补充更多角度提升稳定性。`
+      : "至少上传 1 张四视图拼图即可开始识别。建议补充更多角度提升稳定性。";
   el("dropZone").disabled = !canUpload;
   el("fileInput").disabled = !canUpload;
-  el("analyzeButton").disabled = state.busy || assets.length < 4;
+  el("analyzeButton").disabled = state.busy || assets.length < 1;
 }
 
 export function canViewStep(step) {
@@ -636,16 +650,16 @@ export function fillReviewForm(analysis) {
     : hasAnalysis
       ? "演示识别 · 请修改"
       : "正在识别 · 请稍候";
-  const hasCheckpoint = (state.project?.assets || []).length >= 4;
+  const hasMinimumAssets = (state.project?.assets || []).length >= 1;
   document.querySelectorAll("#reviewForm button[type='submit'], button[form='reviewForm']").forEach((button) => {
-    button.disabled = !hasAnalysis || !hasCheckpoint || state.busy;
+    button.disabled = !hasAnalysis || !hasMinimumAssets || state.busy;
   });
   const gateHint = el("reviewGateHint");
   if (gateHint) {
-    gateHint.textContent = hasCheckpoint
-      ? "第四张参考图检查点已完成，确认后进入脚本。"
-      : `还需 ${Math.max(0, 4 - (state.project?.assets || []).length)} 张参考图；当前不能进入脚本。`;
-    gateHint.classList.toggle("ready", hasCheckpoint);
+    gateHint.textContent = hasMinimumAssets
+      ? `已上传 ${state.project?.assets?.length || 0} 张图片，确认后进入脚本；建议继续补充更多角度。`
+      : "至少上传 1 张图片并完成产品识别后才能进入脚本。";
+    gateHint.classList.toggle("ready", hasMinimumAssets);
   }
 
   el("qualityNote").textContent = publicQualityNotes(analysis).join("；");

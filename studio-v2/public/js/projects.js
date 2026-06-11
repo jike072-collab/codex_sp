@@ -152,17 +152,27 @@ function fileToDataUrl(file) {
 
 export async function deleteAsset(assetId) {
   if (!state.project?.id) return;
+  if (state.deletingAssetIds.has(assetId)) return;
   if (state.project.status !== "assets") {
     showToast("项目进入后续步骤后，素材已锁定。");
     return;
   }
-  const data = await api(`/api/projects/${encodeURIComponent(state.project.id)}/assets/${encodeURIComponent(assetId)}`, {
-    method: "DELETE"
-  });
-  state.project = data.project;
+
+  state.deletingAssetIds.add(assetId);
   renderWorkspace();
-  await loadProjects();
-  showToast("素材已删除。");
+  try {
+    const data = await api(`/api/projects/${encodeURIComponent(state.project.id)}/assets/${encodeURIComponent(assetId)}`, {
+      method: "DELETE"
+    });
+    state.project = data.project;
+    await loadProjects();
+    showToast("素材已删除。");
+  } catch (error) {
+    showToast(`删除素材失败：${error.message}`);
+  } finally {
+    state.deletingAssetIds.delete(assetId);
+    renderWorkspace();
+  }
 }
 
 export async function uploadFiles(fileList) {
@@ -208,8 +218,8 @@ export async function uploadFiles(fileList) {
 }
 
 export async function analyze() {
-  if ((state.project?.assets || []).length < 4) {
-    showToast("请先上传至少 4 张同款商品参考图，完成第四张检查点。");
+  if ((state.project?.assets || []).length < 1) {
+    showToast("请先上传至少 1 张同款商品参考图。");
     return;
   }
   state.viewStatus = "review";
@@ -271,8 +281,8 @@ export async function createProject(event) {
 
 export async function confirmReview(event) {
   event.preventDefault();
-  if ((state.project?.assets || []).length < 4) {
-    const message = "第四张参考图检查点尚未完成，暂时不能进入脚本。";
+  if ((state.project?.assets || []).length < 1) {
+    const message = "请先上传至少 1 张图片并完成产品识别，再进入脚本。";
     el("reviewGateHint").textContent = message;
     showToast(message);
     return;
