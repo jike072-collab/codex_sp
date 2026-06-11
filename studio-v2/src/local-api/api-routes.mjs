@@ -11,8 +11,9 @@ import {
   storeProjectAssets
 } from "../storage/project-repository.mjs";
 import {
-  readProviderSettings,
-  updateProviderSettings
+  readAdminProviderSettings,
+  readProviderStatus,
+  updateAdminProviderSettings
 } from "../storage/provider-settings.mjs";
 import { cleanString } from "../workflow-domain/value-normalizers.mjs";
 import { analyzeProject, sanitizeAnalysis } from "../ai-providers/vision-provider.mjs";
@@ -48,13 +49,30 @@ function projectIdsFromBody(body) {
 }
 
 export async function handleApi(request, response, url) {
-  if (url.pathname === "/api/settings/providers") {
+  if (url.pathname === "/api/settings/providers/status") {
     if (request.method === "GET") {
-      return sendJson(response, 200, await readProviderSettings());
+      return sendJson(response, 200, await readProviderStatus());
+    }
+    return sendJson(response, 405, { error: "Unsupported operation." });
+  }
+
+  if (url.pathname === "/api/admin/providers") {
+    if (request.method === "GET") {
+      return sendJson(response, 200, await readAdminProviderSettings());
     }
     if (request.method === "PUT") {
       const body = await readJsonBody(request, 64 * 1024);
-      return sendJson(response, 200, await updateProviderSettings(body));
+      return sendJson(response, 200, await updateAdminProviderSettings(body));
+    }
+    return sendJson(response, 405, { error: "Unsupported operation." });
+  }
+
+  if (url.pathname === "/api/settings/providers") {
+    if (request.method === "GET") {
+      return sendJson(response, 200, await readProviderStatus());
+    }
+    if (request.method === "PUT") {
+      return sendJson(response, 405, { error: "Unsupported operation." });
     }
     return sendJson(response, 405, { error: "不支持的操作。" });
   }

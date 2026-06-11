@@ -1,4 +1,4 @@
-# Local Settings And Project Deletion API
+# Local Settings And Admin API
 
 These routes are available only through the loopback-bound local server.
 
@@ -54,82 +54,129 @@ Success:
 }
 ```
 
-## Read Provider Settings
+## Public Provider Status
 
 ```http
-GET /api/settings/providers
+GET /api/settings/providers/status
 ```
+
+`GET /api/settings/providers` is kept as a compatibility alias for the same
+public status shape. Public workbench surfaces must use this contract and must
+not expose API keys, API URLs, model names, key previews, or editing controls.
 
 Response:
 
 ```json
 {
   "providers": {
-    "vision": {
-      "provider": "Right Code",
-      "role": "识图 Key",
-      "channel": "Gemini (/gemini)",
-      "model": "gemini-2.5-flash",
-      "apiUrl": "https://right.codes/gemini",
-      "configured": false,
-      "keyPreview": ""
-    },
-    "text": {
-      "provider": "DeepSeek",
-      "role": "脚本 Key",
-      "channel": "Chat Completions",
-      "model": "deepseek-v4-pro",
-      "apiUrl": "https://api.deepseek.com/chat/completions",
-      "configured": false,
-      "keyPreview": ""
-    },
-    "image": {
-      "provider": "Right Code",
-      "role": "生图 Key",
-      "channel": "画图 (/draw)",
-      "model": "gpt-image-2",
-      "apiUrl": "https://www.right.codes/draw/v1/images/generations",
-      "configured": false,
-      "keyPreview": ""
-    }
-  }
+    "vision": { "configured": false },
+    "text": { "configured": true },
+    "image": { "configured": false }
+  },
+  "configuredCount": 1,
+  "total": 3
 }
 ```
 
-Full API key values are never returned. In local-only development, the response
-may include a short `keyPreview` such as `已保存 · 末尾 abcd` so the operator can
-confirm which local token is responsible for each provider without exposing the
-complete secret.
-
-## Update Provider Keys
+## Admin Provider Schema And Config
 
 ```http
-PUT /api/settings/providers
-Content-Type: application/json
+GET /api/admin/providers
 ```
 
-Request:
+The Admin page renders from this backend-owned schema. Do not maintain a second
+hard-coded provider list in the browser.
+
+Full API key values are never returned.
+
+Response:
 
 ```json
 {
+  "schemaVersion": 1,
+  "providers": [
+    {
+      "id": "vision",
+      "title": "Vision recognition",
+      "provider": "Right Code",
+      "role": "Product image analysis",
+      "channel": "Gemini (/gemini)",
+      "fields": [
+        {
+          "name": "apiUrl",
+          "label": "API URL",
+          "type": "url",
+          "valueKey": "visionApiUrl",
+          "clearable": false
+        },
+        {
+          "name": "model",
+          "label": "Model",
+          "type": "text",
+          "valueKey": "visionModel",
+          "clearable": false
+        },
+        {
+          "name": "apiKey",
+          "label": "API Key",
+          "type": "secret",
+          "valueKey": "visionApiKey",
+          "clearable": true
+        }
+      ],
+      "config": {
+        "model": "gemini-2.5-flash",
+        "apiUrl": "https://right.codes/gemini",
+        "configured": false,
+        "keyPreview": ""
+      }
+    }
+  ]
+}
+```
+
+## Update Admin Provider Settings
+
+```http
+PUT /api/admin/providers
+Content-Type: application/json
+```
+
+Request fields are optional and independent:
+
+```json
+{
+  "visionApiUrl": "https://right.codes/gemini",
+  "visionModel": "gemini-2.5-flash",
   "visionApiKey": "right-code-vision-key",
+  "textApiUrl": "https://api.deepseek.com/chat/completions",
+  "textModel": "deepseek-v4-pro",
   "deepSeekApiKey": "official-deepseek-key",
+  "imageApiUrl": "https://www.right.codes/draw/v1/images/generations",
+  "imageModel": "gpt-image-2",
   "imageApiKey": "right-code-image-key"
 }
 ```
 
 Rules:
 
-- All three fields are optional and independent.
-- Omitted fields keep their existing values.
-- A non-empty string replaces the corresponding local key.
-- `visionApiKey` writes only `VISION_MODEL_API_KEY`.
-- `deepSeekApiKey` writes only `TEXT_MODEL_API_KEY`.
-- `imageApiKey` writes only `IMAGE_MODEL_API_KEY`.
-- Vision and image remain separate providers and endpoints, even when the user chooses to enter the same Right Code account key.
-- `null` explicitly clears that provider key.
-- Empty strings are invalid.
-- Values are stored only in the ignored local `.env` file.
+- `visionApiUrl`, `textApiUrl`, and `imageApiUrl` must be valid `http` or
+  `https` URLs.
+- `visionModel`, `textModel`, and `imageModel` must be non-empty strings with no
+  line breaks.
+- API key fields accept a non-empty string to replace the key.
+- API key fields accept `null` to clear the local key.
+- Omitted fields keep their current values.
+- Empty API key strings are invalid; Admin UI should omit empty key inputs.
+- Values are stored only in the ignored local `.env` file using atomic writes.
 - System environment variables still take precedence over `.env`.
+- Success returns the same shape as `GET /api/admin/providers`.
 
-Success returns the same redacted shape as `GET /api/settings/providers`.
+## Admin Static Page
+
+```http
+GET /admin/
+```
+
+Returns the standalone local Admin page. Files live under `studio-v2/admin/**`
+and are not part of the ordinary five-step workbench under `studio-v2/public/**`.

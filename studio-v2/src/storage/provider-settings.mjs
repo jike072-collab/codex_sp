@@ -5,25 +5,206 @@ import { loadEnv, localEnvPath } from "../config.mjs";
 import { hasUsableApiKey } from "../ai-providers/provider-utils.mjs";
 import { DomainError } from "../workflow-domain/domain-error.mjs";
 
+export const PROVIDER_SETTINGS_SCHEMA_VERSION = 1;
+
+const PROVIDER_DEFINITIONS = Object.freeze([
+  {
+    id: "vision",
+    title: "Vision recognition",
+    provider: "Right Code",
+    role: "Product image analysis",
+    channel: "Gemini (/gemini)",
+    fields: [
+      {
+        name: "apiUrl",
+        label: "API URL",
+        type: "url",
+        valueKey: "visionApiUrl",
+        clearable: false,
+        envKey: "VISION_API_URL",
+        defaultValue: "https://right.codes/gemini"
+      },
+      {
+        name: "model",
+        label: "Model",
+        type: "text",
+        valueKey: "visionModel",
+        clearable: false,
+        envKey: "VISION_MODEL",
+        defaultValue: "gemini-2.5-flash"
+      },
+      {
+        name: "apiKey",
+        label: "API Key",
+        type: "secret",
+        valueKey: "visionApiKey",
+        clearable: true,
+        envKey: "VISION_MODEL_API_KEY"
+      }
+    ]
+  },
+  {
+    id: "text",
+    title: "Script generation",
+    provider: "DeepSeek",
+    role: "20-second script generation",
+    channel: "Chat Completions",
+    fields: [
+      {
+        name: "apiUrl",
+        label: "API URL",
+        type: "url",
+        valueKey: "textApiUrl",
+        clearable: false,
+        envKey: "TEXT_API_URL",
+        defaultValue: "https://api.deepseek.com/chat/completions"
+      },
+      {
+        name: "model",
+        label: "Model",
+        type: "text",
+        valueKey: "textModel",
+        clearable: false,
+        envKey: "TEXT_MODEL",
+        defaultValue: "deepseek-v4-pro"
+      },
+      {
+        name: "apiKey",
+        label: "API Key",
+        type: "secret",
+        valueKey: "deepSeekApiKey",
+        clearable: true,
+        envKey: "TEXT_MODEL_API_KEY"
+      }
+    ]
+  },
+  {
+    id: "image",
+    title: "Storyboard image generation",
+    provider: "Right Code",
+    role: "Referenced storyboard generation",
+    channel: "Draw (/draw)",
+    fields: [
+      {
+        name: "apiUrl",
+        label: "API URL",
+        type: "url",
+        valueKey: "imageApiUrl",
+        clearable: false,
+        envKey: "IMAGE_API_URL",
+        defaultValue: "https://www.right.codes/draw/v1/images/generations"
+      },
+      {
+        name: "model",
+        label: "Model",
+        type: "text",
+        valueKey: "imageModel",
+        clearable: false,
+        envKey: "IMAGE_MODEL",
+        defaultValue: "gpt-image-2"
+      },
+      {
+        name: "apiKey",
+        label: "API Key",
+        type: "secret",
+        valueKey: "imageApiKey",
+        clearable: true,
+        envKey: "IMAGE_MODEL_API_KEY"
+      }
+    ]
+  }
+]);
+
+const FIELD_BY_VALUE_KEY = new Map(
+  PROVIDER_DEFINITIONS.flatMap((provider) => provider.fields.map((field) => [
+    field.valueKey,
+    { provider, field }
+  ]))
+);
+
 function invalidSettings(message) {
-  throw new DomainError(message, { code: "INVALID_PROVIDER_SETTINGS" });
+  throw new DomainError(message, {
+    code: "INVALID_PROVIDER_SETTINGS",
+    statusCode: 400
+  });
 }
 
-function normalizeKeyUpdate(input, field) {
-  if (!(field in input)) return undefined;
-  const value = input[field];
-  if (value === null) return "replace_me";
-  if (typeof value !== "string") invalidSettings(`${field} 必须是字符串或 null。`);
-  const trimmed = value.trim();
-  if (!trimmed) invalidSettings(`${field} 不能为空；如需清除请提交 null。`);
-  if (/[\r\n]/.test(trimmed)) invalidSettings(`${field} 格式无效。`);
-  return trimmed;
+function fieldValue(env, field) {
+  return env[field.envKey] || field.defaultValue || "";
 }
 
 function keyPreview(value) {
   const key = String(value || "").trim();
   if (!hasUsableApiKey(key)) return "";
-  return `已保存 · 末尾 ${key.slice(-4)}`;
+  return `saved, ending ${key.slice(-4)}`;
+}
+
+function sanitizeProviderDefinition(provider, env) {
+  const modelField = provider.fields.find((field) => field.name === "model");
+  const urlField = provider.fields.find((field) => field.name === "apiUrl");
+  const keyField = provider.fields.find((field) => field.name === "apiKey");
+  const apiKey = keyField ? env[keyField.envKey] : "";
+
+  return {
+    id: provider.id,
+    title: provider.title,
+    provider: provider.provider,
+    role: provider.role,
+    channel: provider.channel,
+    fields: provider.fields.map(({ envKey, defaultValue, ...field }) => field),
+    config: {
+      model: modelField ? fieldValue(env, modelField) : "",
+      apiUrl: urlField ? fieldValue(env, urlField) : "",
+      configured: hasUsableApiKey(apiKey),
+      keyPreview: keyPreview(apiKey)
+    }
+  };
+}
+
+function configuredProviders(env) {
+  return PROVIDER_DEFINITIONS.map((provider) => {
+    const keyField = provider.fields.find((field) => field.name === "apiKey");
+    return {
+      id: provider.id,
+      configured: hasUsableApiKey(keyField ? env[keyField.envKey] : "")
+    };
+  });
+}
+
+function normalizeTextUpdate(input, valueKey) {
+  if (!(valueKey in input)) return undefined;
+  const value = input[valueKey];
+  if (typeof value !== "string") invalidSettings(`${valueKey} must be a string.`);
+  const trimmed = value.trim();
+  if (!trimmed) invalidSettings(`${valueKey} cannot be empty.`);
+  if (/[\r\n]/.test(trimmed)) invalidSettings(`${valueKey} cannot contain line breaks.`);
+  return trimmed;
+}
+
+function normalizeUrlUpdate(input, valueKey) {
+  const trimmed = normalizeTextUpdate(input, valueKey);
+  if (trimmed === undefined) return undefined;
+  let parsed;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    invalidSettings(`${valueKey} must be a valid http or https URL.`);
+  }
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    invalidSettings(`${valueKey} must use http or https.`);
+  }
+  return trimmed;
+}
+
+function normalizeKeyUpdate(input, valueKey) {
+  if (!(valueKey in input)) return undefined;
+  const value = input[valueKey];
+  if (value === null) return "replace_me";
+  if (typeof value !== "string") invalidSettings(`${valueKey} must be a string or null.`);
+  const trimmed = value.trim();
+  if (!trimmed) invalidSettings(`${valueKey} cannot be empty; omit it to keep the current key.`);
+  if (/[\r\n]/.test(trimmed)) invalidSettings(`${valueKey} cannot contain line breaks.`);
+  return trimmed;
 }
 
 async function readEnvText() {
@@ -66,67 +247,51 @@ async function writeEnvAtomically(text) {
   }
 }
 
-export async function readProviderSettings() {
+export async function readProviderStatus() {
+  const env = await loadEnv();
+  const providers = Object.fromEntries(
+    configuredProviders(env).map(({ id, configured }) => [id, { configured }])
+  );
+  const total = Object.keys(providers).length;
+  const configuredCount = Object.values(providers).filter((item) => item.configured).length;
+  return { providers, configuredCount, total };
+}
+
+export async function readAdminProviderSettings() {
   const env = await loadEnv();
   return {
-    providers: {
-      vision: {
-        provider: "Right Code",
-        role: "识图 Key",
-        channel: "Gemini (/gemini)",
-        model: env.VISION_MODEL || "gemini-2.5-flash",
-        apiUrl: env.VISION_API_URL
-          || "https://right.codes/gemini",
-        configured: hasUsableApiKey(env.VISION_MODEL_API_KEY),
-        keyPreview: keyPreview(env.VISION_MODEL_API_KEY)
-      },
-      text: {
-        provider: "DeepSeek",
-        role: "脚本 Key",
-        channel: "Chat Completions",
-        model: env.TEXT_MODEL || "deepseek-v4-pro",
-        apiUrl: env.TEXT_API_URL || "https://api.deepseek.com/chat/completions",
-        configured: hasUsableApiKey(env.TEXT_MODEL_API_KEY),
-        keyPreview: keyPreview(env.TEXT_MODEL_API_KEY)
-      },
-      image: {
-        provider: "Right Code",
-        role: "生图 Key",
-        channel: "画图 (/draw)",
-        model: env.IMAGE_MODEL || "gpt-image-2",
-        apiUrl: env.IMAGE_API_URL
-          || "https://www.right.codes/draw/v1/images/generations",
-        configured: hasUsableApiKey(env.IMAGE_MODEL_API_KEY),
-        keyPreview: keyPreview(env.IMAGE_MODEL_API_KEY)
-      }
-    }
+    schemaVersion: PROVIDER_SETTINGS_SCHEMA_VERSION,
+    providers: PROVIDER_DEFINITIONS.map((provider) => sanitizeProviderDefinition(provider, env))
   };
 }
 
-export async function updateProviderSettings(input) {
+export async function updateAdminProviderSettings(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
-    invalidSettings("请提交有效的 API 设置对象。");
+    invalidSettings("Submit a provider settings object.");
   }
 
   const updates = {};
-  const visionApiKey = normalizeKeyUpdate(input, "visionApiKey");
-  const imageApiKey = normalizeKeyUpdate(input, "imageApiKey");
+  for (const [valueKey, value] of Object.entries(input)) {
+    const match = FIELD_BY_VALUE_KEY.get(valueKey);
+    if (!match) invalidSettings(`Unsupported provider setting: ${valueKey}`);
 
-  if (visionApiKey !== undefined) {
-    updates.VISION_MODEL_API_KEY = visionApiKey;
-  }
-  if (imageApiKey !== undefined) {
-    updates.IMAGE_MODEL_API_KEY = imageApiKey;
-  }
+    let normalized;
+    if (match.field.name === "apiUrl") normalized = normalizeUrlUpdate(input, valueKey);
+    else if (match.field.name === "model") normalized = normalizeTextUpdate(input, valueKey);
+    else if (match.field.name === "apiKey") normalized = normalizeKeyUpdate(input, valueKey);
+    else invalidSettings(`Unsupported provider setting type: ${valueKey}`);
 
-  const deepSeekApiKey = normalizeKeyUpdate(input, "deepSeekApiKey");
-  if (deepSeekApiKey !== undefined) {
-    updates.TEXT_MODEL_API_KEY = deepSeekApiKey;
+    if (normalized !== undefined) updates[match.field.envKey] = normalized;
+    void value;
   }
 
   if (Object.keys(updates).length) {
     const current = await readEnvText();
     await writeEnvAtomically(updateEnvText(current, updates));
   }
-  return readProviderSettings();
+  return readAdminProviderSettings();
 }
+
+// Backward-compatible names return only the public status contract.
+export const readProviderSettings = readProviderStatus;
+export const updateProviderSettings = updateAdminProviderSettings;

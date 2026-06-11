@@ -13,6 +13,18 @@ let repository;
 
 const tinyPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
 
+const providerEnvKeys = [
+  "VISION_MODEL_API_KEY",
+  "VISION_API_URL",
+  "VISION_MODEL",
+  "TEXT_MODEL_API_KEY",
+  "TEXT_API_URL",
+  "TEXT_MODEL",
+  "IMAGE_MODEL_API_KEY",
+  "IMAGE_API_URL",
+  "IMAGE_MODEL"
+];
+
 async function request(path, options = {}) {
   const response = await fetch(`${baseUrl}${path}`, {
     ...options,
@@ -26,14 +38,16 @@ async function request(path, options = {}) {
   };
 }
 
+function providerById(body, id) {
+  return body.providers.find((provider) => provider.id === id);
+}
+
 before(async () => {
   dataRoot = await mkdtemp(join(tmpdir(), "shoe-ad-studio-settings-"));
   envPath = join(dataRoot, ".env");
   process.env.STUDIO_DATA_ROOT = dataRoot;
   process.env.STUDIO_ENV_PATH = envPath;
-  delete process.env.VISION_MODEL_API_KEY;
-  delete process.env.TEXT_MODEL_API_KEY;
-  delete process.env.IMAGE_MODEL_API_KEY;
+  for (const key of providerEnvKeys) delete process.env[key];
 
   repository = await import("../src/storage/project-repository.mjs");
   const { createRequestHandler } = await import("../src/local-api/request-handler.mjs");
@@ -59,47 +73,91 @@ after(async () => {
   }
 });
 
-test("provider settings persist locally without returning API keys", async () => {
-  const initial = await request("/api/settings/providers");
+test("public provider status stays redacted while admin settings persist locally", async () => {
+  const initial = await request("/api/settings/providers/status");
   assert.equal(initial.response.status, 200);
-  assert.equal(initial.body.providers.vision.configured, false);
-  assert.equal(initial.body.providers.text.configured, false);
-  assert.equal(initial.body.providers.image.configured, false);
+  assert.deepEqual(initial.body.providers, {
+    vision: { configured: false },
+    text: { configured: false },
+    image: { configured: false }
+  });
+  assert.equal(initial.body.configuredCount, 0);
+  assert.equal(initial.body.total, 3);
+  assert.equal(JSON.stringify(initial.body).includes("apiUrl"), false);
+  assert.equal(JSON.stringify(initial.body).includes("model"), false);
+  assert.equal(JSON.stringify(initial.body).includes("keyPreview"), false);
 
-  const updated = await request("/api/settings/providers", {
+  const legacyStatus = await request("/api/settings/providers");
+  assert.deepEqual(legacyStatus.body, initial.body);
+
+  const schema = await request("/api/admin/providers");
+  assert.equal(schema.response.status, 200);
+  assert.equal(schema.body.schemaVersion, 1);
+  assert.deepEqual(
+    schema.body.providers.map((provider) => provider.id),
+    ["vision", "text", "image"]
+  );
+  assert.equal(providerById(schema.body, "vision").fields.some(
+    (field) => field.valueKey === "visionApiUrl"
+  ), true);
+  assert.equal(JSON.stringify(schema.body).includes("VISION_MODEL_API_KEY"), false);
+
+  const updated = await request("/api/admin/providers", {
     method: "PUT",
     body: JSON.stringify({
+      visionApiUrl: "https://vision.example.test/gemini",
+      visionModel: "gemini-test",
       visionApiKey: "vision-secret",
+      textApiUrl: "https://text.example.test/chat/completions",
+      textModel: "deepseek-test",
       deepSeekApiKey: "deepseek-secret",
+      imageApiUrl: "https://image.example.test/draw/v1/images/generations",
+      imageModel: "image-test",
       imageApiKey: "image-secret"
     })
   });
   assert.equal(updated.response.status, 200);
-  assert.equal(updated.body.providers.vision.configured, true);
-  assert.equal(updated.body.providers.text.configured, true);
-  assert.equal(updated.body.providers.image.configured, true);
-  assert.equal(JSON.stringify(updated.body).includes("secret"), false);
-  assert.equal(updated.body.providers.image.role, "生图 Key");
-  assert.equal(updated.body.providers.image.channel, "画图 (/draw)");
-  assert.equal(updated.body.providers.image.keyPreview, "已保存 · 末尾 cret");
+  assert.equal(providerById(updated.body, "vision").config.configured, true);
+  assert.equal(providerById(updated.body, "text").config.configured, true);
+  assert.equal(providerById(updated.body, "image").config.configured, true);
+  assert.equal(providerById(updated.body, "vision").config.apiUrl, "https://vision.example.test/gemini");
+  assert.equal(providerById(updated.body, "text").config.model, "deepseek-test");
+  assert.equal(providerById(updated.body, "image").config.keyPreview, "saved, ending cret");
+  assert.equal(JSON.stringify(updated.body).includes("vision-secret"), false);
+  assert.equal(JSON.stringify(updated.body).includes("deepseek-secret"), false);
+  assert.equal(JSON.stringify(updated.body).includes("image-secret"), false);
 
   let stored = await readFile(envPath, "utf8");
+  assert.match(stored, /VISION_API_URL=https:\/\/vision\.example\.test\/gemini/);
+  assert.match(stored, /VISION_MODEL=gemini-test/);
   assert.match(stored, /VISION_MODEL_API_KEY=vision-secret/);
-  assert.match(stored, /IMAGE_MODEL_API_KEY=image-secret/);
+  assert.match(stored, /TEXT_API_URL=https:\/\/text\.example\.test\/chat\/completions/);
+  assert.match(stored, /TEXT_MODEL=deepseek-test/);
   assert.match(stored, /TEXT_MODEL_API_KEY=deepseek-secret/);
+  assert.match(stored, /IMAGE_API_URL=https:\/\/image\.example\.test\/draw\/v1\/images\/generations/);
+  assert.match(stored, /IMAGE_MODEL=image-test/);
+  assert.match(stored, /IMAGE_MODEL_API_KEY=image-secret/);
 
-  const visionUpdated = await request("/api/settings/providers", {
+  const publicAfterUpdate = await request("/api/settings/providers/status");
+  assert.equal(publicAfterUpdate.body.configuredCount, 3);
+  assert.equal(JSON.stringify(publicAfterUpdate.body).includes("vision.example.test"), false);
+  assert.equal(JSON.stringify(publicAfterUpdate.body).includes("gemini-test"), false);
+  assert.equal(JSON.stringify(publicAfterUpdate.body).includes("cret"), false);
+
+  const visionUpdated = await request("/api/admin/providers", {
     method: "PUT",
-    body: JSON.stringify({ visionApiKey: "new-vision-secret" })
+    body: JSON.stringify({ visionApiKey: "new-vision-secret", visionModel: "gemini-new" })
   });
-  assert.equal(visionUpdated.body.providers.vision.configured, true);
-  assert.equal(visionUpdated.body.providers.text.configured, true);
-  assert.equal(visionUpdated.body.providers.image.configured, true);
+  assert.equal(providerById(visionUpdated.body, "vision").config.configured, true);
+  assert.equal(providerById(visionUpdated.body, "vision").config.model, "gemini-new");
+  assert.equal(providerById(visionUpdated.body, "text").config.configured, true);
+  assert.equal(providerById(visionUpdated.body, "image").config.configured, true);
   stored = await readFile(envPath, "utf8");
   assert.match(stored, /VISION_MODEL_API_KEY=new-vision-secret/);
+  assert.match(stored, /VISION_MODEL=gemini-new/);
   assert.match(stored, /IMAGE_MODEL_API_KEY=image-secret/);
 
-  const independentKeysUpdated = await request("/api/settings/providers", {
+  const independentKeysUpdated = await request("/api/admin/providers", {
     method: "PUT",
     body: JSON.stringify({
       visionApiKey: "independent-vision-key",
@@ -111,15 +169,15 @@ test("provider settings persist locally without returning API keys", async () =>
   assert.match(stored, /VISION_MODEL_API_KEY=independent-vision-key/);
   assert.match(stored, /IMAGE_MODEL_API_KEY=independent-image-key/);
 
-  const visionCleared = await request("/api/settings/providers", {
+  const visionCleared = await request("/api/admin/providers", {
     method: "PUT",
     body: JSON.stringify({ visionApiKey: null })
   });
-  assert.equal(visionCleared.body.providers.vision.configured, false);
-  assert.equal(visionCleared.body.providers.text.configured, true);
-  assert.equal(visionCleared.body.providers.image.configured, true);
+  assert.equal(providerById(visionCleared.body, "vision").config.configured, false);
+  assert.equal(providerById(visionCleared.body, "text").config.configured, true);
+  assert.equal(providerById(visionCleared.body, "image").config.configured, true);
 
-  const allCleared = await request("/api/settings/providers", {
+  const allCleared = await request("/api/admin/providers", {
     method: "PUT",
     body: JSON.stringify({
       visionApiKey: null,
@@ -127,9 +185,30 @@ test("provider settings persist locally without returning API keys", async () =>
       imageApiKey: null
     })
   });
-  assert.equal(allCleared.body.providers.vision.configured, false);
-  assert.equal(allCleared.body.providers.text.configured, false);
-  assert.equal(allCleared.body.providers.image.configured, false);
+  assert.equal(providerById(allCleared.body, "vision").config.configured, false);
+  assert.equal(providerById(allCleared.body, "text").config.configured, false);
+  assert.equal(providerById(allCleared.body, "image").config.configured, false);
+});
+
+test("admin provider settings validate URLs and serve the admin page", async () => {
+  const invalidUrl = await request("/api/admin/providers", {
+    method: "PUT",
+    body: JSON.stringify({ imageApiUrl: "ftp://image.example.test" })
+  });
+  assert.equal(invalidUrl.response.status, 400);
+  assert.equal(invalidUrl.body.code, "INVALID_PROVIDER_SETTINGS");
+
+  const invalidModel = await request("/api/admin/providers", {
+    method: "PUT",
+    body: JSON.stringify({ imageModel: "bad\nmodel" })
+  });
+  assert.equal(invalidModel.response.status, 400);
+  assert.equal(invalidModel.body.code, "INVALID_PROVIDER_SETTINGS");
+
+  const adminPage = await fetch(`${baseUrl}/admin/`);
+  assert.equal(adminPage.status, 200);
+  assert.match(adminPage.headers.get("content-type"), /text\/html/);
+  assert.match(await adminPage.text(), /供应商配置后台/);
 });
 
 test("project deletion removes only the selected project and its uploads", async () => {

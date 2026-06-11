@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 export const studioRoot = fileURLToPath(new URL("../", import.meta.url));
 export const projectRoot = resolve(studioRoot, "..");
 export const publicRoot = join(studioRoot, "public");
+export const adminRoot = join(studioRoot, "admin");
 const runtimeEnv = typeof process === "undefined" ? {} : process.env;
 export const dataRoot = runtimeEnv.STUDIO_DATA_ROOT
   ? resolve(runtimeEnv.STUDIO_DATA_ROOT)

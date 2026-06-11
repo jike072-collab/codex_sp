@@ -1,5 +1,5 @@
 import { handleApi } from "./api-routes.mjs";
-import { publicRoot, uploadsRoot } from "../config.mjs";
+import { adminRoot, publicRoot, uploadsRoot } from "../config.mjs";
 import { sendJson } from "./http-helpers.mjs";
 import { serveFile } from "./static-files.mjs";
 import { isExpectedError } from "../workflow-domain/domain-error.mjs";
@@ -25,6 +25,17 @@ export function createRequestHandler() {
       }
       if (url.pathname.startsWith("/uploads/")) {
         return serveFile(response, uploadsRoot, url.pathname.slice("/uploads/".length));
+      }
+      if (url.pathname === "/admin") {
+        response.writeHead(302, { Location: "/admin/" });
+        response.end();
+        return;
+      }
+      if (url.pathname.startsWith("/admin/")) {
+        const relativeAdminPath = url.pathname === "/admin/"
+          ? "index.html"
+          : url.pathname.slice("/admin/".length);
+        return serveFile(response, adminRoot, relativeAdminPath);
       }
       const relativePath = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
       return serveFile(response, publicRoot, relativePath);
