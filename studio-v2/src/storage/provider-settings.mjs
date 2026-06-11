@@ -2,10 +2,77 @@ import { randomUUID } from "node:crypto";
 import { readFile, rename, unlink, writeFile } from "node:fs/promises";
 
 import { loadEnv, localEnvPath } from "../config.mjs";
-import { hasUsableApiKey } from "../ai-providers/provider-utils.mjs";
+import {
+  hasUsableApiKey,
+  maskedApiKeyPreview
+} from "../ai-providers/provider-utils.mjs";
 import { DomainError } from "../workflow-domain/domain-error.mjs";
 
-export const PROVIDER_SETTINGS_SCHEMA_VERSION = 1;
+export const PROVIDER_SETTINGS_SCHEMA_VERSION = 2;
+
+const DEFAULT_IMAGE_API_URL = "https://www.right.codes/draw/v1/images/generations";
+const DEFAULT_IMAGE_MODEL = "gpt-image-2";
+
+const IMAGE_CHANNEL_SPECS = Object.freeze([
+  {
+    id: "primary",
+    title: "绘图通道 A",
+    description: "固定用于 0-10s 故事板",
+    segmentId: "0-10s",
+    apiUrlValueKey: "imageApiUrl",
+    apiUrlEnvKey: "IMAGE_API_URL",
+    modelValueKey: "imageModel",
+    modelEnvKey: "IMAGE_MODEL",
+    apiKeyValueKey: "imageApiKey",
+    apiKeyEnvKey: "IMAGE_MODEL_API_KEY"
+  },
+  {
+    id: "secondary",
+    title: "绘图通道 B",
+    description: "固定用于 10-20s 故事板",
+    segmentId: "10-20s",
+    apiUrlValueKey: "imageSecondaryApiUrl",
+    apiUrlEnvKey: "IMAGE_SECONDARY_API_URL",
+    modelValueKey: "imageSecondaryModel",
+    modelEnvKey: "IMAGE_SECONDARY_MODEL",
+    apiKeyValueKey: "imageSecondaryApiKey",
+    apiKeyEnvKey: "IMAGE_SECONDARY_API_KEY"
+  }
+]);
+
+function imageChannelFields() {
+  return IMAGE_CHANNEL_SPECS.flatMap((channel) => ([
+    {
+      name: "apiUrl",
+      label: "API 地址",
+      type: "url",
+      channelId: channel.id,
+      valueKey: channel.apiUrlValueKey,
+      clearable: false,
+      envKey: channel.apiUrlEnvKey,
+      defaultValue: DEFAULT_IMAGE_API_URL
+    },
+    {
+      name: "model",
+      label: "模型",
+      type: "select",
+      channelId: channel.id,
+      valueKey: channel.modelValueKey,
+      clearable: false,
+      envKey: channel.modelEnvKey,
+      defaultValue: DEFAULT_IMAGE_MODEL
+    },
+    {
+      name: "apiKey",
+      label: "API Key",
+      type: "secret",
+      channelId: channel.id,
+      valueKey: channel.apiKeyValueKey,
+      clearable: true,
+      envKey: channel.apiKeyEnvKey
+    }
+  ]));
+}
 
 const PROVIDER_DEFINITIONS = Object.freeze([
   {
@@ -83,35 +150,14 @@ const PROVIDER_DEFINITIONS = Object.freeze([
     title: "故事板图片模型",
     provider: "Right Code",
     role: "img2img 故事板生成",
-    channel: "Draw 画图通道",
-    fields: [
-      {
-        name: "apiUrl",
-        label: "API 地址",
-        type: "url",
-        valueKey: "imageApiUrl",
-        clearable: false,
-        envKey: "IMAGE_API_URL",
-        defaultValue: "https://www.right.codes/draw/v1/images/generations"
-      },
-      {
-        name: "model",
-        label: "模型",
-        type: "select",
-        valueKey: "imageModel",
-        clearable: false,
-        envKey: "IMAGE_MODEL",
-        defaultValue: "gpt-image-2"
-      },
-      {
-        name: "apiKey",
-        label: "API Key",
-        type: "secret",
-        valueKey: "imageApiKey",
-        clearable: true,
-        envKey: "IMAGE_MODEL_API_KEY"
-      }
-    ]
+    channel: "双绘图通道",
+    channels: IMAGE_CHANNEL_SPECS.map(({ id, title, description, segmentId }) => ({
+      id,
+      title,
+      description,
+      segmentId
+    })),
+    fields: imageChannelFields()
   }
 ]);
 
@@ -133,13 +179,54 @@ function fieldValue(env, field) {
   return env[field.envKey] || field.defaultValue || "";
 }
 
-function keyPreview(value) {
-  const key = String(value || "").trim();
-  if (!hasUsableApiKey(key)) return "";
-  return `•••• ${key.slice(-4)}`;
+function sanitizeField(field) {
+  const { envKey, defaultValue, ...rest } = field;
+  void envKey;
+  void defaultValue;
+  return rest;
+}
+
+function imageChannelConfig(env, spec, { includeApiKey = false } = {}) {
+  const apiUrl = env[spec.apiUrlEnvKey] || DEFAULT_IMAGE_API_URL;
+  const model = env[spec.modelEnvKey] || DEFAULT_IMAGE_MODEL;
+  const apiKey = env[spec.apiKeyEnvKey] || "";
+  const channel = {
+    id: spec.id,
+    title: spec.title,
+    description: spec.description,
+    segmentId: spec.segmentId,
+    apiUrl,
+    model,
+    configured: hasUsableApiKey(apiKey),
+    keyPreview: maskedApiKeyPreview(apiKey)
+  };
+  if (includeApiKey) channel.apiKey = apiKey;
+  return channel;
 }
 
 function sanitizeProviderDefinition(provider, env) {
+  if (provider.id === "image") {
+    const channels = IMAGE_CHANNEL_SPECS.map((channel) => imageChannelConfig(env, channel));
+    return {
+      id: provider.id,
+      title: provider.title,
+      provider: provider.provider,
+      role: provider.role,
+      channel: provider.channel,
+      channels: provider.channels,
+      fields: provider.fields.map(sanitizeField),
+      config: {
+        model: channels[0]?.model || "",
+        apiUrl: channels[0]?.apiUrl || "",
+        configured: channels.every((channel) => channel.configured),
+        keyPreview: channels[0]?.keyPreview || "",
+        configuredChannels: channels.filter((channel) => channel.configured).length,
+        requiredChannels: channels.length,
+        channels
+      }
+    };
+  }
+
   const modelField = provider.fields.find((field) => field.name === "model");
   const urlField = provider.fields.find((field) => field.name === "apiUrl");
   const keyField = provider.fields.find((field) => field.name === "apiKey");
@@ -151,18 +238,25 @@ function sanitizeProviderDefinition(provider, env) {
     provider: provider.provider,
     role: provider.role,
     channel: provider.channel,
-    fields: provider.fields.map(({ envKey, defaultValue, ...field }) => field),
+    fields: provider.fields.map(sanitizeField),
     config: {
       model: modelField ? fieldValue(env, modelField) : "",
       apiUrl: urlField ? fieldValue(env, urlField) : "",
       configured: hasUsableApiKey(apiKey),
-      keyPreview: keyPreview(apiKey)
+      keyPreview: maskedApiKeyPreview(apiKey)
     }
   };
 }
 
 function configuredProviders(env) {
   return PROVIDER_DEFINITIONS.map((provider) => {
+    if (provider.id === "image") {
+      return {
+        id: provider.id,
+        configured: IMAGE_CHANNEL_SPECS
+          .every((channel) => hasUsableApiKey(env[channel.apiKeyEnvKey] || ""))
+      };
+    }
     const keyField = provider.fields.find((field) => field.name === "apiKey");
     return {
       id: provider.id,
@@ -247,6 +341,12 @@ async function writeEnvAtomically(text) {
   }
 }
 
+export function readImageDrawChannels(env) {
+  return IMAGE_CHANNEL_SPECS.map((channel) => imageChannelConfig(env, channel, {
+    includeApiKey: true
+  }));
+}
+
 export async function readProviderStatus() {
   const env = await loadEnv();
   const providers = Object.fromEntries(
@@ -275,7 +375,7 @@ export async function updateAdminProviderSettings(input) {
   }
 
   const updates = {};
-  for (const [valueKey, value] of Object.entries(input)) {
+  for (const valueKey of Object.keys(input)) {
     const match = FIELD_BY_VALUE_KEY.get(valueKey);
     if (!match) invalidSettings(`Unsupported provider setting: ${valueKey}`);
 
@@ -286,7 +386,6 @@ export async function updateAdminProviderSettings(input) {
     else invalidSettings(`Unsupported provider setting type: ${valueKey}`);
 
     if (normalized !== undefined) updates[match.field.envKey] = normalized;
-    void value;
   }
 
   if (Object.keys(updates).length) {
@@ -296,6 +395,5 @@ export async function updateAdminProviderSettings(input) {
   return readAdminProviderSettings();
 }
 
-// Backward-compatible names return only the public status contract.
 export const readProviderSettings = readProviderStatus;
 export const updateProviderSettings = updateAdminProviderSettings;

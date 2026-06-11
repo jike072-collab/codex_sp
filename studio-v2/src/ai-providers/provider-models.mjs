@@ -3,13 +3,16 @@ import {
   hasUsableApiKey,
   positiveInteger
 } from "./provider-utils.mjs";
-import { providerSettingDefinitions } from "../storage/provider-settings.mjs";
+import {
+  providerSettingDefinitions,
+  readImageDrawChannels
+} from "../storage/provider-settings.mjs";
 
 const MODEL_DISCOVERY_CACHE_MS = 5 * 60 * 1000;
 const discoveryCache = new Map();
 
-function field(provider, name) {
-  return provider.fields.find((item) => item.name === name);
+function field(provider, name, channelId) {
+  return provider.fields.find((item) => item.name === name && item.channelId === channelId);
 }
 
 function valueFor(env, fieldDefinition) {
@@ -26,8 +29,8 @@ function fallback(currentModel, status, message) {
   };
 }
 
-function cacheKey(providerId, apiUrl, currentModel, configured) {
-  return [providerId, apiUrl, currentModel, configured ? "configured" : "missing-key"].join("|");
+function cacheKey(parts) {
+  return parts.join("|");
 }
 
 function cached(key) {
@@ -108,18 +111,14 @@ function parseModels(payload) {
   return [...unique.values()];
 }
 
-async function fetchModelList(provider, { env, fetchImpl, timeoutMs }) {
-  const currentModel = valueFor(env, field(provider, "model"));
-  const apiUrl = valueFor(env, field(provider, "apiUrl"));
-  const apiKey = env[field(provider, "apiKey").envKey];
-
+async function fetchModelList(providerId, { apiUrl, apiKey, currentModel, fetchImpl, timeoutMs }) {
   if (!hasUsableApiKey(apiKey)) {
     return fallback(currentModel, "error", "未配置 API Key，无法从供应商发现模型。");
   }
 
   let url;
   try {
-    url = modelListUrl(provider.id, apiUrl);
+    url = modelListUrl(providerId, apiUrl);
   } catch {
     return fallback(currentModel, "unsupported", "当前 API 地址无法推导模型列表端点。");
   }
@@ -131,7 +130,7 @@ async function fetchModelList(provider, { env, fetchImpl, timeoutMs }) {
   try {
     response = await fetchImpl(url, {
       method: "GET",
-      headers: authHeaders(provider.id, apiKey),
+      headers: authHeaders(providerId, apiKey),
       signal: AbortSignal.timeout(timeoutMs)
     });
   } catch {
@@ -151,6 +150,7 @@ async function fetchModelList(provider, { env, fetchImpl, timeoutMs }) {
   } catch {
     return fallback(currentModel, "error", "模型发现返回了无效 JSON。");
   }
+
   const models = parseModels(payload);
   if (!models.length) {
     return fallback(currentModel, "error", "供应商返回了空模型列表。");
@@ -163,6 +163,79 @@ async function fetchModelList(provider, { env, fetchImpl, timeoutMs }) {
     currentModel,
     models,
     source: "provider"
+  };
+}
+
+function aggregateImageChannelStatus(channels) {
+  if (channels.every((channel) => channel.status === "ok")) return "ok";
+  if (channels.every((channel) => channel.status === "unsupported")) return "unsupported";
+  if (channels.some((channel) => channel.status === "error")) return "error";
+  return "partial";
+}
+
+function aggregateImageChannelSource(channels) {
+  if (channels.every((channel) => channel.source === "provider")) return "provider";
+  if (channels.every((channel) => channel.source === "current")) return "current";
+  return "mixed";
+}
+
+async function discoverStandardProvider(provider, env, { refresh, fetchImpl, timeoutMs }) {
+  const currentModel = valueFor(env, field(provider, "model"));
+  const apiUrl = valueFor(env, field(provider, "apiUrl"));
+  const apiKey = env[field(provider, "apiKey").envKey];
+  const key = cacheKey([
+    provider.id,
+    apiUrl,
+    currentModel,
+    hasUsableApiKey(apiKey) ? "configured" : "missing-key"
+  ]);
+  const existing = refresh ? null : cached(key);
+  if (existing) return existing;
+  const discovered = await fetchModelList(provider.id, {
+    apiUrl,
+    apiKey,
+    currentModel,
+    fetchImpl,
+    timeoutMs
+  });
+  remember(key, discovered);
+  return discovered;
+}
+
+async function discoverImageProvider(provider, env, { refresh, fetchImpl, timeoutMs }) {
+  const channels = readImageDrawChannels(env);
+  const discoveredChannels = [];
+
+  for (const channel of channels) {
+    const key = cacheKey([
+      provider.id,
+      channel.id,
+      channel.apiUrl,
+      channel.model,
+      channel.configured ? "configured" : "missing-key"
+    ]);
+    const existing = refresh ? null : cached(key);
+    const discovered = existing || await fetchModelList("image", {
+      apiUrl: channel.apiUrl,
+      apiKey: channel.apiKey,
+      currentModel: channel.model,
+      fetchImpl,
+      timeoutMs
+    });
+    if (!existing) remember(key, discovered);
+    discoveredChannels.push({
+      id: channel.id,
+      title: channel.title,
+      description: channel.description,
+      segmentId: channel.segmentId,
+      ...discovered
+    });
+  }
+
+  return {
+    status: aggregateImageChannelStatus(discoveredChannels),
+    source: aggregateImageChannelSource(discoveredChannels),
+    channels: discoveredChannels
   };
 }
 
@@ -179,18 +252,19 @@ export async function discoverAdminProviderModels({
   const providers = {};
 
   for (const provider of providerSettingDefinitions()) {
-    const currentModel = valueFor(env, field(provider, "model"));
-    const apiUrl = valueFor(env, field(provider, "apiUrl"));
-    const apiKey = env[field(provider, "apiKey").envKey];
-    const key = cacheKey(provider.id, apiUrl, currentModel, hasUsableApiKey(apiKey));
-    const existing = refresh ? null : cached(key);
-    if (existing) {
-      providers[provider.id] = existing;
+    if (provider.id === "image") {
+      providers[provider.id] = await discoverImageProvider(provider, env, {
+        refresh,
+        fetchImpl,
+        timeoutMs
+      });
       continue;
     }
-    const discovered = await fetchModelList(provider, { env, fetchImpl, timeoutMs });
-    remember(key, discovered);
-    providers[provider.id] = discovered;
+    providers[provider.id] = await discoverStandardProvider(provider, env, {
+      refresh,
+      fetchImpl,
+      timeoutMs
+    });
   }
 
   return { providers };

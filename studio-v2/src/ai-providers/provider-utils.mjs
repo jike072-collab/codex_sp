@@ -32,6 +32,12 @@ export function hasUsableApiKey(value) {
   return !PLACEHOLDER_KEYS.has(String(value || "").trim().toLowerCase());
 }
 
+export function maskedApiKeyPreview(value) {
+  const key = String(value || "").trim();
+  if (!hasUsableApiKey(key)) return "";
+  return `•••• ${key.slice(-4)}`;
+}
+
 export function positiveInteger(value, fallback) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
@@ -93,6 +99,7 @@ export async function postProviderJson({
   timeoutMs,
   providerLabel,
   errorCode,
+  includeProviderDetail = true,
   headers,
   fetchImpl = fetch
 }) {
@@ -127,7 +134,7 @@ export async function postProviderJson({
     } catch {
       // Provider error bodies are not guaranteed to be JSON.
     }
-    const suffix = detail ? `：${String(detail).slice(0, 180)}` : "";
+    const suffix = includeProviderDetail && detail ? `：${String(detail).slice(0, 180)}` : "";
     const overloaded = retryableProviderDetail(detail);
     throw new ProviderError(
       `${providerLabel}调用失败（HTTP ${response.status}）${suffix}`,

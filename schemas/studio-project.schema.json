@@ -351,6 +351,12 @@
         "referenceImageCount": { "type": "integer", "minimum": 0 },
         "referenceImageTotalBytes": { "type": "integer", "minimum": 0 },
         "promptCharCount": { "type": "integer", "minimum": 0 },
+        "drawChannelId": { "type": "string", "minLength": 1 },
+        "drawChannelTitle": { "type": "string", "minLength": 1 },
+        "keyPreview": { "type": "string" },
+        "providerHost": { "type": "string" },
+        "providerPath": { "type": "string" },
+        "responseFormat": { "type": "string", "minLength": 1 },
         "providerStatus": { "type": "integer" },
         "providerRequestId": { "type": "string", "minLength": 1 },
         "outcome": { "enum": ["success", "failed"] },
@@ -373,6 +379,10 @@
             "sameModel",
             "sameRequestedSize",
             "sameReferencePayload",
+            "sameKeyPreview",
+            "sameEndpoint",
+            "drawChannelIds",
+            "keyPreviews",
             "promptCharCounts",
             "providerStatuses",
             "conclusion"
@@ -382,6 +392,16 @@
             "sameModel": { "type": "boolean" },
             "sameRequestedSize": { "type": "boolean" },
             "sameReferencePayload": { "type": "boolean" },
+            "sameKeyPreview": { "type": "boolean" },
+            "sameEndpoint": { "type": "boolean" },
+            "drawChannelIds": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "keyPreviews": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
             "promptCharCounts": {
               "type": "array",
               "items": { "type": "integer", "minimum": 0 }

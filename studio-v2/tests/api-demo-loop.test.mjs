@@ -39,6 +39,7 @@ before(async () => {
   process.env.VISION_MODEL_API_KEY = "replace_me";
   process.env.TEXT_MODEL_API_KEY = "replace_me";
   process.env.IMAGE_MODEL_API_KEY = "replace_me";
+  process.env.IMAGE_SECONDARY_API_KEY = "replace_me";
 
   const repository = await import("../src/storage/project-repository.mjs");
   const { createRequestHandler } = await import("../src/local-api/request-handler.mjs");
@@ -242,14 +243,20 @@ test("visual generation timeout records a retryable failure state", async () => 
 
   const previousEnv = {
     IMAGE_MODEL_API_KEY: process.env.IMAGE_MODEL_API_KEY,
+    IMAGE_SECONDARY_API_KEY: process.env.IMAGE_SECONDARY_API_KEY,
     IMAGE_MODEL_PROVIDER: process.env.IMAGE_MODEL_PROVIDER,
     IMAGE_API_URL: process.env.IMAGE_API_URL,
+    IMAGE_SECONDARY_API_URL: process.env.IMAGE_SECONDARY_API_URL,
+    IMAGE_SECONDARY_MODEL: process.env.IMAGE_SECONDARY_MODEL,
     IMAGE_TIMEOUT_MS: process.env.IMAGE_TIMEOUT_MS
   };
   Object.assign(process.env, {
-    IMAGE_MODEL_API_KEY: "test-right-code-key",
+    IMAGE_MODEL_API_KEY: "test-right-code-key-1111",
+    IMAGE_SECONDARY_API_KEY: "test-right-code-key-2222",
     IMAGE_MODEL_PROVIDER: "right_codes",
-    IMAGE_API_URL: `${providerBaseUrl}/draw/v1/images/generations`,
+    IMAGE_API_URL: `${providerBaseUrl}/draw-a/v1/images/generations`,
+    IMAGE_SECONDARY_API_URL: `${providerBaseUrl}/draw-b/v1/images/generations`,
+    IMAGE_SECONDARY_MODEL: "gpt-image-2",
     IMAGE_TIMEOUT_MS: "50"
   });
 
@@ -312,6 +319,10 @@ test("visual generation timeout records a retryable failure state", async () => 
     assert.equal(
       reopened.body.project.visualGenerationFailure.providerDiagnostics.evidence.sameReferencePayload,
       true
+    );
+    assert.deepEqual(
+      reopened.body.project.visualGenerationFailure.providerDiagnostics.evidence.drawChannelIds,
+      ["primary", "secondary"]
     );
     assert.equal(
       reopened.body.project.visualGenerationFailure.providerDiagnostics.evidence.conclusion,

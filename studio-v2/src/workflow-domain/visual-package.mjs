@@ -175,6 +175,11 @@ function safeProviderDiagnostics(project) {
     attempt.referenceImageCount,
     attempt.referenceImageTotalBytes
   ].join(":"))).size <= 1;
+  const sameKeyPreview = new Set(attempts.map((attempt) => attempt.keyPreview || "")).size <= 1;
+  const sameEndpoint = new Set(attempts.map((attempt) => [
+    attempt.providerHost || "",
+    attempt.providerPath || ""
+  ].join("|"))).size <= 1;
   const promptCharCounts = attempts.map((attempt) => attempt.promptCharCount);
   const hasProviderTimeout = statuses.some((status) => [408, 504, 524].includes(status));
 
@@ -185,6 +190,10 @@ function safeProviderDiagnostics(project) {
       sameModel,
       sameRequestedSize,
       sameReferencePayload,
+      sameKeyPreview,
+      sameEndpoint,
+      drawChannelIds: attempts.map((attempt) => attempt.drawChannelId),
+      keyPreviews: attempts.map((attempt) => attempt.keyPreview || ""),
       promptCharCounts,
       providerStatuses: statuses,
       conclusion: hasProviderTimeout
