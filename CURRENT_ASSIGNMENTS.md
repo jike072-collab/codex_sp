@@ -70,7 +70,7 @@ Route: simple|standard|complex
 
 任务分支：
 
-- `codex/frontend-admin-provider-ux`
+- `codex/frontend-cinematic-workbench`
 
 负责：
 
@@ -80,6 +80,7 @@ Route: simple|standard|complex
 - 模型改为从后端读取后的下拉选择，不允许自由填空。
 - 显示脱敏当前 Key，并保留替换/清除能力。
 - 对工作台和 Admin 做一轮最终视觉优化：更统一、更稳定、更像完成品，但不得改变流程或恢复旧导出/API 编辑入口。
+- 当前全黑 cinematic 版本不直接合并；保留有用的布局/交互优化，但主工作台和 Admin 需要回到之前更轻、更清楚的浅色工具台视觉。
 
 允许修改：
 
