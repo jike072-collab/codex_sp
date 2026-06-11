@@ -1,12 +1,16 @@
 # Codex A Current Backend Task
 
-Status: READY
+Status: READY - START NOW
 
-Route: complex
+Target: 本机后端 Codex 对话
 
-Base commit: `f996758`
+Published: 2026-06-11 Asia/Shanghai
 
-Branch: `codex/backend-storyboard-524-model-discovery`
+Route: standard
+
+Branch: `codex/backend-single-image-regression`
+
+Start from: latest `origin/main`
 
 ## Required Skills
 
@@ -14,54 +18,24 @@ Start every task or resumed task with:
 
 ```text
 Skills: nadirclaw-model-router, superpowers-workflow
-Route: complex
+Route: standard
 ```
 
 ## Goal
 
-把后端改成“两个故事板 key / 两条绘图通道 + 真实模型发现”的正式实现，并保住并发、部分成功和无密钥泄露。
-
-## Review Blocker To Fix
-
-P1: 模型发现缓存必须绑定“当前 key”，不能只区分是否已配置。
-
-- 位置：`studio-v2/src/ai-providers/provider-models.mjs`
-- 现状：缓存 key 只包含 provider、url、model 和 `configured/missing-key`。
-- 风险：用户更换 API Key 后，不带 `refresh=1` 时可能继续看到上一个 key 能调用的模型列表。
-- 要求：
-  - 缓存 key 必须随实际 key 改变而改变。
-  - 不能把完整 API Key 写进日志、响应、诊断或可读缓存。
-  - 可使用安全哈希/短指纹作为内部缓存 key 的一部分。
-  - 补测试：同 provider/url/model 下更换 key 后，普通读取也必须重新请求模型列表；旧 key 的模型列表不能复用给新 key。
-  - 保留 `refresh=1` 强制刷新能力。
+固定“上传一个图片文件即可开始识别”的后端行为。一张图片可以是包含正面、侧面、后跟、鞋底等角度的四视图拼图，后端不得要求拆成四个文件。
 
 ## Backend Work
 
-1. 故事板图片生成直接改为两个独立 key / 两条绘图通道。
-2. 两张故事板仍必须并发发起，成功图保留，重试只补缺失图。
-3. 后台模型列表从当前 key 可调用的真实模型中读取，支持刷新、切换和缓存。
-4. Admin 返回的模型与 provider schema 必须可直接给前端渲染，显示为中文友好内容。
-5. API Key 只能返回 masked preview，不能返回完整 key。
-6. 继续保留 524 诊断，但要围绕“哪条通道、哪个 key、哪个模型、哪个请求字段”定位，不要泄露 prompt、base64、密钥或响应体。
-
-## Must Prove
-
-- 两个故事板请求仍然是并发进入 provider。
-- 双 key / 双通道配置是显式的，不是静默 fallback。
-- 模型发现来自真实 provider 能力，不得虚构模型。
-- `GET /api/admin/providers/models`
-  - 支持 `refresh=1`
-  - 支持 `vision` / `text` / `image`
-  - 失败时只返回安全错误
-- `GET /api/admin/providers`
-  - 返回 masked key preview
-  - model 字段使用可选项/选择型 schema
-
-## Current Facts
-
-- `generateProjectVisuals()` 已经会并发请求两个故事板项。
-- 现在的问题不是“是否并发”，而是“如何稳定地用双 key / 双通道把两张图都跑出来，并把失败原因查清楚”。
-- 524 仍按 provider/gateway timeout 方向排查，但这轮要直接落地双通道方案，不再等待额外证明。
+1. 核对上传和 `POST /api/projects/:id/analyze` 的全部后端校验，最小素材数必须为 1。
+2. 核对视觉识别请求会把单张四视图拼图作为完整参考图传给 provider。
+3. 如提示词存在“每张图只含一个角度”的隐含假设，改为明确允许单图内包含多个产品角度。
+4. 补回归测试：
+   - 只上传 1 张图片后可以调用 analyze。
+   - 单张图片会进入视觉 provider，不会因文件数不足被拒绝。
+   - assets 阶段删除唯一一张素材后，项目回到 0 张且文件被移除。
+   - 0 张素材调用 analyze 仍返回明确错误。
+5. 不要引入图片拆分、自动裁图或额外 AI 调用；provider 直接识别原始拼图即可。
 
 ## Scope
 
@@ -69,34 +43,28 @@ Allowed:
 
 - `studio-v2/src/**`
 - `studio-v2/tests/**`
-- `docs/contracts/**`
-- `schemas/**`
+- 必要的后端契约文档
 
 Do not edit:
 
 - `studio-v2/public/**`
 - `studio-v2/admin/**`
 - root coordination files
-- `.env`, API keys, runtime data, uploads, generated images, logs, or PID files
+- `.env`、API Key、运行数据、上传图片、生成结果、日志或 PID 文件
 
 ## Verification
 
-- Storyboard concurrent-start test.
-- Dual-key / dual-channel contract test.
-- Model discovery success / unsupported / error / refresh tests.
-- Masked key preview and select-type schema test.
-- No secret leakage in diagnostics.
-- Run all backend tests.
-- Run syntax checks for changed MJS files.
+- 运行相关 API / provider 测试。
+- 运行全部后端测试。
+- 对修改的 MJS 文件执行语法检查。
+- 明确报告单张四视图拼图是否无需拆分即可识别。
 
 ## Delivery
 
-Push `codex/backend-storyboard-524-model-discovery` and report:
+Push `codex/backend-single-image-regression` and report:
 
 - Skills and route
 - Commit hash
-- 双 key / 双通道实现说明
-- 模型发现来源与缓存方式
 - Changed files
-- Tests
+- Tests and exact pass counts
 - Confirmation that no frontend/Admin files or secrets were changed

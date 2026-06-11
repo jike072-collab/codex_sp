@@ -23,13 +23,13 @@ Route: simple|standard|complex
 
 ## 当前基线
 
-- 正式基线：`f996758`
+- 正式基线：`fa1ca03`
 - 正式分支：`main / v2 / ui-v2`
 - 协调端负责发布任务、审查、回归测试与正式分支同步。
 
-## Codex A：后端
+## Codex A：本机后端
 
-状态：READY_FOR_REVIEW
+状态：READY - START NOW
 
 任务入口：
 
@@ -37,69 +37,57 @@ Route: simple|standard|complex
 
 任务分支：
 
-- `codex/backend-storyboard-524-model-discovery`
+- `codex/backend-single-image-regression`
 
 负责内容：
 
-- 审核阻断修复：模型发现缓存必须绑定当前 key 的安全指纹，换 key 后不能复用旧模型列表。
-- 故事板图片生成改为两个独立 key / 两条绘图通道。
-- 两张故事板仍保持并发发起，partial success 保留成功图，只补缺失图。
-- 后台模型列表读取当前 key 可调用的真实模型，支持刷新与切换。
-- 保持 masked key preview、中文 schema、无密钥泄露。
-- 继续排查 524 的真实原因，并补足诊断与测试。
+- 确认并固定“上传 1 张图片即可识别”的后端契约。
+- 一张图片可以是包含正面、侧面、后跟、鞋底的四视图拼图。
+- 补单图上传、分析和删除素材的回归测试。
+- 检查识图提示是否会正确理解单张多视图拼图，不要求用户拆成 4 个文件。
 
 允许修改：
 
 - `studio-v2/src/**`
 - `studio-v2/tests/**`
-- `docs/contracts/**`
-- `schemas/**`
+- 必要的后端契约文档
 
 禁止修改：
 
 - `studio-v2/public/**`
 - `studio-v2/admin/**`
 
-## Codex B：前端
+## Codex B：另一台电脑前端
 
-状态：CHANGES_REQUESTED - FRONTEND START NOW
+状态：READY - START NOW
 
 任务入口：
 
 - `tasks/codex-frontend-current.md`
 
-发布方式：
-
-- 只通过 GitHub 发给另一台前端电脑。
-- 前端电脑拉取 `codex/frontend-admin-provider-ux` 后立即处理。
-- 不发送到本机任何前端对话。
-
 任务分支：
 
-- `codex/frontend-admin-provider-ux`
+- `codex/frontend-step1-single-image`
 
 负责内容：
 
-- 审核阻断修复：Admin 必须按绘图通道 A/B 分组渲染 URL、模型、Key，不能继续按单 image provider 读取。
-- 工作台顶部四个小块改成更有用、可读性更强的内容。
-- Step 02 的每个选项卡前缀改成图标或徽标式表达，不能留空白占位。
-- 去掉底部重复出现的新增块。
-- Step 03 脚本区改成更像表格的展示，不再重复堆同一张卡片。
-- 统一中文显示，提升字号、对比度和可读性，避免页面过暗。
-- 管理后台风格也要和主工作台统一，不要像另一套系统。
-- 修复右侧裁切和布局抖动。
+- Step 01 改为上传至少 1 张图片即可点击“识别并锁定产品”。
+- 单张四视图拼图视为完整可识别素材；4-8 张只保留为建议，不得作为门槛。
+- 修复素材卡片删除按钮无法点击，必须在真实浏览器中完成删除闭环。
+- 清除所有 `1/4`、还需 3 张、第四张检查点等硬门槛显示。
+- 放大正文、按钮、提示和右侧状态区字号，改善对比度。
+- 去掉第一步大块无意义空白，让面板高度随实际内容收缩。
 
 允许修改：
 
 - `studio-v2/public/**`
-- `studio-v2/admin/**`（仅在确有必要时）
 
 禁止修改：
 
 - `studio-v2/src/**`
 - `studio-v2/tests/**`
-- `docs/contracts/**`
-- `schemas/**`
+- `studio-v2/admin/**`
+- 后端契约文件
 
 ## 固定产品规则
 
@@ -108,3 +96,4 @@ Route: simple|standard|complex
 - 最终交付只保留两张故事板图片和两段脚本/复制控件。
 - 不恢复 JSON / ZIP / CSV / Flow Omni 下载按钮。
 - 外层 storyboard sheet 不强行套视频比例；内部 shot frames 才按第二步比例构图。
+- Step 01 最少 1 个图片文件即可识别；单个文件允许包含多角度拼图。
