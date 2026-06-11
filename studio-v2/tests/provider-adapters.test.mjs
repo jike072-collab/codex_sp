@@ -557,7 +557,10 @@ test("visual retry preserves a completed local image and only generates the miss
       fetchImpl: async () => {
         providerRequests += 1;
         if (providerRequests === 2) {
-          return new Response("", { status: 524 });
+          return new Response("", {
+            status: 524,
+            headers: { "x-request-id": "req-2" }
+          });
         }
         return new Response(JSON.stringify({
           data: [{ b64_json: tinyPngBytes.toString("base64") }]
@@ -583,8 +586,25 @@ test("visual retry preserves a completed local image and only generates the miss
       project.imagePackage.image_generation[0].generated_image.url,
       "/uploads/provider-project/partial-1.png"
     );
+    assert.equal(project.imagePackage.image_generation[0].provider_diagnostics.projectId, "provider-project");
+    assert.equal(project.imagePackage.image_generation[0].provider_diagnostics.promptCharCount > 0, true);
+    assert.equal(project.imagePackage.image_generation[0].provider_diagnostics.referenceImageCount, 1);
+    assert.equal(
+      project.imagePackage.image_generation[0].provider_diagnostics.referenceImageTotalBytes,
+      Buffer.from("synthetic-shoe-reference").length
+    );
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(project.imagePackage.image_generation[0].provider_diagnostics, "prompt"),
+      false
+    );
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(project.imagePackage.image_generation[0].provider_diagnostics, "base64"),
+      false
+    );
     assert.equal(project.imagePackage.image_generation[1].status, "failed");
     assert.equal(project.imagePackage.image_generation[1].error.retryable, true);
+    assert.equal(project.imagePackage.image_generation[1].provider_diagnostics.providerStatus, 524);
+    assert.equal(project.imagePackage.image_generation[1].provider_diagnostics.providerRequestId, "req-2");
     assert.equal(project.imagePackage.image_generation[1].generated_image, undefined);
 
     await generateProjectVisuals(project, "2026-06-06T01:30:00.000Z", dependencies);

@@ -97,8 +97,12 @@ test("public provider status stays redacted while admin settings persist locally
     schema.body.providers.map((provider) => provider.id),
     ["vision", "text", "image"]
   );
+  assert.equal(providerById(schema.body, "vision").title, "识图模型");
   assert.equal(providerById(schema.body, "vision").fields.some(
-    (field) => field.valueKey === "visionApiUrl"
+    (field) => field.valueKey === "visionApiUrl" && field.label === "API 地址"
+  ), true);
+  assert.equal(providerById(schema.body, "vision").fields.some(
+    (field) => field.valueKey === "visionModel" && field.type === "select"
   ), true);
   assert.equal(JSON.stringify(schema.body).includes("VISION_MODEL_API_KEY"), false);
 
@@ -122,7 +126,7 @@ test("public provider status stays redacted while admin settings persist locally
   assert.equal(providerById(updated.body, "image").config.configured, true);
   assert.equal(providerById(updated.body, "vision").config.apiUrl, "https://vision.example.test/gemini");
   assert.equal(providerById(updated.body, "text").config.model, "deepseek-test");
-  assert.equal(providerById(updated.body, "image").config.keyPreview, "saved, ending cret");
+  assert.equal(providerById(updated.body, "image").config.keyPreview, "•••• cret");
   assert.equal(JSON.stringify(updated.body).includes("vision-secret"), false);
   assert.equal(JSON.stringify(updated.body).includes("deepseek-secret"), false);
   assert.equal(JSON.stringify(updated.body).includes("image-secret"), false);
@@ -209,6 +213,92 @@ test("admin provider settings validate URLs and serve the admin page", async () 
   assert.equal(adminPage.status, 200);
   assert.match(adminPage.headers.get("content-type"), /text\/html/);
   assert.match(await adminPage.text(), /供应商配置后台/);
+});
+
+test("admin provider models API discovers models and honors refresh", async () => {
+  const providerRequests = [];
+  const providerServer = http.createServer((req, res) => {
+    providerRequests.push(req.url);
+    if (req.url.includes("/vision/gemini/v1beta/models")) {
+      assert.equal(req.headers["x-goog-api-key"], "vision-secret");
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        models: [{ name: "models/gemini-2.5-flash", displayName: "Gemini Flash" }]
+      }));
+      return;
+    }
+    if (req.url.includes("/text/models")) {
+      assert.equal(req.headers.authorization, "Bearer text-secret");
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        data: [{ id: "deepseek-v4-pro" }]
+      }));
+      return;
+    }
+    if (req.url.includes("/image/draw/v1/models")) {
+      assert.equal(req.headers.authorization, "Bearer image-secret");
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "missing" }));
+      return;
+    }
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "unexpected" }));
+  });
+  await new Promise((resolveListen, reject) => {
+    providerServer.once("error", reject);
+    providerServer.listen(0, "127.0.0.1", resolveListen);
+  });
+  const address = providerServer.address();
+  const providerBase = `http://127.0.0.1:${address.port}`;
+
+  const previous = {
+    VISION_MODEL_API_KEY: process.env.VISION_MODEL_API_KEY,
+    VISION_API_URL: process.env.VISION_API_URL,
+    VISION_MODEL: process.env.VISION_MODEL,
+    TEXT_MODEL_API_KEY: process.env.TEXT_MODEL_API_KEY,
+    TEXT_API_URL: process.env.TEXT_API_URL,
+    TEXT_MODEL: process.env.TEXT_MODEL,
+    IMAGE_MODEL_API_KEY: process.env.IMAGE_MODEL_API_KEY,
+    IMAGE_API_URL: process.env.IMAGE_API_URL,
+    IMAGE_MODEL: process.env.IMAGE_MODEL
+  };
+  Object.assign(process.env, {
+    VISION_MODEL_API_KEY: "vision-secret",
+    VISION_API_URL: `${providerBase}/vision/gemini`,
+    VISION_MODEL: "gemini-2.5-flash",
+    TEXT_MODEL_API_KEY: "text-secret",
+    TEXT_API_URL: `${providerBase}/text/chat/completions`,
+    TEXT_MODEL: "deepseek-v4-pro",
+    IMAGE_MODEL_API_KEY: "image-secret",
+    IMAGE_API_URL: `${providerBase}/image/draw/v1/images/generations`,
+    IMAGE_MODEL: "gpt-image-2"
+  });
+
+  try {
+    const first = await request("/api/admin/providers/models");
+    assert.equal(first.response.status, 200);
+    assert.equal(first.body.providers.vision.status, "ok");
+    assert.equal(first.body.providers.text.status, "ok");
+    assert.equal(first.body.providers.image.status, "unsupported");
+    assert.ok(first.body.providers.image.models.some((model) => model.id === "gpt-image-2"));
+    const firstRequestCount = providerRequests.length;
+    assert.equal(firstRequestCount >= 3, true);
+
+    const cached = await request("/api/admin/providers/models");
+    assert.deepEqual(cached.body, first.body);
+    assert.equal(providerRequests.length, firstRequestCount + 1);
+
+    const refreshed = await request("/api/admin/providers/models?refresh=1");
+    assert.equal(refreshed.response.status, 200);
+    assert.equal(refreshed.body.providers.vision.status, "ok");
+    assert.equal(providerRequests.length > firstRequestCount + 1, true);
+  } finally {
+    await new Promise((resolveClose) => providerServer.close(resolveClose));
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
 });
 
 test("project deletion removes only the selected project and its uploads", async () => {

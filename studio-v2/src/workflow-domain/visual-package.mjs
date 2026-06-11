@@ -160,6 +160,40 @@ export function completeVisualGeneration(project, generatedAt = new Date().toISO
   return project;
 }
 
+function safeProviderDiagnostics(project) {
+  const attempts = (project.imagePackage?.image_generation || [])
+    .map((item) => item.provider_diagnostics)
+    .filter(Boolean);
+  if (!attempts.length) return undefined;
+
+  const statuses = attempts
+    .map((attempt) => attempt.providerStatus)
+    .filter((status) => Number.isInteger(status));
+  const sameModel = new Set(attempts.map((attempt) => attempt.model)).size <= 1;
+  const sameRequestedSize = new Set(attempts.map((attempt) => attempt.requestedSize)).size <= 1;
+  const sameReferencePayload = new Set(attempts.map((attempt) => [
+    attempt.referenceImageCount,
+    attempt.referenceImageTotalBytes
+  ].join(":"))).size <= 1;
+  const promptCharCounts = attempts.map((attempt) => attempt.promptCharCount);
+  const hasProviderTimeout = statuses.some((status) => [408, 504, 524].includes(status));
+
+  return {
+    attempts,
+    evidence: {
+      concurrentAttemptCount: attempts.length,
+      sameModel,
+      sameRequestedSize,
+      sameReferencePayload,
+      promptCharCounts,
+      providerStatuses: statuses,
+      conclusion: hasProviderTimeout
+        ? "provider_or_gateway_timeout_after_request"
+        : "provider_error_after_request"
+    }
+  };
+}
+
 export function recordVisualGenerationFailure(project, error, failedAt = new Date().toISOString()) {
   project.status = "visual";
   project.visualGeneratedAt = null;
@@ -172,6 +206,10 @@ export function recordVisualGenerationFailure(project, error, failedAt = new Dat
   };
   if (Number.isInteger(error?.providerStatus)) {
     project.visualGenerationFailure.providerStatus = error.providerStatus;
+  }
+  const diagnostics = safeProviderDiagnostics(project);
+  if (diagnostics) {
+    project.visualGenerationFailure.providerDiagnostics = diagnostics;
   }
   return project;
 }

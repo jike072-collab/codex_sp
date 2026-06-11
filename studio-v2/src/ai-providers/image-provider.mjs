@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -20,7 +21,10 @@ async function referenceImages(
 ) {
   return Promise.all((project.assets || []).map(async (asset) => {
     const bytes = await readFileImpl(join(uploadsRootPath, project.id, asset.storedName));
-    return bytes.toString("base64");
+    return {
+      base64: bytes.toString("base64"),
+      byteLength: bytes.length
+    };
   }));
 }
 
@@ -41,6 +45,7 @@ async function requestGeneratedImage({
   images,
   env
 }) {
+  const prompt = `${item.prompt}\nAvoid: ${item.negative_prompt}`;
   return postProviderJson({
     url: apiUrl,
     apiKey,
@@ -50,12 +55,48 @@ async function requestGeneratedImage({
     fetchImpl,
     body: {
       model,
-      prompt: `${item.prompt}\nAvoid: ${item.negative_prompt}`,
-      image: images,
+      prompt,
+      image: images.map((image) => image.base64),
       size: sizeFor(item, env),
       response_format: "url"
     }
   });
+}
+
+function referenceTotalBytes(images) {
+  return images.reduce((total, image) => total + image.byteLength, 0);
+}
+
+function storyboardDiagnostic({ project, item, model, images, env, startedAt, attemptId }) {
+  const prompt = `${item.prompt}\nAvoid: ${item.negative_prompt}`;
+  return {
+    projectId: project.id,
+    segmentId: item.segment_id,
+    assetId: item.asset_id,
+    attemptId,
+    startedAt,
+    model,
+    requestedSize: sizeFor(item, env),
+    referenceImageCount: images.length,
+    referenceImageTotalBytes: referenceTotalBytes(images),
+    promptCharCount: prompt.length
+  };
+}
+
+function finishDiagnostic(diagnostic, startedMs, outcome, error) {
+  const finished = {
+    ...diagnostic,
+    elapsedMs: Date.now() - startedMs,
+    outcome
+  };
+  if (Number.isInteger(error?.providerStatus)) {
+    finished.providerStatus = error.providerStatus;
+  } else if (outcome === "success") {
+    finished.providerStatus = 200;
+  }
+  if (error?.providerRequestId) finished.providerRequestId = error.providerRequestId;
+  if (error?.code) finished.errorCode = error.code;
+  return finished;
 }
 
 function detectedImageType(bytes, declaredType = "") {
@@ -166,16 +207,37 @@ async function generateStoryboardItem({
       code: "IMAGE_REFERENCE_REQUIRED"
     });
   }
-  const payload = await requestGeneratedImage({
-    apiUrl,
-    apiKey,
-    timeoutMs,
-    fetchImpl,
-    model,
+  const attemptId = randomUUID();
+  const startedAt = new Date().toISOString();
+  const startedMs = Date.now();
+  const diagnostic = storyboardDiagnostic({
+    project,
     item,
+    model,
     images,
-    env
+    env,
+    startedAt,
+    attemptId
   });
+  item.provider_diagnostics = diagnostic;
+
+  let payload;
+  try {
+    payload = await requestGeneratedImage({
+      apiUrl,
+      apiKey,
+      timeoutMs,
+      fetchImpl,
+      model,
+      item,
+      images,
+      env
+    });
+    item.provider_diagnostics = finishDiagnostic(diagnostic, startedMs, "success");
+  } catch (error) {
+    item.provider_diagnostics = finishDiagnostic(diagnostic, startedMs, "failed", error);
+    throw error;
+  }
 
   const result = imageResult(payload);
   if (!result) {

@@ -11,6 +11,7 @@ export class ProviderError extends Error {
     {
       code = "PROVIDER_ERROR",
       providerStatus,
+      providerRequestId,
       possiblyBilled = false,
       retryable = false,
       cause
@@ -21,6 +22,7 @@ export class ProviderError extends Error {
     this.code = code;
     this.statusCode = 502;
     this.providerStatus = providerStatus;
+    this.providerRequestId = providerRequestId;
     this.possiblyBilled = possiblyBilled;
     this.retryable = retryable;
   }
@@ -68,6 +70,20 @@ function retryableErrorCode(errorCode, suffix) {
   return errorCode.endsWith("_ERROR")
     ? errorCode.replace(/_ERROR$/, suffix)
     : errorCode;
+}
+
+function safeProviderRequestId(headers) {
+  for (const name of [
+    "x-request-id",
+    "x-correlation-id",
+    "x-trace-id",
+    "cf-ray",
+    "request-id"
+  ]) {
+    const value = headers?.get?.(name);
+    if (value) return String(value).slice(0, 120);
+  }
+  return undefined;
 }
 
 export async function postProviderJson({
@@ -122,6 +138,7 @@ export async function postProviderJson({
             ? retryableErrorCode(errorCode, "_OVERLOADED")
             : errorCode,
         providerStatus: response.status,
+        providerRequestId: safeProviderRequestId(response.headers),
         possiblyBilled: timedOut,
         retryable: timedOut || overloaded
       }
@@ -134,6 +151,7 @@ export async function postProviderJson({
     throw new ProviderError(`${providerLabel}返回了无效响应。`, {
       code: errorCode,
       providerStatus: response.status,
+      providerRequestId: safeProviderRequestId(response.headers),
       cause: error
     });
   }

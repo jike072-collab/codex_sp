@@ -97,22 +97,22 @@ Response:
   "providers": [
     {
       "id": "vision",
-      "title": "Vision recognition",
+      "title": "识图模型",
       "provider": "Right Code",
-      "role": "Product image analysis",
-      "channel": "Gemini (/gemini)",
+      "role": "商品识别与产品锁定",
+      "channel": "Gemini 识图通道",
       "fields": [
         {
           "name": "apiUrl",
-          "label": "API URL",
+          "label": "API 地址",
           "type": "url",
           "valueKey": "visionApiUrl",
           "clearable": false
         },
         {
           "name": "model",
-          "label": "Model",
-          "type": "text",
+          "label": "模型",
+          "type": "select",
           "valueKey": "visionModel",
           "clearable": false
         },
@@ -128,12 +128,63 @@ Response:
         "model": "gemini-2.5-flash",
         "apiUrl": "https://right.codes/gemini",
         "configured": false,
-        "keyPreview": ""
+        "keyPreview": "•••• 9744"
       }
     }
   ]
 }
 ```
+
+`keyPreview` is empty when no usable key is configured. Otherwise it is masked
+as `•••• <last4>` and never contains the full API key.
+
+## Admin Provider Model Discovery
+
+```http
+GET /api/admin/providers/models
+GET /api/admin/providers/models?refresh=1
+```
+
+The backend attempts real provider model-list discovery through configured
+provider endpoints and keys. It never invents models. Successful discoveries
+may be cached briefly; `refresh=1` forces a new discovery attempt.
+
+Response:
+
+```json
+{
+  "providers": {
+    "vision": {
+      "status": "ok",
+      "currentModel": "gemini-2.5-flash",
+      "models": [
+        { "id": "gemini-2.5-flash", "label": "gemini-2.5-flash" }
+      ],
+      "source": "provider"
+    },
+    "image": {
+      "status": "unsupported",
+      "currentModel": "gpt-image-2",
+      "models": [
+        { "id": "gpt-image-2", "label": "gpt-image-2" }
+      ],
+      "source": "current",
+      "message": "供应商未提供可用的模型列表端点。"
+    }
+  }
+}
+```
+
+Statuses:
+
+- `ok`: models came from a real provider model-list response.
+- `unsupported`: no supported model-list endpoint was available or the provider
+  returned `404`/`405`; only the current configured model is returned.
+- `error`: discovery failed safely; only the current configured model is
+  returned.
+
+No response includes a full API key, provider response body, prompt, image
+content, or base64 payload.
 
 ## Update Admin Provider Settings
 

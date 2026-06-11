@@ -10,14 +10,14 @@ export const PROVIDER_SETTINGS_SCHEMA_VERSION = 1;
 const PROVIDER_DEFINITIONS = Object.freeze([
   {
     id: "vision",
-    title: "Vision recognition",
+    title: "识图模型",
     provider: "Right Code",
-    role: "Product image analysis",
-    channel: "Gemini (/gemini)",
+    role: "商品识别与产品锁定",
+    channel: "Gemini 识图通道",
     fields: [
       {
         name: "apiUrl",
-        label: "API URL",
+        label: "API 地址",
         type: "url",
         valueKey: "visionApiUrl",
         clearable: false,
@@ -26,8 +26,8 @@ const PROVIDER_DEFINITIONS = Object.freeze([
       },
       {
         name: "model",
-        label: "Model",
-        type: "text",
+        label: "模型",
+        type: "select",
         valueKey: "visionModel",
         clearable: false,
         envKey: "VISION_MODEL",
@@ -45,14 +45,14 @@ const PROVIDER_DEFINITIONS = Object.freeze([
   },
   {
     id: "text",
-    title: "Script generation",
+    title: "脚本模型",
     provider: "DeepSeek",
-    role: "20-second script generation",
-    channel: "Chat Completions",
+    role: "本地化 20 秒广告脚本生成",
+    channel: "Chat Completions 对话通道",
     fields: [
       {
         name: "apiUrl",
-        label: "API URL",
+        label: "API 地址",
         type: "url",
         valueKey: "textApiUrl",
         clearable: false,
@@ -61,8 +61,8 @@ const PROVIDER_DEFINITIONS = Object.freeze([
       },
       {
         name: "model",
-        label: "Model",
-        type: "text",
+        label: "模型",
+        type: "select",
         valueKey: "textModel",
         clearable: false,
         envKey: "TEXT_MODEL",
@@ -80,14 +80,14 @@ const PROVIDER_DEFINITIONS = Object.freeze([
   },
   {
     id: "image",
-    title: "Storyboard image generation",
+    title: "故事板图片模型",
     provider: "Right Code",
-    role: "Referenced storyboard generation",
-    channel: "Draw (/draw)",
+    role: "img2img 故事板生成",
+    channel: "Draw 画图通道",
     fields: [
       {
         name: "apiUrl",
-        label: "API URL",
+        label: "API 地址",
         type: "url",
         valueKey: "imageApiUrl",
         clearable: false,
@@ -96,8 +96,8 @@ const PROVIDER_DEFINITIONS = Object.freeze([
       },
       {
         name: "model",
-        label: "Model",
-        type: "text",
+        label: "模型",
+        type: "select",
         valueKey: "imageModel",
         clearable: false,
         envKey: "IMAGE_MODEL",
@@ -136,7 +136,7 @@ function fieldValue(env, field) {
 function keyPreview(value) {
   const key = String(value || "").trim();
   if (!hasUsableApiKey(key)) return "";
-  return `saved, ending ${key.slice(-4)}`;
+  return `•••• ${key.slice(-4)}`;
 }
 
 function sanitizeProviderDefinition(provider, env) {
@@ -263,6 +263,10 @@ export async function readAdminProviderSettings() {
     schemaVersion: PROVIDER_SETTINGS_SCHEMA_VERSION,
     providers: PROVIDER_DEFINITIONS.map((provider) => sanitizeProviderDefinition(provider, env))
   };
+}
+
+export function providerSettingDefinitions() {
+  return PROVIDER_DEFINITIONS;
 }
 
 export async function updateAdminProviderSettings(input) {

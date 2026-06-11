@@ -63,6 +63,14 @@ uploaded shoe reference images. If Right Code returns HTTP `403` while reference
 images are included, surface the error and save a retryable visual generation
 failure; do not retry prompt-only generation.
 
+When a storyboard request returns `HTTP 524`, preserve the successful storyboard
+item, do not auto-retry the failed one, and persist safe per-item diagnostics for
+coordinator review. Diagnostics may include project id, segment id, attempt id,
+timing, model, requested size, reference image count/bytes, prompt character
+count, provider status, and safe request-id headers. Diagnostics must never
+include API keys, prompts, base64 image bodies, uploaded image contents, or
+provider response bodies.
+
 ## Secret And Failure Rules
 
 - API keys are read only from the ignored root `.env` or process environment.
@@ -84,3 +92,8 @@ failure; do not retry prompt-only generation.
 - Right Code image generations:
   `https://docs.right.codes/docs/rc_extension/draw/images-generations.html`
 - DeepSeek API quick start: `https://api-docs.deepseek.com/`
+
+No public provider documentation was found for a model-list endpoint or for an
+asynchronous draw-job endpoint during this task. The Admin model-discovery API
+therefore falls back to the current configured model whenever a provider does
+not explicitly support discovery.
