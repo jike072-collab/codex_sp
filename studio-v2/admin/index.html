@@ -3,27 +3,31 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Shoe Ad Studio Admin</title>
+  <title>Shoe Ad Studio 供应商管理</title>
   <link rel="stylesheet" href="/admin/styles.css">
 </head>
 <body>
   <main class="admin-shell">
     <header class="hero">
       <div>
-        <p class="eyebrow">Local Admin</p>
+        <p class="eyebrow">本地管理</p>
         <h1>供应商配置后台</h1>
-        <p class="lede">API Key、供应商地址和模型名只在这里维护。普通五步工作台只读取是否已配置。</p>
+        <p class="lede">接口地址、模型和密钥仅在此页面维护。普通五步工作台不会显示或编辑供应商配置。</p>
       </div>
-      <button id="refreshButton" type="button">重新同步</button>
+      <div class="hero-actions">
+        <a class="secondary-action" href="/">返回工作台</a>
+        <button id="refreshModelsButton" type="button">刷新模型列表</button>
+        <button id="refreshButton" type="button">重新同步配置</button>
+      </div>
     </header>
 
     <section class="notice" aria-live="polite">
       <strong>安全提示：</strong>
-      页面不会显示完整 API Key。密钥输入框留空表示不修改，勾选清除表示删除本地保存的 key。
+      页面不会显示完整密钥。替换密钥输入框留空表示不修改；勾选清除后，需要点击“保存配置”才会生效。
     </section>
 
     <form id="providerForm" class="provider-form">
-      <div id="status" class="status">正在读取后端 schema...</div>
+      <div id="status" class="status">正在读取供应商配置...</div>
       <div id="providerGrid" class="provider-grid"></div>
       <div class="actions">
         <button type="submit">保存配置</button>

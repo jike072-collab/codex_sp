@@ -3,8 +3,27 @@ const providerGrid = document.querySelector("#providerGrid");
 const statusEl = document.querySelector("#status");
 const saveState = document.querySelector("#saveState");
 const refreshButton = document.querySelector("#refreshButton");
+const refreshModelsButton = document.querySelector("#refreshModelsButton");
+
+const PROVIDER_TEXT = {
+  vision: { title: "商品识图", role: "商品图片分析", channel: "Gemini 通道" },
+  text: { title: "广告脚本生成", role: "20 秒广告脚本生成", channel: "对话补全通道" },
+  image: { title: "故事板图片生成", role: "参考图驱动的故事板生成", channel: "Draw 绘图通道" }
+};
+const FIELD_LABELS = {
+  apiUrl: "接口地址",
+  model: "模型",
+  apiKey: "替换密钥"
+};
+const MODEL_STATUS_TEXT = {
+  loading: "读取中",
+  ok: "已同步",
+  unsupported: "不支持自动读取",
+  error: "读取失败"
+};
 
 let currentSchema = null;
+let modelProviders = {};
 let dirty = false;
 
 function setStatus(message, tone = "") {
@@ -26,58 +45,87 @@ async function api(path, options = {}) {
       ? { "Content-Type": "application/json", ...(options.headers || {}) }
       : options.headers
   });
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.error || data.code || "Request failed.");
+    const error = new Error("请求失败");
+    error.status = response.status;
+    throw error;
   }
   return data;
 }
 
-function inputType(field) {
-  if (field.type === "secret") return "password";
-  if (field.type === "url") return "url";
-  return "text";
+function providerText(provider) {
+  return PROVIDER_TEXT[provider.id] || {
+    title: provider.title || provider.id,
+    role: provider.role || "供应商能力",
+    channel: provider.channel || "供应商通道"
+  };
 }
 
-function fieldHelp(field, provider) {
-  if (field.type === "secret") {
-    return provider.config.keyPreview
-      ? `Current key: ${provider.config.keyPreview}. Leave blank to keep it.`
-      : "No usable key is configured. Leave blank to keep it empty.";
+function maskedKeyPreview(provider) {
+  const preview = String(provider.config?.keyPreview || "").trim();
+  if (!preview) return "当前未保存可用密钥";
+  const suffix = preview.match(/([a-z0-9]{4})\s*$/i)?.[1];
+  return suffix ? `当前密钥：•••• ${suffix}` : `当前密钥：${preview}`;
+}
+
+function modelState(provider) {
+  const discovery = modelProviders[provider.id];
+  if (!discovery) return { status: "loading", models: [] };
+  return discovery;
+}
+
+function modelOptions(provider) {
+  const discovery = modelState(provider);
+  const current = discovery.currentModel || provider.config?.model || "";
+  const options = discovery.models || [];
+  const unique = new Map(options.filter((option) => option?.id).map((option) => [
+    option.id,
+    { id: option.id, label: option.label || option.id }
+  ]));
+  if (current && !unique.has(current)) unique.set(current, { id: current, label: current });
+  return [...unique.values()];
+}
+
+function renderModelField(provider, field, wrapper) {
+  const select = document.createElement("select");
+  select.id = field.valueKey;
+  select.name = field.valueKey;
+  select.required = true;
+  select.dataset.fieldType = "select";
+  for (const optionData of modelOptions(provider)) {
+    const option = document.createElement("option");
+    option.value = optionData.id;
+    option.textContent = optionData.label;
+    option.selected = optionData.id === (modelState(provider).currentModel || provider.config.model);
+    select.append(option);
   }
-  if (field.name === "apiUrl") return `Current value: ${provider.config.apiUrl}`;
-  if (field.name === "model") return `Current value: ${provider.config.model}`;
-  return "";
+  wrapper.append(select);
+
+  const discovery = modelState(provider);
+  const help = document.createElement("small");
+  help.className = "model-status";
+  help.dataset.status = discovery.status || "error";
+  help.textContent = `模型列表：${MODEL_STATUS_TEXT[discovery.status] || "读取失败"}`;
+  wrapper.append(help);
 }
 
-function currentFieldValue(field, provider) {
-  if (field.type === "secret") return "";
-  if (field.name === "apiUrl") return provider.config.apiUrl || "";
-  if (field.name === "model") return provider.config.model || "";
-  return "";
-}
-
-function renderField(provider, field) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "field";
-
-  const label = document.createElement("label");
-  label.htmlFor = field.valueKey;
-  label.textContent = field.label;
-  wrapper.append(label);
-
+function renderInputField(provider, field, wrapper) {
   const input = document.createElement("input");
   input.id = field.valueKey;
   input.name = field.valueKey;
-  input.type = inputType(field);
-  input.value = currentFieldValue(field, provider);
+  input.type = field.type === "secret" ? "password" : "url";
+  input.value = field.type === "secret" ? "" : provider.config.apiUrl || "";
   input.autocomplete = field.type === "secret" ? "new-password" : "off";
   input.dataset.fieldType = field.type;
+  input.placeholder = field.type === "secret" ? "留空表示保持当前密钥" : "";
   if (field.type !== "secret") input.required = true;
   wrapper.append(input);
 
   const help = document.createElement("small");
-  help.textContent = fieldHelp(field, provider);
+  help.textContent = field.type === "secret"
+    ? maskedKeyPreview(provider)
+    : "保存后将用于此供应商的请求。";
   wrapper.append(help);
 
   if (field.clearable) {
@@ -87,69 +135,115 @@ function renderField(provider, field) {
     clearInput.type = "checkbox";
     clearInput.name = `${field.valueKey}__clear`;
     clearInput.dataset.clearFor = field.valueKey;
-    clearLabel.append(clearInput, document.createTextNode("Clear saved key"));
+    clearLabel.append(clearInput, document.createTextNode("清除已保存密钥（保存后生效）"));
     wrapper.append(clearLabel);
   }
+}
 
+function renderField(provider, field) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "field";
+
+  const label = document.createElement("label");
+  label.htmlFor = field.valueKey;
+  label.textContent = FIELD_LABELS[field.name] || field.label || field.name;
+  wrapper.append(label);
+
+  if (field.name === "model" || field.type === "select") {
+    renderModelField(provider, field, wrapper);
+  } else {
+    renderInputField(provider, field, wrapper);
+  }
   return wrapper;
 }
 
 function renderProvider(provider) {
+  const text = providerText(provider);
   const card = document.createElement("section");
   card.className = "provider-card";
 
   const header = document.createElement("div");
   header.className = "card-header";
-
   const titleRow = document.createElement("div");
   titleRow.className = "card-title-row";
   const title = document.createElement("h2");
-  title.textContent = provider.title;
+  title.textContent = text.title;
   const badge = document.createElement("span");
   badge.className = "badge";
   badge.dataset.configured = String(provider.config.configured);
-  badge.textContent = provider.config.configured ? "Configured" : "Missing key";
+  badge.textContent = provider.config.configured ? "已配置" : "缺少密钥";
   titleRow.append(title, badge);
 
   const meta = document.createElement("div");
   meta.className = "meta";
   for (const line of [
-    `Provider: ${provider.provider}`,
-    `Role: ${provider.role}`,
-    `Channel: ${provider.channel}`
+    `供应商：${provider.provider}`,
+    `用途：${text.role}`,
+    `通道：${text.channel}`
   ]) {
     const item = document.createElement("span");
     item.textContent = line;
     meta.append(item);
   }
-
   header.append(titleRow, meta);
-  card.append(header);
 
   const fields = document.createElement("div");
   fields.className = "field-list";
-  for (const field of provider.fields) {
-    fields.append(renderField(provider, field));
-  }
-  card.append(fields);
+  for (const field of provider.fields) fields.append(renderField(provider, field));
+  card.append(header, fields);
   return card;
+}
+
+function renderProviders() {
+  if (!currentSchema) return;
+  providerGrid.replaceChildren(...currentSchema.providers.map(renderProvider));
 }
 
 function render(data) {
   currentSchema = data;
-  providerGrid.replaceChildren(...data.providers.map(renderProvider));
-  setStatus(`Schema v${data.schemaVersion} synced from backend.`);
+  renderProviders();
+  setStatus(`已同步 ${data.providers.length} 个供应商配置。`, "ok");
   setSaveState("");
   dirty = false;
 }
 
+async function loadModels({ refresh = false } = {}) {
+  if (!currentSchema) return;
+  modelProviders = Object.fromEntries(currentSchema.providers.map((provider) => [
+    provider.id,
+    { status: "loading", currentModel: provider.config.model, models: [] }
+  ]));
+  renderProviders();
+  refreshModelsButton.disabled = true;
+  refreshModelsButton.textContent = "正在读取模型...";
+  try {
+    const suffix = refresh ? "?refresh=1" : "";
+    const data = await api(`/api/admin/providers/models${suffix}`);
+    modelProviders = data.providers || {};
+  } catch {
+    modelProviders = Object.fromEntries(currentSchema.providers.map((provider) => [
+      provider.id,
+      {
+        status: "error",
+        currentModel: provider.config.model,
+        models: [{ id: provider.config.model, label: provider.config.model }]
+      }
+    ]));
+  } finally {
+    renderProviders();
+    refreshModelsButton.disabled = false;
+    refreshModelsButton.textContent = "刷新模型列表";
+  }
+}
+
 async function loadProviders({ force = false } = {}) {
   if (dirty && !force) return;
-  setStatus("Syncing provider schema...");
+  setStatus("正在同步供应商配置...");
   try {
     render(await api("/api/admin/providers"));
-  } catch (error) {
-    setStatus(error.message, "error");
+    await loadModels();
+  } catch {
+    setStatus("供应商配置读取失败，请确认本地服务正在运行。", "error");
   }
 }
 
@@ -161,14 +255,12 @@ function payloadFromForm() {
       const clear = form.elements[`${field.valueKey}__clear`];
       if (clear?.checked) {
         payload[field.valueKey] = null;
-        continue;
-      }
-      if (field.type === "secret") {
+      } else if (field.type === "secret") {
         const value = input.value.trim();
         if (value) payload[field.valueKey] = value;
-        continue;
+      } else {
+        payload[field.valueKey] = input.value.trim();
       }
-      payload[field.valueKey] = input.value.trim();
     }
   }
   return payload;
@@ -176,23 +268,33 @@ function payloadFromForm() {
 
 form.addEventListener("input", () => {
   dirty = true;
-  setSaveState("Unsaved changes.");
+  setSaveState("有尚未保存的修改。");
+});
+
+form.addEventListener("change", (event) => {
+  const clearInput = event.target.closest("[data-clear-for]");
+  if (!clearInput) return;
+  const keyInput = form.elements[clearInput.dataset.clearFor];
+  if (keyInput) {
+    keyInput.disabled = clearInput.checked;
+    if (clearInput.checked) keyInput.value = "";
+  }
 });
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!currentSchema) return;
-  setSaveState("Saving...");
+  setSaveState("正在保存...");
   try {
     await api("/api/admin/providers", {
       method: "PUT",
       body: JSON.stringify(payloadFromForm())
     });
-    setSaveState("Saved. Syncing latest config...", "ok");
+    setSaveState("配置已保存，正在重新同步...", "ok");
     dirty = false;
     await loadProviders({ force: true });
-  } catch (error) {
-    setSaveState(error.message, "error");
+  } catch {
+    setSaveState("保存失败，请检查接口地址、模型和密钥输入。", "error");
   }
 });
 
@@ -200,7 +302,13 @@ refreshButton.addEventListener("click", () => {
   dirty = false;
   loadProviders({ force: true });
 });
-
+refreshModelsButton.addEventListener("click", () => {
+  if (dirty) {
+    setSaveState("请先保存当前修改，再刷新模型列表。", "error");
+    return;
+  }
+  loadModels({ refresh: true });
+});
 window.addEventListener("focus", () => loadProviders());
 setInterval(() => loadProviders(), 30000);
 

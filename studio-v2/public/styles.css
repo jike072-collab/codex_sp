@@ -1539,45 +1539,6 @@ body.ui-v2 .local-note-row {
   align-items: flex-start;
   gap: 10px;
 }
-body.ui-v2 .sidebar-api-status {
-  display: grid;
-  gap: 5px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(157, 173, 151, 0.14);
-  border-radius: 12px;
-}
-body.ui-v2 .sidebar-api-pill {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  padding: 5px 9px;
-  color: #d5ff55;
-  font-size: 10px;
-  font-weight: 850;
-  background: rgba(213, 255, 85, 0.12);
-  border: 1px solid rgba(213, 255, 85, 0.15);
-  border-radius: 999px;
-}
-body.ui-v2 .sidebar-api-status small {
-  color: #8d9788;
-  font-size: 10px;
-  line-height: 1.45;
-}
-body.ui-v2 .sidebar-admin-link {
-  width: fit-content;
-  color: #aeb8a9;
-  font-size: 10px;
-  font-weight: 750;
-  text-decoration: none;
-  border-bottom: 1px solid rgba(174, 184, 169, 0.35);
-}
-body.ui-v2 .sidebar-admin-link:hover,
-body.ui-v2 .sidebar-admin-link:focus-visible {
-  color: #d5ff55;
-  border-bottom-color: rgba(213, 255, 85, 0.55);
-}
-
 body.ui-v2 .main {
   background:
     radial-gradient(circle at 10% 0%, rgba(255, 255, 255, 0.8), transparent 34%),
@@ -2522,10 +2483,6 @@ body.ui-v2 .local-note {
   gap: 8px;
   padding-top: 10px;
 }
-body.ui-v2 .sidebar-api-status {
-  padding: 9px 10px;
-}
-
 body.ui-v2 .workspace {
   padding: 14px 20px 10px;
 }
@@ -3024,6 +2981,13 @@ body.ui-v2 .stepper li.active .stepper-badge { color: #f7ffe9; background: #1724
 body.ui-v2 .stepper-copy { position: static; width: auto; min-width: 0; text-align: left; }
 body.ui-v2 .stepper-copy strong,
 body.ui-v2 .stepper-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.ui-v2 .stepper li,
+body.ui-v2 .stepper li.active,
+body.ui-v2 .stepper li.available:hover {
+  height: 66px;
+  transform: none;
+}
+body.ui-v2 .stepper li strong { font-weight: 800; }
 
 body.ui-v2 .asset-card { grid-template-rows: minmax(150px, 1fr) auto; min-height: 202px; isolation: isolate; overflow: hidden; }
 body.ui-v2 .asset-card img {
@@ -3055,7 +3019,9 @@ body.ui-v2 .storyboard-state-card { display: grid; grid-template-rows: auto minm
 
 @media (max-width: 1280px) {
   body.ui-v2 .stepper { gap: 7px; }
-  body.ui-v2 .stepper li { grid-template-columns: 32px minmax(0, 1fr); gap: 7px; min-height: 60px; padding: 8px; }
+  body.ui-v2 .stepper li,
+  body.ui-v2 .stepper li.active,
+  body.ui-v2 .stepper li.available:hover { grid-template-columns: 32px minmax(0, 1fr); gap: 7px; min-height: 60px; height: 60px; padding: 8px; }
   body.ui-v2 .stepper-badge { width: 32px; height: 32px; }
   body.ui-v2 .stepper-copy small { display: none; }
 }
