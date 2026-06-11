@@ -38,6 +38,21 @@ Remove the lower-left supplier status block shown as:
 The normal five-step workbench does not need this block. Do not restore API
 editing, model editing, URL editing, or key editing in `studio-v2/public/**`.
 
+### Stable Step Navigation
+
+- Fix Step 02 so its number box, text box, spacing, alignment, and occupied
+  dimensions match Steps 01, 03, 04, and 05.
+- Switching to Step 02 must not move the step navigation, page content, header,
+  or viewport.
+- Active/inactive states may change color, border, icon, and font weight, but
+  must not change width, height, padding, border thickness, line wrapping, or
+  grid track size.
+- Reserve stable dimensions for every step item and its label.
+- The Chinese Step 02 label must fit without clipping or wrapping differently
+  from the other step labels.
+- Do not use an active-state transform, scale, margin, or font-size change that
+  causes layout movement.
+
 ## Admin Page
 
 - Translate every visible Admin label, status, helper, button, validation
@@ -109,12 +124,17 @@ Do not edit:
   `studio-v2/admin`.
 - Start the local service.
 - Verify the workbench no longer shows the lower-left supplier block.
+- Click through Steps 01-05 and verify Step 02 causes no visible page jump.
+- Compare the step item bounding boxes before and after selecting Step 02; their
+  positions and dimensions must remain unchanged.
 - Verify Admin at 1280px, 1366px, 1440px, 1920px, and a narrow viewport.
 - Verify no horizontal page scroll and no clipped right-most card.
 - Verify all visible Admin interface text is Chinese.
 - Verify model options load, refresh, select, save, and resync.
 - Verify masked current key, replacement, unchanged blank, and clear states.
 - Provide screenshots of the workbench sidebar and Admin desktop/mobile views.
+- Provide before/after Step 02 navigation screenshots or a short recording that
+  demonstrates there is no layout shift.
 
 ## Delivery
 
