@@ -17,127 +17,37 @@ Skills: nadirclaw-model-router, superpowers-workflow
 Route: complex
 ```
 
-## Goals
+## Goal
 
-1. Determine why two concurrent storyboard requests often produce one success
-   and one `HTTP 524`.
-2. Keep the product rule that both missing storyboard requests start
-   concurrently.
-3. Add a safe backend contract that discovers supported models for the Admin
-   page without exposing API keys.
-4. Return a Chinese-ready provider schema and a masked current-key display.
+把后端改成“两个故事板 key / 两条绘图通道 + 真实模型发现”的正式实现，并保住并发、部分成功和无密钥泄露。
 
-## Current Evidence
+## Backend Work
 
-- `generateProjectVisuals()` uses `Promise.allSettled()` over both storyboard
-  items, so the application does start both missing images concurrently.
-- Existing tests prove both provider calls begin before either response
-  resolves.
-- The reported failed item reached Right Code and returned `HTTP 524`.
-- `524` is a provider/gateway timeout, not evidence that the application only
-  requested one image.
-- Successful images are preserved and retry only targets the missing item.
+1. 故事板图片生成直接改为两个独立 key / 两条绘图通道。
+2. 两张故事板仍必须并发发起，成功图保留，重试只补缺失图。
+3. 后台模型列表从当前 key 可调用的真实模型中读取，支持刷新、切换和缓存。
+4. Admin 返回的模型与 provider schema 必须可直接给前端渲染，显示为中文友好内容。
+5. API Key 只能返回 masked preview，不能返回完整 key。
+6. 继续保留 524 诊断，但要围绕“哪条通道、哪个 key、哪个模型、哪个请求字段”定位，不要泄露 prompt、base64、密钥或响应体。
 
-Do not change those guarantees.
+## Must Prove
 
-## Storyboard 524 Work
+- 两个故事板请求仍然是并发进入 provider。
+- 双 key / 双通道配置是显式的，不是静默 fallback。
+- 模型发现来自真实 provider 能力，不得虚构模型。
+- `GET /api/admin/providers/models`
+  - 支持 `refresh=1`
+  - 支持 `vision` / `text` / `image`
+  - 失败时只返回安全错误
+- `GET /api/admin/providers`
+  - 返回 masked key preview
+  - model 字段使用可选项/选择型 schema
 
-- Add non-secret per-item provider diagnostics:
-  - project id
-  - segment id / asset id
-  - attempt id
-  - request start time and elapsed time
-  - model and requested sheet size
-  - reference image count and total byte count
-  - prompt character count, but never the prompt text
-  - provider HTTP status
-  - safe provider request-id headers when present
-- Never log API keys, authorization headers, base64 image bodies, full prompts,
-  uploaded image contents, or provider response bodies.
-- Confirm whether the 524 comes from:
-  - provider concurrent-request limits
-  - provider load / gateway timeout
-  - payload size
-  - one segment-specific prompt/request difference
-  - synchronous endpoint duration
-- Inspect whether Right Code offers an asynchronous job endpoint or documented
-  concurrency guidance. Do not invent an endpoint.
-- Keep both missing storyboard requests concurrent unless evidence proves the
-  provider contract forbids it. If it does, stop and report the conflict before
-  changing the product rule.
-- Do not automatically retry a 524 because it may already be billed. Preserve
-  the explicit user retry flow and successful image.
-- Improve the persisted safe failure details if needed so coordinator review
-  can compare both item attempts without exposing secrets.
+## Current Facts
 
-## Model Discovery Contract
-
-Add:
-
-```text
-GET /api/admin/providers/models
-GET /api/admin/providers/models?refresh=1
-```
-
-Response shape:
-
-```json
-{
-  "providers": {
-    "vision": {
-      "status": "ok",
-      "currentModel": "gemini-2.5-flash",
-      "models": [{ "id": "gemini-2.5-flash", "label": "gemini-2.5-flash" }],
-      "source": "provider"
-    }
-  }
-}
-```
-
-Requirements:
-
-- Support `vision`, `text`, and `image`.
-- Use the configured provider URL and key through provider-specific adapters.
-- Discover models from a real provider model-list capability when available.
-- Cache successful discovery briefly so loading Admin does not repeatedly call
-  paid or rate-limited endpoints.
-- `refresh=1` forces a new safe discovery attempt.
-- If a provider has no supported model-list endpoint, return:
-  - `status: "unsupported"`
-  - the current configured model as the only option
-  - a clear safe message
-- If discovery fails, return:
-  - `status: "error"`
-  - the current configured model as the only option
-  - a safe error message without provider response bodies or keys
-- Never invent supported models.
-- Never return a full API key.
-
-## Capacity Decision
-
-The current public docs only show that `/v1/images/generations` returns one
-image result per request. They do not prove a one-image-only limitation.
-
-Therefore:
-
-- First prove whether `HTTP 524` is caused by provider timeout, per-key
-  concurrency, per-account load, payload size, or a segment-specific request.
-- Only if the evidence shows a hard single in-flight limit should you add a
-  second configurable draw channel.
-- If a second draw channel is needed, make it explicit in backend config as a
-  separate provider/endpoint/key pair rather than silently changing the current
-  one.
-- Keep the existing concurrent two-shot product rule unless the provider
-  contract itself forbids it.
-
-Update `GET /api/admin/providers`:
-
-- Use Chinese labels/titles/roles/channel descriptions suitable for direct UI
-  rendering.
-- Change model fields to schema type `select`.
-- Keep `config.keyPreview`, but format it as a masked value such as
-  `•••• 9744`; never return the full key.
-- Keep key update semantics: blank/omitted means unchanged, `null` means clear.
+- `generateProjectVisuals()` 已经会并发请求两个故事板项。
+- 现在的问题不是“是否并发”，而是“如何稳定地用双 key / 双通道把两张图都跑出来，并把失败原因查清楚”。
+- 524 仍按 provider/gateway timeout 方向排查，但这轮要直接落地双通道方案，不再等待额外证明。
 
 ## Scope
 
@@ -157,12 +67,11 @@ Do not edit:
 
 ## Verification
 
-- Add tests proving the two storyboard requests still start concurrently.
-- Add diagnostics tests proving no key, prompt text, base64 body, or image bytes
-  are logged/persisted.
-- Add model discovery tests for success, unsupported, provider error, cache, and
-  forced refresh.
-- Test Chinese Admin schema and masked key preview.
+- Storyboard concurrent-start test.
+- Dual-key / dual-channel contract test.
+- Model discovery success / unsupported / error / refresh tests.
+- Masked key preview and select-type schema test.
+- No secret leakage in diagnostics.
 - Run all backend tests.
 - Run syntax checks for changed MJS files.
 
@@ -172,8 +81,8 @@ Push `codex/backend-storyboard-524-model-discovery` and report:
 
 - Skills and route
 - Commit hash
-- Exact 524 diagnosis and evidence
-- Whether provider documentation/model discovery was available
+- 双 key / 双通道实现说明
+- 模型发现来源与缓存方式
 - Changed files
 - Tests
 - Confirmation that no frontend/Admin files or secrets were changed
