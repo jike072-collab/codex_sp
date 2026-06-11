@@ -1,10 +1,22 @@
 # 当前并行分工
 
-当前进入 `v2` 后续修正轮。两个 Codex 都必须先读取
-`AGENTS.md`、`CODEX_RUNBOOK.md`、`docs/MODEL-ROUTING.md` 和
-`docs/UI-V2-BRIEF.md`，再按任务难度选择模型。
+当前进入 P0 工作台问题修正轮。所有 Codex 开始前必须先读取：
 
-## Codex A：后端与集成
+- `AGENTS.md`
+- `CODEX_RUNBOOK.md`
+- `docs/TASKS.md`
+- 自己对应的 `tasks/*.md`
+
+任务文件、冻结后的后端契约和远端分支状态优先于聊天记录。
+
+## 当前开工状态
+
+- 后端 P0 已完成、通过回归测试并合入本轮 `main` 基线。
+- 前端任务分支已从包含后端契约的最新 `main` 建立。
+- 前端任务分支相对最新 `main` 只能修改 `studio-v2/public/**`。
+- 协调端负责后端合并、任务发布、前端 PR 审核、回归测试和正式分支同步。
+
+## Codex A：后端、协调与集成
 
 负责：
 
@@ -14,43 +26,90 @@
 - `docs/contracts/**`
 - `schemas/**`
 - `prompts/**`
-- 合并、回归测试和 GitHub 主分支
+- 任务拆分、代码审核、回归测试与正式分支合并
 
-本轮任务入口：`tasks/codex-backend-image-concurrency.md`。
+本轮任务入口：
 
-重点：验证并修复“两张故事板图片是否真正同时发起生成请求”。必须用测试证明
-两个 provider 请求重叠开始，不能只说代码用了 `Promise.allSettled`。
+- `tasks/codex-backend-p0-storyboard-state.md`
+
+本轮后端结果：
+
+- 故事板生成、部分成功、失败与重试均属于 Step 4。
+- 只有两张真实故事板图片完成后才能进入 Step 5。
+- 生图保持 img2img-only，不允许 prompt-only fallback 或演示降级图。
+- 两张故事板继续并发请求。
+- 成功图片会保留，重试只补缺失图片。
+- Right Code `excessive system load` 被识别为可重试的 provider overload。
+- 后端回归测试必须全部通过后才能合入 `main`。
+
+后端任务分支：
+
+- `codex/backend-p0-storyboard-state`
 
 ## Codex B：浏览器前端
 
-负责：
+负责且只能修改：
 
 - `studio-v2/public/**`
 
-本轮任务入口：`tasks/codex-frontend-ui-v2-density-followup.md`。
+本轮任务入口：
 
-Codex B 在另一台电脑工作，必须通过 GitHub 仓库领取任务。开始前同步最新
-`main`，以仓库中的任务文件、冻结契约和提交为准，不依赖聊天记录。
+- `tasks/codex-frontend-p0-workbench-review.md`
 
-重点：根据 `docs/reference/ui-v2-followup/` 里的图片压缩顶部空间、减少滚动，
-让五个步骤更接近参考图的一屏可见效果。完成后立即提交并推送新分支供协调者审核。
+参考图片：
 
-两个 Codex 完成各自任务后必须立即提交并推送到自己的任务分支，不要只保留
-本地改动。协调者会先核对分支内容、运行必要检查、确认 UI 和流程没有问题，
-再合并成正式 `v2` 版本。
+- `docs/reference/workbench-p0-user-feedback/`
 
-## 当前交付目标：v2 follow-up
+前端必须全部处理：
 
-- 后端确认两张故事板真实并发请求，必要时修复。
-- 前端减少页面滑动，压缩无用顶部区域，按参考图优化五步布局。
-- 故事板尺寸规则：外层故事板交付图不强行套用第二步视频比例；故事板内部每个
-  分镜画面必须按第二步选择的比例构图。前端显示外层故事板时要贴合真实图片比例，
-  不要放进一个大而空的横向框。
-- 保留当前完整工作流、img2img-only 生图、部分成功展示和最终两图两脚本交付。
+- 上传图片删除按钮可点击。
+- 第四张上传图片完整显示，不裁掉商品。
+- 顶部五步流程不遮挡文字，步骤编号和文字使用清楚的块状/方框布局。
+- Step 2 设置项和 Product Lock 使用统一方框卡片效果。
+- Step 2 未完成第四张图片/检查点和确认前，不允许进入 Step 3。
+- 确认弹窗无横向滚动条、无文字遮挡。
+- 脚本和故事板生成进度持续反馈，不出现长时间静止的假进度。
+- Step 3 脚本编辑器按参考图做成中文可读的镜头卡片布局。
+- 中文仅用于界面标签；后台生成语言继续使用当前选择国家对应的语言。
+- 故事板 0/2、1/2、2/2、失败与重试都在 Step 4 展示。
+- Step 5 只保留两张故事板图片和两段脚本/复制控件。
+- 不恢复 JSON、ZIP、CSV、Flow Omni 下载按钮。
 
-当前分支建议：
+前端开工分支：
 
-- Codex B：`codex/frontend-ui-v2-density`
-- Codex A：`codex/backend-image-concurrency`
+- `codex/frontend-p0-workbench-review`
 
-两个分支必须从任务文件标注的 base commit 开始，完成后通过 GitHub 提交。
+前端开工命令：
+
+```powershell
+git fetch origin
+git switch codex/frontend-p0-workbench-review
+git pull --ff-only origin codex/frontend-p0-workbench-review
+```
+
+协调端会先保证远端前端任务分支与最新 `main` 完全相同。前端完成上述命令后，
+再开始修改 `studio-v2/public/**`。
+
+## PR 与审核要求
+
+前端完成后必须提交并推送 `codex/frontend-p0-workbench-review`，然后交给协调端审核。
+
+PR/审核材料必须包括：
+
+- 改动说明和文件列表
+- 上传删除状态截图
+- Step 2 设置和 Product Lock 截图
+- Step 2 确认弹窗截图
+- Step 3 中文脚本编辑器截图
+- Step 4 生成中、部分成功或失败状态截图
+- Step 5 最终交付截图
+- 前端全部 JS 文件语法检查结果
+- 未完成项；正常情况下应为空
+
+协调端在合并前必须：
+
+- 检查前端只修改 `studio-v2/public/**`
+- 运行全部后端测试
+- 运行全部前端 JS 语法检查
+- 启动本地服务并检查五步流程
+- 确认所有用户反馈项均完成后再合并

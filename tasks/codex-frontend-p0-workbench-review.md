@@ -2,9 +2,9 @@
 
 Owner: Codex B, frontend machine.
 Branch: `codex/frontend-p0-workbench-review`
-Base: latest `main` after backend contract is available, or coordinate with Codex A before starting.
+Base: latest `main` after `codex/backend-p0-storyboard-state` is merged.
 Route: complex.
-Status: assigned, not complete.
+Status: ready to start after the coordinator updates `main` and resets this branch to `origin/main`.
 
 Reference images:
 

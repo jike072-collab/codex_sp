@@ -4,7 +4,7 @@ Owner: Codex A, backend / coordination / integration machine.
 Branch: `codex/backend-p0-storyboard-state`
 Base: latest `main` / `v2`.
 Route: standard.
-Status: implemented locally, pending review, commit, and push.
+Status: complete, verified, and merged into the frontend work baseline.
 
 Reference image:
 
