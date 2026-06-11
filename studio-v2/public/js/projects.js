@@ -439,7 +439,7 @@ function startVisualProgress() {
       : percent < 35
         ? "0/2 · 正在提交两张 img2img 故事板任务..."
         : percent < 70
-          ? "0/2 · 图片模型正在并发生成，请保持页面开启..."
+          ? "0/2 · 图片供应商正在并发生成，请保持页面开启..."
           : "0/2 · 正在等待供应商返回并保存本地图片...";
     state.workflowProgress = { active: true, stage: "visual", percent, completed, message };
     updateVisualProgressDom();
@@ -551,7 +551,7 @@ export async function confirmScriptAndGenerateVisual() {
     state.viewStatus = "visual";
     state.visualGenerationError = hasReadyStoryboards(state.project)
       ? ""
-      : "当前没有可交付的真实故事板图片。请配置图片 API 后继续生成。";
+      : "当前没有可交付的真实故事板图片。请确认图片供应商已就绪后继续生成。";
     renderWorkspace();
     await loadProjects();
     showToast(hasReadyStoryboards(state.project) ? "故事板图片已生成。" : state.visualGenerationError);
@@ -596,7 +596,7 @@ export async function generateVisual() {
     state.viewStatus = "visual";
     state.visualGenerationError = hasReadyStoryboards(state.project)
       ? ""
-      : "当前没有可交付的真实故事板图片。请配置图片 API 后继续生成。";
+      : "当前没有可交付的真实故事板图片。请确认图片供应商已就绪后继续生成。";
     renderWorkspace();
     await loadProjects();
     showToast(hasReadyStoryboards(state.project) ? "故事板图片已生成。" : state.visualGenerationError);

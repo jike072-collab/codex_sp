@@ -1,138 +1,31 @@
-import { api, el, showToast, state } from "./core.js";
+import { api, el, state } from "./core.js";
 
 const PROVIDER_KINDS = ["vision", "text", "image"];
+const PROVIDER_LABELS = {
+  vision: "识图",
+  text: "脚本",
+  image: "图片"
+};
 
-function resetSensitiveFields() {
-  el("apiSettingsForm")?.reset();
-  document.querySelectorAll("[data-toggle-secret]").forEach((button) => {
-    const input = el("apiSettingsForm")?.elements[button.dataset.toggleSecret];
-    if (input) input.type = "password";
-    button.textContent = "眼";
-  });
-}
-
-function setFormBusy(value) {
-  const button = el("saveApiSettingsButton");
-  button.disabled = value;
-  button.textContent = value ? "正在保存..." : "保存 API 设置";
-}
-
-function renderProviderStatus(providers = {}) {
+function renderProviderStatus({ providers = {}, configuredCount = 0, total = PROVIDER_KINDS.length } = {}) {
   state.providerStatus = providers;
-  PROVIDER_KINDS.forEach((kind) => {
-    const provider = providers[kind] || {};
-    const details = [
-      provider.role,
-      provider.provider,
-      provider.channel,
-      provider.model,
-      provider.keyPreview
-    ].filter(Boolean).join(" · ");
-    const stateElement = el(`${kind}ProviderState`);
-
-    el(`${kind}ProviderDetails`).textContent = details || "状态不可用";
-    stateElement.textContent = provider.configured ? "已配置" : "未配置";
-    stateElement.classList.toggle("configured", Boolean(provider.configured));
-    stateElement.classList.toggle("unconfigured", !provider.configured);
-    stateElement.classList.remove("loading");
-  });
-  const configuredCount = PROVIDER_KINDS.filter((kind) => providers[kind]?.configured).length;
+  const missing = PROVIDER_KINDS
+    .filter((kind) => !providers[kind]?.configured)
+    .map((kind) => PROVIDER_LABELS[kind]);
   const sidebarState = el("sidebarApiState");
   const sidebarDetails = el("sidebarApiDetails");
+  const panelApiState = el("panelApiState");
   if (sidebarState) {
-    sidebarState.textContent = configuredCount ? `API 已配置 ${configuredCount}/3` : "API 未配置";
+    sidebarState.textContent = `供应商就绪 ${configuredCount}/${total}`;
   }
   if (sidebarDetails) {
-    sidebarDetails.textContent = configuredCount
-      ? "识图、脚本、图片供应商状态已同步"
-      : "尚未保存供应商配置";
+    sidebarDetails.textContent = missing.length
+      ? `待配置：${missing.join("、")}`
+      : "识图、脚本、图片供应商均已就绪";
   }
-}
-
-function renderLoadingState() {
-  PROVIDER_KINDS.forEach((kind) => {
-    el(`${kind}ProviderDetails`).textContent = "正在读取...";
-    const stateElement = el(`${kind}ProviderState`);
-    stateElement.textContent = "读取中";
-    stateElement.className = "provider-state loading";
-  });
-  const sidebarState = el("sidebarApiState");
-  const sidebarDetails = el("sidebarApiDetails");
-  if (sidebarState) sidebarState.textContent = "API 状态读取中";
-  if (sidebarDetails) sidebarDetails.textContent = "正在读取供应商配置";
+  if (panelApiState) panelApiState.textContent = `${configuredCount}/${total} 已配置`;
 }
 
 export async function refreshProviderSettings() {
-  const data = await api("/api/settings/providers");
-  renderProviderStatus(data.providers);
-}
-
-export async function openProviderSettings() {
-  resetSensitiveFields();
-  renderLoadingState();
-  el("apiSettingsNote").textContent = "留空不会覆盖当前配置；勾选清除会删除对应的本地 Key。";
-  el("apiSettingsDialog").showModal();
-
-  try {
-    await refreshProviderSettings();
-  } catch (error) {
-    showToast(error.message);
-    el("apiSettingsNote").textContent = "无法读取当前配置，请确认本地服务正在运行。";
-  }
-}
-
-export function closeProviderSettings() {
-  resetSensitiveFields();
-  el("apiSettingsDialog").close();
-}
-
-export function clearProviderSettingsInputs() {
-  resetSensitiveFields();
-}
-
-export function toggleProviderSecret(event) {
-  const button = event.target.closest("[data-toggle-secret]");
-  if (!button) return;
-  const input = el("apiSettingsForm").elements[button.dataset.toggleSecret];
-  if (!input) return;
-  const showing = input.type === "text";
-  input.type = showing ? "password" : "text";
-  button.textContent = showing ? "眼" : "藏";
-}
-
-export async function saveProviderSettings(event) {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const payload = {};
-  const providerKeys = [
-    ["visionApiKey", "clearVisionApiKey"],
-    ["deepSeekApiKey", "clearDeepSeekApiKey"],
-    ["imageApiKey", "clearImageApiKey"]
-  ];
-
-  providerKeys.forEach(([keyName, clearName]) => {
-    const value = form.elements[keyName].value.trim();
-    if (form.elements[clearName].checked) {
-      payload[keyName] = null;
-    } else if (value) {
-      payload[keyName] = value;
-    }
-  });
-
-  setFormBusy(true);
-  try {
-    await api("/api/settings/providers", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    resetSensitiveFields();
-    await refreshProviderSettings();
-    el("apiSettingsNote").textContent = "设置已保存。留空仍表示不修改当前配置。";
-    showToast("API 设置已保存。");
-  } catch (error) {
-    showToast(error.message);
-  } finally {
-    setFormBusy(false);
-  }
+  renderProviderStatus(await api("/api/settings/providers/status"));
 }

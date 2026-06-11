@@ -65,6 +65,18 @@ function providerSummary() {
   return `${configuredCount}/3 已配置`;
 }
 
+function publicQualityNotes(analysis) {
+  const notes = [
+    ...(analysis?.image_quality?.missing_or_unclear || []),
+    ...(analysis?.image_quality?.notes || [])
+  ];
+  const publicNotes = notes.filter((note) => !/API\s*Key|API\s*URL|模型名|视觉模型/i.test(note));
+  if (publicNotes.length !== notes.length) {
+    publicNotes.push("供应商未就绪时使用演示识别；可在管理后台查看就绪状态。");
+  }
+  return publicNotes;
+}
+
 function viewStatus() {
   if (!state.project) return "assets";
   if (!state.viewStatus) state.viewStatus = state.project.status;
@@ -558,9 +570,7 @@ export function fillReviewForm(analysis) {
     gateHint.classList.toggle("ready", hasCheckpoint);
   }
 
-  const warnings = analysis?.image_quality?.missing_or_unclear || [];
-  const notes = analysis?.image_quality?.notes || [];
-  el("qualityNote").textContent = [...warnings, ...notes].join("；");
+  el("qualityNote").textContent = publicQualityNotes(analysis).join("；");
 }
 
 export function analysisFromForm() {

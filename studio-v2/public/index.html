@@ -35,8 +35,9 @@
           </div>
         </div>
         <div class="sidebar-api-status">
-          <span class="sidebar-api-pill" id="sidebarApiState">API 状态读取中</span>
+          <span class="sidebar-api-pill" id="sidebarApiState">供应商状态读取中</span>
           <small id="sidebarApiDetails">正在读取供应商配置</small>
+          <a class="sidebar-admin-link" href="/admin/">管理供应商</a>
         </div>
       </div>
     </aside>
@@ -65,7 +66,6 @@
           </div>
           <div class="header-actions">
             <span class="save-state" id="saveState">已保存到本机</span>
-            <button class="api-corner-button" id="apiSettingsButton" type="button" aria-label="API 设置">设置</button>
           </div>
         </header>
 
@@ -298,7 +298,7 @@
                   <strong id="panelSaveState">已保存</strong>
                 </div>
                 <div>
-                  <span>API 状态</span>
+                  <span>供应商状态</span>
                   <strong id="panelApiState">读取中</strong>
                 </div>
               </div>
@@ -329,88 +329,6 @@
       <p>先建立项目，进入第一步上传商品素材。</p>
       <label><span>项目名称</span><input name="name" placeholder="例如：蓝白跑鞋广告" required autofocus></label>
       <button class="primary-button large" type="submit">创建并上传素材</button>
-    </form>
-  </dialog>
-
-  <dialog id="apiSettingsDialog">
-    <form class="dialog-card api-dialog-card" id="apiSettingsForm">
-      <button class="dialog-close" id="closeApiSettingsButton" type="button" aria-label="关闭">×</button>
-      <p class="kicker">API PROVIDERS</p>
-      <h2>API 接口设置</h2>
-      <p>密钥只提交给这台电脑上的本地服务。页面不会读取或保存已有密钥。</p>
-      <div class="provider-list">
-        <div class="provider-row">
-          <div>
-            <strong>识图</strong>
-            <small id="visionProviderDetails">正在读取...</small>
-          </div>
-          <span class="provider-state loading" id="visionProviderState">读取中</span>
-        </div>
-        <div class="provider-row">
-          <div>
-            <strong>脚本</strong>
-            <small id="textProviderDetails">正在读取...</small>
-          </div>
-          <span class="provider-state loading" id="textProviderState">读取中</span>
-        </div>
-        <div class="provider-row">
-          <div>
-            <strong>图片</strong>
-            <small id="imageProviderDetails">正在读取...</small>
-          </div>
-          <span class="provider-state loading" id="imageProviderState">读取中</span>
-        </div>
-      </div>
-
-      <div class="api-key-fields">
-        <label class="api-key-field">
-          <span>识图 API Key</span>
-          <div class="api-key-input-row">
-            <input name="visionApiKey" type="password" autocomplete="new-password"
-              placeholder="留空表示不修改">
-            <button class="secret-toggle-button" type="button" data-toggle-secret="visionApiKey"
-              aria-label="显示或隐藏识图 API Key">眼</button>
-          </div>
-          <small>负责：Right Code 识图 Key · Gemini (/gemini) · gemini-2.5-flash。</small>
-        </label>
-        <label class="clear-provider-control">
-          <input name="clearVisionApiKey" type="checkbox">
-          <span>清除已保存的识图 Key</span>
-        </label>
-
-        <label class="api-key-field">
-          <span>脚本 API Key</span>
-          <div class="api-key-input-row">
-            <input name="deepSeekApiKey" type="password" autocomplete="new-password"
-              placeholder="留空表示不修改">
-            <button class="secret-toggle-button" type="button" data-toggle-secret="deepSeekApiKey"
-              aria-label="显示或隐藏脚本 API Key">眼</button>
-          </div>
-          <small>负责：DeepSeek 脚本 Key · Chat Completions · deepseek-v4-pro。</small>
-        </label>
-        <label class="clear-provider-control">
-          <input name="clearDeepSeekApiKey" type="checkbox">
-          <span>清除已保存的脚本 Key</span>
-        </label>
-
-        <label class="api-key-field">
-          <span>图片 API Key</span>
-          <div class="api-key-input-row">
-            <input name="imageApiKey" type="password" autocomplete="new-password"
-              placeholder="留空表示不修改">
-            <button class="secret-toggle-button" type="button" data-toggle-secret="imageApiKey"
-              aria-label="显示或隐藏图片 API Key">眼</button>
-          </div>
-          <small>负责：Right Code 生图 Key · 画图 (/draw) · gpt-image-2。</small>
-        </label>
-        <label class="clear-provider-control">
-          <input name="clearImageApiKey" type="checkbox">
-          <span>清除已保存的图片 Key</span>
-        </label>
-      </div>
-
-      <p class="api-note" id="apiSettingsNote">留空不会覆盖当前配置；勾选清除会删除对应的本地 Key。</p>
-      <button class="primary-button large" id="saveApiSettingsButton" type="submit">保存 API 设置</button>
     </form>
   </dialog>
 

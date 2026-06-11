@@ -24,25 +24,13 @@ import {
   renderWorkspace,
   syncReviewSummaries
 } from "./render.js";
-import {
-  clearProviderSettingsInputs,
-  closeProviderSettings,
-  openProviderSettings,
-  refreshProviderSettings,
-  saveProviderSettings,
-  toggleProviderSecret
-} from "./settings.js";
+import { refreshProviderSettings } from "./settings.js";
 
 function wireEvents() {
   const openDialog = () => el("newProjectDialog").showModal();
   el("newProjectButton").addEventListener("click", openDialog);
   el("emptyCreateButton").addEventListener("click", openDialog);
   el("closeDialogButton").addEventListener("click", () => el("newProjectDialog").close());
-  el("apiSettingsButton").addEventListener("click", openProviderSettings);
-  el("closeApiSettingsButton").addEventListener("click", closeProviderSettings);
-  el("apiSettingsDialog").addEventListener("close", clearProviderSettingsInputs);
-  el("apiSettingsDialog").addEventListener("click", toggleProviderSecret);
-  el("apiSettingsForm").addEventListener("submit", saveProviderSettings);
   el("newProjectForm").addEventListener("submit", createProject);
   el("reviewForm").addEventListener("submit", confirmReview);
   el("marketForm").addEventListener("submit", saveMarketBrief);
@@ -259,7 +247,7 @@ function wireEvents() {
 async function boot() {
   wireEvents();
   try {
-    refreshProviderSettings().catch((error) => console.warn("Failed to refresh provider status.", error));
+    refreshProviderSettings().catch((error) => console.warn("Failed to refresh provider readiness.", error));
     await loadProjects();
     for (const project of state.projects) {
       try {

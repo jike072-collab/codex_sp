@@ -269,7 +269,7 @@ export function renderVisualStage(project = state.project) {
       </div>
       <div class="visual-error-card">
         <p class="error-message">${escapeHtml(failure?.message || state.visualGenerationError || (needsRealImages
-          ? "当前项目还没有两张可交付的真实故事板图片。请配置图片 API 后继续生成。"
+          ? "当前项目还没有两张可交付的真实故事板图片。请确认图片供应商已就绪后继续生成。"
           : "图片生成失败。"))}</p>
         <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">
           继续生成缺失图片
