@@ -1,5 +1,9 @@
 import { DomainError } from "./domain-error.mjs";
 import { assertProjectStage, transitionProject } from "./project-workflow.mjs";
+import {
+  expectedStoryboardCount,
+  isSingleVideoMode
+} from "./workflow-mode.mjs";
 
 const QC_CHECKLIST = Object.freeze([
   "Each storyboard covers only its own 10-second segment.",
@@ -102,6 +106,16 @@ function storyboardAsset(project, segment, frameAspectRatio, rules) {
   };
 }
 
+function planningSegments(project) {
+  if (isSingleVideoMode(project)) {
+    return [project.planningPackage?.script_video?.segment_full].filter(Boolean);
+  }
+  return [
+    project.planningPackage?.script_20s?.segment_a_0_10s,
+    project.planningPackage?.script_20s?.segment_b_10_20s
+  ].filter(Boolean);
+}
+
 export function generateVisualPackage(project, generatedAt = new Date().toISOString()) {
   if (!["visual", "export"].includes(project.status)) {
     assertProjectStage(project, "visual", "生成故事版图片");
@@ -115,23 +129,23 @@ export function generateVisualPackage(project, generatedAt = new Date().toISOStr
   const planning = project.planningPackage;
   const rules = productRules(planning.product_lock_manifest || {});
   const frameAspectRatio = project.marketBrief?.outputAspectRatio || "9:16";
-  const segmentA = planning.script_20s.segment_a_0_10s;
-  const segmentB = planning.script_20s.segment_b_10_20s;
-  const imageGeneration = [
-    storyboardAsset(project, segmentA, frameAspectRatio, rules),
-    storyboardAsset(project, segmentB, frameAspectRatio, rules)
-  ];
+  const segments = planningSegments(project);
+  const imageGeneration = segments.map((segment) => (
+    storyboardAsset(project, segment, frameAspectRatio, rules)
+  ));
 
   project.imagePackage = {
     mode: "demo",
     storyboard_plan: {
-      total_images: 2,
+      total_images: expectedStoryboardCount(project),
       selected_aspect_ratio: frameAspectRatio,
       selected_frame_aspect_ratio: frameAspectRatio,
       storyboard_sheet: { ...STORYBOARD_SHEET },
       segments: imageGeneration.map((item) => ({
         segment_id: item.segment_id,
-        storyboard_goal: `One storyboard sheet for ${item.segment_id}; internal shot panels use ${frameAspectRatio}.`
+        storyboard_goal: isSingleVideoMode(project)
+          ? `One storyboard sheet for the full ${project.marketBrief?.videoDurationSeconds || 10}-second video; internal shot panels use ${frameAspectRatio}.`
+          : `One storyboard sheet for ${item.segment_id}; internal shot panels use ${frameAspectRatio}.`
       }))
     },
     image_generation: imageGeneration,
@@ -147,7 +161,7 @@ export function generateVisualPackage(project, generatedAt = new Date().toISOStr
 export function completeVisualGeneration(project, generatedAt = new Date().toISOString()) {
   assertProjectStage(project, "visual", "完成故事板生成");
   const items = project.imagePackage?.image_generation || [];
-  const complete = items.length === 2
+  const complete = items.length === expectedStoryboardCount(project)
     && items.every((item) => item.status === "done" && item.generated_image?.url);
   if (!complete) {
     throw new DomainError("两张故事板尚未全部生成完成，不能进入最终交付。", {

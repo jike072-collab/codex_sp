@@ -8,7 +8,7 @@ import {
 } from "../ai-providers/provider-utils.mjs";
 import { DomainError } from "../workflow-domain/domain-error.mjs";
 
-export const PROVIDER_SETTINGS_SCHEMA_VERSION = 3;
+export const PROVIDER_SETTINGS_SCHEMA_VERSION = 4;
 
 const DEFAULT_IMAGE_API_URL = "https://www.right.codes/draw/v1/images/generations";
 const DEFAULT_IMAGE_MODEL = "gpt-image-2";
@@ -192,7 +192,7 @@ const PROVIDER_DEFINITIONS = Object.freeze([
         type: "secret",
         valueKey: "videoApiKey",
         clearable: true,
-        envKey: "VIDEO_API_KEY"
+        envKey: "VIDEO_MODEL_API_KEY"
       }
     ]
   }

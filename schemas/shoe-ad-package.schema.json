@@ -1,9 +1,16 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Shoe Ad Image Workflow Package",
+  "title": "Shoe Ad Planning Package",
   "type": "object",
-  "required": ["locale_profile", "product_lock_manifest", "script_20s"],
+  "required": [
+    "locale_profile",
+    "product_lock_manifest"
+  ],
   "properties": {
+    "mode": { "type": "string" },
+    "workflow_mode": {
+      "enum": ["single_video", "legacy_multi_segment"]
+    },
     "locale_profile": {
       "type": "object",
       "required": ["target_country", "language"],
@@ -13,7 +20,8 @@
         "subtitle_style": { "type": "string" },
         "voiceover_style": { "type": "string" },
         "cta_style": { "type": "string" }
-      }
+      },
+      "additionalProperties": true
     },
     "product_lock_manifest": {
       "type": "object",
@@ -24,46 +32,97 @@
         "supporting_colors": { "type": "array", "items": { "type": "string" } },
         "must_keep": { "type": "array", "items": { "type": "string" } },
         "must_not_change": { "type": "array", "items": { "type": "string" } }
-      }
+      },
+      "additionalProperties": true
     },
     "script_20s": {
       "type": "object",
       "required": ["total_duration_sec", "segment_a_0_10s", "segment_b_10_20s"],
       "properties": {
         "total_duration_sec": { "const": 20 },
-        "segment_a_0_10s": { "$ref": "#/$defs/segment" },
-        "segment_b_10_20s": { "$ref": "#/$defs/segment" }
-      }
+        "segment_a_0_10s": { "$ref": "#/$defs/legacySegment" },
+        "segment_b_10_20s": { "$ref": "#/$defs/legacySegment" }
+      },
+      "additionalProperties": false
+    },
+    "script_video": {
+      "type": "object",
+      "required": ["total_duration_sec", "segment_full"],
+      "properties": {
+        "total_duration_sec": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 15
+        },
+        "segment_full": { "$ref": "#/$defs/fullSegment" }
+      },
+      "additionalProperties": false
     }
   },
+  "oneOf": [
+    { "required": ["script_20s"] },
+    { "required": ["script_video"] }
+  ],
   "$defs": {
-    "segment": {
+    "shot": {
       "type": "object",
-      "required": ["segment_id", "duration_sec", "shots"],
+      "required": [
+        "start_sec",
+        "end_sec",
+        "visual",
+        "action",
+        "camera",
+        "selling_point",
+        "localized_caption_or_vo",
+        "sound",
+        "transition"
+      ],
       "properties": {
-        "segment_id": { "type": "string" },
+        "start_sec": { "type": "number" },
+        "end_sec": { "type": "number" },
+        "visual": { "type": "string" },
+        "action": { "type": "string" },
+        "camera": { "type": "string" },
+        "selling_point": { "type": "string" },
+        "localized_caption_or_vo": { "type": "string" },
+        "sound": { "type": "string" },
+        "transition": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "legacySegment": {
+      "type": "object",
+      "required": ["segment_id", "theme", "duration_sec", "shots"],
+      "properties": {
+        "segment_id": { "enum": ["0-10s", "10-20s"] },
         "theme": { "type": "string" },
         "duration_sec": { "const": 10 },
         "shots": {
           "type": "array",
           "minItems": 1,
-          "items": {
-            "type": "object",
-            "required": ["start_sec", "end_sec", "visual", "localized_caption_or_vo"],
-            "properties": {
-              "start_sec": { "type": "number" },
-              "end_sec": { "type": "number" },
-              "visual": { "type": "string" },
-              "action": { "type": "string" },
-              "camera": { "type": "string" },
-              "selling_point": { "type": "string" },
-              "localized_caption_or_vo": { "type": "string" },
-              "sound": { "type": "string" },
-              "transition": { "type": "string" }
-            }
-          }
+          "items": { "$ref": "#/$defs/shot" }
         }
-      }
+      },
+      "additionalProperties": false
+    },
+    "fullSegment": {
+      "type": "object",
+      "required": ["segment_id", "theme", "duration_sec", "shots"],
+      "properties": {
+        "segment_id": { "const": "full" },
+        "theme": { "type": "string" },
+        "duration_sec": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 15
+        },
+        "shots": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/shot" }
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

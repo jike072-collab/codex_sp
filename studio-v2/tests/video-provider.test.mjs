@@ -10,7 +10,7 @@ import {
 import { ensureVideoPackage } from "../src/workflow-domain/video-package.mjs";
 
 const providerEnvKeys = [
-  "VIDEO_API_KEY",
+  "VIDEO_MODEL_API_KEY",
   "VIDEO_API_URL",
   "VIDEO_MODEL"
 ];
@@ -248,7 +248,7 @@ test("video provider request includes storyboard sheet, product references, scri
 
 test("video generation submits both segments concurrently and stores successful local videos", async () => {
   await withProviderEnv({
-    VIDEO_API_KEY: "video-key",
+    VIDEO_MODEL_API_KEY: "video-key",
     VIDEO_API_URL: "https://video.example.test/v1/videos/generations",
     VIDEO_MODEL: "seedance2.0 720p-fast"
   }, async () => {
@@ -326,7 +326,7 @@ test("video generation submits both segments concurrently and stores successful 
 
 test("video generation keeps partial success and retry only regenerates the failed segment", async () => {
   await withProviderEnv({
-    VIDEO_API_KEY: "video-key",
+    VIDEO_MODEL_API_KEY: "video-key",
     VIDEO_API_URL: "https://video.example.test/v1/videos/generations",
     VIDEO_MODEL: "seedance2.0 720p-fast"
   }, async () => {
@@ -413,7 +413,7 @@ test("video generation keeps partial success and retry only regenerates the fail
 
 test("video status refresh completes queued jobs and records safe request ids", async () => {
   await withProviderEnv({
-    VIDEO_API_KEY: "video-key",
+    VIDEO_MODEL_API_KEY: "video-key",
     VIDEO_API_URL: "https://video.example.test/v1/videos/generations",
     VIDEO_MODEL: "seedance2.0 720p-fast"
   }, async () => {

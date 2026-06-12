@@ -30,14 +30,14 @@ async function seedReadyProject(projectId) {
   const uploadDir = join(dataRoot, "uploads", projectId);
   await mkdir(uploadDir, { recursive: true });
   await writeFile(join(uploadDir, "shoe-collage.png"), tinyPngBytes);
-  await writeFile(join(uploadDir, "storyboard-a.png"), tinyPngBytes);
-  await writeFile(join(uploadDir, "storyboard-b.png"), tinyPngBytes);
+  await writeFile(join(uploadDir, "storyboard-full.png"), tinyPngBytes);
 
   const project = {
     id: projectId,
     name: "Video API project",
     targetCountry: "Thailand",
     audience: "Daily commuters",
+    workflowMode: "single_video",
     status: "export",
     createdAt: "2026-06-12T02:00:00.000Z",
     updatedAt: "2026-06-12T02:00:00.000Z",
@@ -56,25 +56,27 @@ async function seedReadyProject(projectId) {
       creativeTheme: "daily-comfort",
       coreMessage: "Light and stable",
       tone: "clean",
-      outputAspectRatio: "4:5"
+      outputAspectRatio: "4:5",
+      videoDurationSeconds: 12
     },
     planningPackage: {
       mode: "confirmed",
+      workflow_mode: "single_video",
       locale_profile: {},
       product_lock_manifest: {},
       selling_points: [],
       creative_direction: {},
       localized_copy: {},
       confirmation_summary: {},
-      script_20s: {
-        total_duration_sec: 20,
-        segment_a_0_10s: {
-          segment_id: "0-10s",
-          theme: "segment-a",
-          duration_sec: 10,
+      script_video: {
+        total_duration_sec: 12,
+        segment_full: {
+          segment_id: "full",
+          theme: "full-video",
+          duration_sec: 12,
           shots: [{
             start_sec: 0,
-            end_sec: 10,
+            end_sec: 6,
             visual: "Hero shoe",
             action: "Rotate shoe",
             camera: "Orbit",
@@ -82,15 +84,9 @@ async function seedReadyProject(projectId) {
             localized_caption_or_vo: "Cloud-light comfort",
             sound: "Light beat",
             transition: "Cut"
-          }]
-        },
-        segment_b_10_20s: {
-          segment_id: "10-20s",
-          theme: "segment-b",
-          duration_sec: 10,
-          shots: [{
-            start_sec: 10,
-            end_sec: 20,
+          }, {
+            start_sec: 6,
+            end_sec: 12,
             visual: "Lifestyle walk",
             action: "Walk forward",
             camera: "Tracking",
@@ -108,40 +104,21 @@ async function seedReadyProject(projectId) {
       qc_checklist: [],
       image_generation: [
         {
-          asset_id: "storyboard-a",
-          segment_id: "0-10s",
+          asset_id: "storyboard-full",
+          segment_id: "full",
           type: "storyboard_board",
           aspect_ratio: "4:5",
           prompt: "a",
           negative_prompt: "b",
           reference_policy: "img2img-only",
           status: "done",
-          script_copy: "0-10s script copy",
+          script_copy: "full video script copy",
           generated_image: {
             provider: "Right Code",
             model: "gpt-image-2",
-            url: `/uploads/${projectId}/storyboard-a.png`,
+            url: `/uploads/${projectId}/storyboard-full.png`,
             size: "1536x1024",
-            storedName: "storyboard-a.png",
-            mimeType: "image/png"
-          }
-        },
-        {
-          asset_id: "storyboard-b",
-          segment_id: "10-20s",
-          type: "storyboard_board",
-          aspect_ratio: "4:5",
-          prompt: "c",
-          negative_prompt: "d",
-          reference_policy: "img2img-only",
-          status: "done",
-          script_copy: "10-20s script copy",
-          generated_image: {
-            provider: "Right Code",
-            model: "gpt-image-2",
-            url: `/uploads/${projectId}/storyboard-b.png`,
-            size: "1536x1024",
-            storedName: "storyboard-b.png",
+            storedName: "storyboard-full.png",
             mimeType: "image/png"
           }
         }
@@ -178,7 +155,7 @@ after(async () => {
   if (server) await new Promise((resolveClose) => server.close(resolveClose));
   delete process.env.STUDIO_DATA_ROOT;
   delete process.env.STUDIO_ENV_PATH;
-  delete process.env.VIDEO_API_KEY;
+  delete process.env.VIDEO_MODEL_API_KEY;
   delete process.env.VIDEO_API_URL;
   delete process.env.VIDEO_MODEL;
   const resolvedTemp = resolve(tmpdir());
@@ -200,27 +177,26 @@ test("video API routes generate, poll status, and stream segment downloads", asy
       let body = "";
       for await (const chunk of req) body += chunk;
       const payload = JSON.parse(body);
-      const segmentId = payload.prompt.includes("ONLY 10-20s") ? "10-20s" : "0-10s";
+      assert.equal(payload.duration, 12);
       res.writeHead(200, {
         "Content-Type": "application/json",
-        "x-request-id": `submit-${segmentId}`
+        "x-request-id": "submit-full"
       });
       res.end(JSON.stringify({
-        id: `job-${segmentId}`,
+        id: "job-full",
         status: "queued",
-        status_url: `http://127.0.0.1:${providerServer.address().port}/status/${segmentId}`
+        status_url: `http://127.0.0.1:${providerServer.address().port}/status/full`
       }));
       return;
     }
     if (req.method === "GET" && req.url.startsWith("/status/")) {
-      const segmentId = req.url.endsWith("/10-20s") ? "10-20s" : "0-10s";
       res.writeHead(200, {
         "Content-Type": "application/json",
-        "x-request-id": `status-${segmentId}`
+        "x-request-id": "status-full"
       });
       res.end(JSON.stringify({
         status: "completed",
-        url: `http://127.0.0.1:${providerServer.address().port}/download/${segmentId}.mp4`,
+        url: `http://127.0.0.1:${providerServer.address().port}/download/full.mp4`,
         mime_type: "video/mp4"
       }));
       return;
@@ -240,7 +216,7 @@ test("video API routes generate, poll status, and stream segment downloads", asy
   });
 
   try {
-    process.env.VIDEO_API_KEY = "video-key";
+    process.env.VIDEO_MODEL_API_KEY = "video-key";
     process.env.VIDEO_API_URL = `http://127.0.0.1:${providerServer.address().port}/video/v1/videos/generations`;
     process.env.VIDEO_MODEL = "seedance2.0 720p-fast";
 
@@ -249,11 +225,11 @@ test("video API routes generate, poll status, and stream segment downloads", asy
     });
     assert.equal(generateResponse.status, 200);
     const generatedBody = await generateResponse.json();
-    assert.equal(generatedBody.project.videoPackage.video_generation.length, 2);
-    assert.equal(providerRequests.filter((url) => url === "/video/v1/videos/generations").length, 2);
+    assert.equal(generatedBody.project.videoPackage.video_generation.length, 1);
+    assert.equal(providerRequests.filter((url) => url === "/video/v1/videos/generations").length, 1);
     assert.deepEqual(
       generatedBody.project.videoPackage.video_generation.map((item) => item.status),
-      ["queued", "queued"]
+      ["queued"]
     );
 
     const statusResponse = await request(`/api/projects/${projectId}/videos/status`);
@@ -261,24 +237,20 @@ test("video API routes generate, poll status, and stream segment downloads", asy
     const statusBody = await statusResponse.json();
     assert.deepEqual(
       statusBody.project.videoPackage.video_generation.map((item) => item.status),
-      ["done", "done"]
+      ["done"]
     );
     assert.equal(
       statusBody.project.videoPackage.video_generation.every((item) => item.generated_video?.url),
       true
     );
-    assert.equal(["done", "unavailable"].includes(statusBody.project.videoPackage.final_video.status), true);
+    assert.equal(statusBody.project.videoPackage.final_video.status, "unavailable");
+    assert.equal(statusBody.project.videoPackage.final_video.reason, "single_video_mode");
 
-    const downloadA = await request(`/api/projects/${projectId}/videos/0-10s/download`);
-    assert.equal(downloadA.status, 200);
-    assert.match(downloadA.headers.get("content-type"), /video\/mp4/);
-    assert.match(downloadA.headers.get("content-disposition"), /\.mp4/);
-    assert.deepEqual(Buffer.from(await downloadA.arrayBuffer()), tinyMp4Bytes);
-
-    const downloadB = await request(`/api/projects/${projectId}/videos/10-20s/download`);
-    assert.equal(downloadB.status, 200);
-    assert.match(downloadB.headers.get("content-type"), /video\/mp4/);
-    assert.deepEqual(Buffer.from(await downloadB.arrayBuffer()), tinyMp4Bytes);
+    const download = await request(`/api/projects/${projectId}/videos/full/download`);
+    assert.equal(download.status, 200);
+    assert.match(download.headers.get("content-type"), /video\/mp4/);
+    assert.match(download.headers.get("content-disposition"), /\.mp4/);
+    assert.deepEqual(Buffer.from(await download.arrayBuffer()), tinyMp4Bytes);
   } finally {
     await new Promise((resolveClose) => providerServer.close(resolveClose));
   }

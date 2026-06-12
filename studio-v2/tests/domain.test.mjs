@@ -28,7 +28,8 @@ test("normalizeMarketBrief trims and preserves the documented contract", () => {
     creativeTheme: "city-motion",
     coreMessage: "轻快、稳定，适合每天出发",
     tone: "energetic",
-    outputAspectRatio: "9:16"
+    outputAspectRatio: "9:16",
+    videoDurationSeconds: 10
   });
 });
 
@@ -71,6 +72,7 @@ test("confirmMarketBrief persists the brief and advances to script", () => {
   assert.equal(project.targetCountry, "Thailand");
   assert.equal(project.audience, "日常运动与通勤人群");
   assert.equal(project.marketBrief.creativeTheme, "city-motion");
+  assert.equal(project.marketBrief.videoDurationSeconds, 10);
   assert.equal(project.marketConfirmedAt, "2026-06-06T01:00:00.000Z");
 });
 

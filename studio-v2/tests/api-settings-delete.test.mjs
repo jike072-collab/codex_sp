@@ -26,7 +26,7 @@ const providerEnvKeys = [
   "IMAGE_SECONDARY_API_KEY",
   "IMAGE_SECONDARY_API_URL",
   "IMAGE_SECONDARY_MODEL",
-  "VIDEO_API_KEY",
+  "VIDEO_MODEL_API_KEY",
   "VIDEO_API_URL",
   "VIDEO_MODEL"
 ];
@@ -103,7 +103,7 @@ test("public provider status stays redacted while admin settings persist locally
 
   const schema = await request("/api/admin/providers");
   assert.equal(schema.response.status, 200);
-  assert.equal(schema.body.schemaVersion, 3);
+  assert.equal(schema.body.schemaVersion, 4);
   assert.deepEqual(
     schema.body.providers.map((provider) => provider.id),
     ["vision", "text", "image", "video"]
@@ -181,7 +181,7 @@ test("public provider status stays redacted while admin settings persist locally
   assert.match(stored, /IMAGE_SECONDARY_API_KEY=image-secondary-secret/);
   assert.match(stored, /VIDEO_API_URL=https:\/\/video\.example\.test\/v1\/videos\/generations/);
   assert.match(stored, /VIDEO_MODEL=seedance2\.0 720p-fast/);
-  assert.match(stored, /VIDEO_API_KEY=video-secret/);
+  assert.match(stored, /VIDEO_MODEL_API_KEY=video-secret/);
 
   const publicAfterUpdate = await request("/api/settings/providers/status");
   assert.equal(publicAfterUpdate.body.configuredCount, 4);
@@ -218,7 +218,7 @@ test("public provider status stays redacted while admin settings persist locally
   assert.match(stored, /VISION_MODEL_API_KEY=independent-vision-key/);
   assert.match(stored, /IMAGE_MODEL_API_KEY=independent-image-key-a/);
   assert.match(stored, /IMAGE_SECONDARY_API_KEY=independent-image-key-b/);
-  assert.match(stored, /VIDEO_API_KEY=independent-video-key/);
+  assert.match(stored, /VIDEO_MODEL_API_KEY=independent-video-key/);
 
   const visionCleared = await request("/api/admin/providers", {
     method: "PUT",
@@ -331,7 +331,7 @@ test("admin provider models API discovers models and honors refresh", async () =
     IMAGE_SECONDARY_API_KEY: process.env.IMAGE_SECONDARY_API_KEY,
     IMAGE_SECONDARY_API_URL: process.env.IMAGE_SECONDARY_API_URL,
     IMAGE_SECONDARY_MODEL: process.env.IMAGE_SECONDARY_MODEL,
-    VIDEO_API_KEY: process.env.VIDEO_API_KEY,
+    VIDEO_MODEL_API_KEY: process.env.VIDEO_MODEL_API_KEY,
     VIDEO_API_URL: process.env.VIDEO_API_URL,
     VIDEO_MODEL: process.env.VIDEO_MODEL
   };
@@ -348,7 +348,7 @@ test("admin provider models API discovers models and honors refresh", async () =
     IMAGE_SECONDARY_API_KEY: "image-secondary-secret",
     IMAGE_SECONDARY_API_URL: `${providerBase}/image-b/draw/v1/images/generations`,
     IMAGE_SECONDARY_MODEL: "gpt-image-2",
-    VIDEO_API_KEY: "video-secret",
+    VIDEO_MODEL_API_KEY: "video-secret",
     VIDEO_API_URL: `${providerBase}/video/v1/videos/generations`,
     VIDEO_MODEL: "seedance2.0 720p-fast"
   });

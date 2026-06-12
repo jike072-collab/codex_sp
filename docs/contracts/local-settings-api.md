@@ -94,7 +94,7 @@ Response:
 
 ```json
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "providers": [
     {
       "id": "vision",
@@ -365,6 +365,7 @@ Rules:
 - Omitted fields keep their current values.
 - Empty API key strings are invalid; Admin UI should omit empty key inputs.
 - Values are stored only in the ignored local `.env` file using atomic writes.
+- `videoApiKey` is persisted to the dedicated `VIDEO_MODEL_API_KEY` setting.
 - System environment variables still take precedence over `.env`.
 - Success returns the same shape as `GET /api/admin/providers`.
 

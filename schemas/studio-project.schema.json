@@ -53,60 +53,122 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "name", "storedName", "mimeType", "hash", "size", "url"],
+        "required": [
+          "id",
+          "name",
+          "storedName",
+          "mimeType",
+          "hash",
+          "size",
+          "url"
+        ],
         "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string", "minLength": 1 },
-          "storedName": { "type": "string", "minLength": 1 },
-          "mimeType": { "enum": ["image/jpeg", "image/png", "image/webp"] },
-          "hash": { "type": "string", "minLength": 1 },
-          "size": { "type": "integer", "minimum": 1 },
-          "url": { "type": "string", "minLength": 1 }
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "storedName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mimeType": {
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp"
+            ]
+          },
+          "hash": {
+            "type": "string",
+            "minLength": 1
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "url": {
+            "type": "string",
+            "minLength": 1
+          }
         },
         "additionalProperties": true
       }
     },
     "visionAnalysis": {
-      "type": ["object", "null"]
+      "type": [
+        "object",
+        "null"
+      ]
     },
     "reviewConfirmedAt": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "date-time"
     },
     "marketBrief": {
       "oneOf": [
-        { "type": "null" },
-        { "$ref": "#/$defs/marketBrief" }
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/marketBrief"
+        }
       ]
     },
     "marketConfirmedAt": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "date-time"
     },
     "planningPackage": {
       "oneOf": [
-        { "type": "null" },
-        { "$ref": "#/$defs/planningPackage" }
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/planningPackage"
+        }
       ]
     },
     "scriptGeneratedAt": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "date-time"
     },
     "scriptConfirmedAt": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "date-time"
     },
     "imagePackage": {
       "oneOf": [
-        { "type": "null" },
-        { "$ref": "#/$defs/imagePackage" }
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/imagePackage"
+        }
       ]
     },
     "videoPackage": {
       "oneOf": [
-        { "type": "null" },
-        { "$ref": "#/$defs/videoPackage" }
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/videoPackage"
+        }
       ]
     },
     "manualOmniPackages": {
@@ -115,29 +177,59 @@
       "maxItems": 0
     },
     "visualGeneratedAt": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "date-time"
     },
     "visualGenerationFailure": {
       "oneOf": [
-        { "type": "null" },
+        {
+          "type": "null"
+        },
         {
           "type": "object",
-          "required": ["code", "message", "failedAt", "possiblyBilled"],
+          "required": [
+            "code",
+            "message",
+            "failedAt",
+            "possiblyBilled"
+          ],
           "properties": {
-            "code": { "type": "string", "minLength": 1 },
-            "message": { "type": "string", "minLength": 1 },
+            "code": {
+              "type": "string",
+              "minLength": 1
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1
+            },
             "failedAt": {
               "type": "string",
               "format": "date-time"
             },
-            "possiblyBilled": { "type": "boolean" },
-            "retryable": { "type": "boolean" },
-            "providerStatus": { "type": "integer" },
-            "providerDiagnostics": { "$ref": "#/$defs/providerDiagnosticsSummary" }
+            "possiblyBilled": {
+              "type": "boolean"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "providerStatus": {
+              "type": "integer"
+            },
+            "providerDiagnostics": {
+              "$ref": "#/$defs/providerDiagnosticsSummary"
+            }
           },
           "additionalProperties": false
         }
+      ]
+    },
+    "workflowMode": {
+      "enum": [
+        "single_video",
+        "legacy_multi_segment"
       ]
     }
   },
@@ -150,11 +242,18 @@
         "creativeTheme",
         "coreMessage",
         "tone",
-        "outputAspectRatio"
+        "outputAspectRatio",
+        "videoDurationSeconds"
       ],
       "properties": {
-        "targetCountry": { "type": "string", "minLength": 1 },
-        "audience": { "type": "string", "minLength": 1 },
+        "targetCountry": {
+          "type": "string",
+          "minLength": 1
+        },
+        "audience": {
+          "type": "string",
+          "minLength": 1
+        },
         "creativeTheme": {
           "enum": [
             "city-motion",
@@ -163,12 +262,32 @@
             "street-style"
           ]
         },
-        "coreMessage": { "type": "string", "minLength": 1 },
+        "coreMessage": {
+          "type": "string",
+          "minLength": 1
+        },
         "tone": {
-          "enum": ["energetic", "clean", "warm", "bold"]
+          "enum": [
+            "energetic",
+            "clean",
+            "warm",
+            "bold"
+          ]
         },
         "outputAspectRatio": {
-          "enum": ["9:16", "16:9", "1:1", "4:5", "3:4", "2:3"]
+          "enum": [
+            "9:16",
+            "16:9",
+            "1:1",
+            "4:5",
+            "3:4",
+            "2:3"
+          ]
+        },
+        "videoDurationSeconds": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 15
         }
       },
       "additionalProperties": false
@@ -187,29 +306,74 @@
         "transition"
       ],
       "properties": {
-        "start_sec": { "type": "number" },
-        "end_sec": { "type": "number" },
-        "visual": { "type": "string", "minLength": 1 },
-        "action": { "type": "string", "minLength": 1 },
-        "camera": { "type": "string", "minLength": 1 },
-        "selling_point": { "type": "string", "minLength": 1 },
-        "localized_caption_or_vo": { "type": "string", "minLength": 1 },
-        "sound": { "type": "string", "minLength": 1 },
-        "transition": { "type": "string", "minLength": 1 }
+        "start_sec": {
+          "type": "number"
+        },
+        "end_sec": {
+          "type": "number"
+        },
+        "visual": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "camera": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selling_point": {
+          "type": "string",
+          "minLength": 1
+        },
+        "localized_caption_or_vo": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sound": {
+          "type": "string",
+          "minLength": 1
+        },
+        "transition": {
+          "type": "string",
+          "minLength": 1
+        }
       },
       "additionalProperties": false
     },
     "scriptSegment": {
       "type": "object",
-      "required": ["segment_id", "theme", "duration_sec", "shots"],
+      "required": [
+        "segment_id",
+        "theme",
+        "duration_sec",
+        "shots"
+      ],
       "properties": {
-        "segment_id": { "enum": ["0-10s", "10-20s"] },
-        "theme": { "type": "string", "minLength": 1 },
-        "duration_sec": { "const": 10 },
+        "segment_id": {
+          "enum": [
+            "0-10s",
+            "10-20s",
+            "full"
+          ]
+        },
+        "theme": {
+          "type": "string",
+          "minLength": 1
+        },
+        "duration_sec": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 20
+        },
         "shots": {
           "type": "array",
           "minItems": 1,
-          "items": { "$ref": "#/$defs/shot" }
+          "items": {
+            "$ref": "#/$defs/shot"
+          }
         }
       },
       "additionalProperties": false
@@ -218,20 +382,30 @@
       "type": "object",
       "required": [
         "mode",
+        "workflow_mode",
         "locale_profile",
         "product_lock_manifest",
         "selling_points",
         "creative_direction",
-        "script_20s",
         "localized_copy",
         "confirmation_summary"
       ],
       "properties": {
-        "mode": { "type": "string" },
-        "locale_profile": { "type": "object" },
-        "product_lock_manifest": { "type": "object" },
-        "selling_points": { "type": "array" },
-        "creative_direction": { "type": "object" },
+        "mode": {
+          "type": "string"
+        },
+        "locale_profile": {
+          "type": "object"
+        },
+        "product_lock_manifest": {
+          "type": "object"
+        },
+        "selling_points": {
+          "type": "array"
+        },
+        "creative_direction": {
+          "type": "object"
+        },
         "script_20s": {
           "type": "object",
           "required": [
@@ -240,14 +414,61 @@
             "segment_b_10_20s"
           ],
           "properties": {
-            "total_duration_sec": { "const": 20 },
-            "segment_a_0_10s": { "$ref": "#/$defs/scriptSegment" },
-            "segment_b_10_20s": { "$ref": "#/$defs/scriptSegment" }
-          }
+            "total_duration_sec": {
+              "const": 20
+            },
+            "segment_a_0_10s": {
+              "$ref": "#/$defs/scriptSegment"
+            },
+            "segment_b_10_20s": {
+              "$ref": "#/$defs/scriptSegment"
+            }
+          },
+          "additionalProperties": false
         },
-        "localized_copy": { "type": "object" },
-        "confirmation_summary": { "type": "object" }
-      }
+        "localized_copy": {
+          "type": "object"
+        },
+        "confirmation_summary": {
+          "type": "object"
+        },
+        "workflow_mode": {
+          "enum": [
+            "single_video",
+            "legacy_multi_segment"
+          ]
+        },
+        "script_video": {
+          "type": "object",
+          "required": [
+            "total_duration_sec",
+            "segment_full"
+          ],
+          "properties": {
+            "total_duration_sec": {
+              "type": "integer",
+              "minimum": 5,
+              "maximum": 15
+            },
+            "segment_full": {
+              "$ref": "#/$defs/scriptSegment"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "script_20s"
+          ]
+        },
+        {
+          "required": [
+            "script_video"
+          ]
+        }
+      ]
     },
     "imageGenerationItem": {
       "type": "object",
@@ -261,48 +482,140 @@
         "reference_policy"
       ],
       "properties": {
-        "asset_id": { "type": "string", "minLength": 1 },
-        "segment_id": { "enum": ["0-10s", "10-20s"] },
-        "type": { "const": "storyboard_board" },
-        "aspect_ratio": { "enum": ["9:16", "16:9", "1:1", "4:5", "3:4", "2:3"] },
+        "asset_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "segment_id": {
+          "enum": [
+            "0-10s",
+            "10-20s",
+            "full"
+          ]
+        },
+        "type": {
+          "const": "storyboard_board"
+        },
+        "aspect_ratio": {
+          "enum": [
+            "9:16",
+            "16:9",
+            "1:1",
+            "4:5",
+            "3:4",
+            "2:3"
+          ]
+        },
         "storyboard_sheet": {
           "type": "object",
-          "required": ["layout", "aspect_ratio", "default_size"],
+          "required": [
+            "layout",
+            "aspect_ratio",
+            "default_size"
+          ],
           "properties": {
-            "layout": { "const": "storyboard_sheet" },
-            "aspect_ratio": { "type": "string", "minLength": 1 },
-            "default_size": { "type": "string", "minLength": 1 }
+            "layout": {
+              "const": "storyboard_sheet"
+            },
+            "aspect_ratio": {
+              "type": "string",
+              "minLength": 1
+            },
+            "default_size": {
+              "type": "string",
+              "minLength": 1
+            }
           },
           "additionalProperties": false
         },
-        "prompt": { "type": "string", "minLength": 1 },
-        "negative_prompt": { "type": "string", "minLength": 1 },
-        "reference_policy": { "type": "string", "minLength": 1 },
-        "status": { "enum": ["waiting", "running", "done", "failed"] },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "negative_prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reference_policy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "waiting",
+            "running",
+            "done",
+            "failed"
+          ]
+        },
         "error": {
           "type": "object",
-          "required": ["code", "message"],
+          "required": [
+            "code",
+            "message"
+          ],
           "properties": {
-            "code": { "type": "string", "minLength": 1 },
-            "message": { "type": "string", "minLength": 1 },
-            "retryable": { "type": "boolean" }
+            "code": {
+              "type": "string",
+              "minLength": 1
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1
+            },
+            "retryable": {
+              "type": "boolean"
+            }
           },
           "additionalProperties": false
         },
-        "provider_diagnostics": { "$ref": "#/$defs/providerDiagnostic" },
-        "script_copy": { "type": "string" },
+        "provider_diagnostics": {
+          "$ref": "#/$defs/providerDiagnostic"
+        },
+        "script_copy": {
+          "type": "string"
+        },
         "generated_image": {
           "type": "object",
-          "required": ["provider", "model", "url", "size"],
+          "required": [
+            "provider",
+            "model",
+            "url",
+            "size"
+          ],
           "properties": {
-            "provider": { "type": "string", "minLength": 1 },
-            "model": { "type": "string", "minLength": 1 },
-            "url": { "type": "string", "minLength": 1 },
-            "size": { "type": "string", "minLength": 1 },
-            "referenceMode": { "type": "string", "minLength": 1 },
-            "storedName": { "type": "string", "minLength": 1 },
-            "mimeType": { "type": "string", "minLength": 1 },
-            "sourceUrl": { "type": "string", "minLength": 1 }
+            "provider": {
+              "type": "string",
+              "minLength": 1
+            },
+            "model": {
+              "type": "string",
+              "minLength": 1
+            },
+            "url": {
+              "type": "string",
+              "minLength": 1
+            },
+            "size": {
+              "type": "string",
+              "minLength": 1
+            },
+            "referenceMode": {
+              "type": "string",
+              "minLength": 1
+            },
+            "storedName": {
+              "type": "string",
+              "minLength": 1
+            },
+            "mimeType": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceUrl": {
+              "type": "string",
+              "minLength": 1
+            }
           },
           "additionalProperties": false
         }
@@ -317,44 +630,108 @@
         "qc_checklist"
       ],
       "properties": {
-        "mode": { "type": "string" },
-        "storyboard_plan": { "type": "object" },
+        "mode": {
+          "type": "string"
+        },
+        "storyboard_plan": {
+          "type": "object"
+        },
         "image_generation": {
           "type": "array",
-          "minItems": 2,
+          "minItems": 1,
           "maxItems": 2,
-          "items": { "$ref": "#/$defs/imageGenerationItem" }
+          "items": {
+            "$ref": "#/$defs/imageGenerationItem"
+          }
         },
         "qc_checklist": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 }
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },
     "generatedVideo": {
       "type": "object",
-      "required": ["provider", "model", "url", "mimeType", "size", "storedName"],
+      "required": [
+        "provider",
+        "model",
+        "url",
+        "mimeType",
+        "size",
+        "storedName"
+      ],
       "properties": {
-        "provider": { "type": "string", "minLength": 1 },
-        "model": { "type": "string", "minLength": 1 },
-        "url": { "type": "string", "minLength": 1 },
-        "storedName": { "type": "string", "minLength": 1 },
-        "mimeType": { "type": "string", "minLength": 1 },
-        "size": { "type": "integer", "minimum": 1 },
-        "sourceUrl": { "type": "string", "minLength": 1 },
-        "generatedAt": { "type": "string", "format": "date-time" },
-        "durationSec": { "type": "integer", "minimum": 1 },
-        "aspectRatio": { "enum": ["9:16", "16:9", "1:1", "4:5", "3:4", "2:3"] }
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "storedName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mimeType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sourceUrl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "durationSec": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "aspectRatio": {
+          "enum": [
+            "9:16",
+            "16:9",
+            "1:1",
+            "4:5",
+            "3:4",
+            "2:3"
+          ]
+        }
       },
       "additionalProperties": false
     },
     "videoProviderJob": {
       "type": "object",
-      "required": ["id", "submittedAt"],
+      "required": [
+        "id",
+        "submittedAt"
+      ],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "statusUrl": { "type": "string", "minLength": 1 },
-        "submittedAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "statusUrl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "submittedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
       },
       "additionalProperties": false
     },
@@ -378,27 +755,98 @@
         "keyPreview"
       ],
       "properties": {
-        "segmentId": { "enum": ["0-10s", "10-20s"] },
-        "assetId": { "type": "string", "minLength": 1 },
-        "attemptId": { "type": "string", "minLength": 1 },
-        "startedAt": { "type": "string", "format": "date-time" },
-        "elapsedMs": { "type": "integer", "minimum": 0 },
-        "model": { "type": "string", "minLength": 1 },
-        "aspectRatio": { "enum": ["9:16", "16:9", "1:1", "4:5", "3:4", "2:3"] },
-        "durationSec": { "type": "integer", "minimum": 1 },
-        "providerHost": { "type": "string" },
-        "providerPath": { "type": "string" },
-        "storyboardImageCount": { "type": "integer", "minimum": 0 },
-        "referenceImageCount": { "type": "integer", "minimum": 0 },
-        "inputImageCount": { "type": "integer", "minimum": 0 },
-        "referenceImageTotalBytes": { "type": "integer", "minimum": 0 },
-        "storyboardImageBytes": { "type": "integer", "minimum": 0 },
-        "keyPreview": { "type": "string" },
-        "providerStatus": { "type": "integer" },
-        "providerRequestId": { "type": "string", "minLength": 1 },
-        "outputSizeBytes": { "type": "integer", "minimum": 0 },
-        "errorCode": { "type": "string", "minLength": 1 },
-        "outcome": { "enum": ["submitted", "success", "failed"] }
+        "segmentId": {
+          "enum": [
+            "0-10s",
+            "10-20s",
+            "full"
+          ]
+        },
+        "assetId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attemptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "elapsedMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "aspectRatio": {
+          "enum": [
+            "9:16",
+            "16:9",
+            "1:1",
+            "4:5",
+            "3:4",
+            "2:3"
+          ]
+        },
+        "durationSec": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "providerHost": {
+          "type": "string"
+        },
+        "providerPath": {
+          "type": "string"
+        },
+        "storyboardImageCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "referenceImageCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "inputImageCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "referenceImageTotalBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "storyboardImageBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "keyPreview": {
+          "type": "string"
+        },
+        "providerStatus": {
+          "type": "integer"
+        },
+        "providerRequestId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outputSizeBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "errorCode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outcome": {
+          "enum": [
+            "submitted",
+            "success",
+            "failed"
+          ]
+        }
       },
       "additionalProperties": false
     },
@@ -416,28 +864,90 @@
         "script_copy"
       ],
       "properties": {
-        "asset_id": { "type": "string", "minLength": 1 },
-        "segment_id": { "enum": ["0-10s", "10-20s"] },
-        "type": { "const": "video_segment" },
-        "aspect_ratio": { "enum": ["9:16", "16:9", "1:1", "4:5", "3:4", "2:3"] },
-        "duration_sec": { "const": 10 },
-        "storyboard_asset_id": { "type": "string", "minLength": 1 },
-        "storyboard_image_url": { "type": "string", "minLength": 1 },
-        "status": {
-          "enum": ["waiting", "submitting", "queued", "generating", "downloading", "done", "failed"]
+        "asset_id": {
+          "type": "string",
+          "minLength": 1
         },
-        "script_copy": { "type": "string" },
-        "provider_job": { "$ref": "#/$defs/videoProviderJob" },
-        "provider_diagnostics": { "$ref": "#/$defs/videoProviderDiagnostic" },
-        "generated_video": { "$ref": "#/$defs/generatedVideo" },
+        "segment_id": {
+          "enum": [
+            "0-10s",
+            "10-20s",
+            "full"
+          ]
+        },
+        "type": {
+          "const": "video_segment"
+        },
+        "aspect_ratio": {
+          "enum": [
+            "9:16",
+            "16:9",
+            "1:1",
+            "4:5",
+            "3:4",
+            "2:3"
+          ]
+        },
+        "duration_sec": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 20
+        },
+        "storyboard_asset_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "storyboard_image_url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "waiting",
+            "submitting",
+            "queued",
+            "generating",
+            "downloading",
+            "done",
+            "failed"
+          ]
+        },
+        "script_copy": {
+          "type": "string"
+        },
+        "provider_job": {
+          "$ref": "#/$defs/videoProviderJob"
+        },
+        "provider_diagnostics": {
+          "$ref": "#/$defs/videoProviderDiagnostic"
+        },
+        "generated_video": {
+          "$ref": "#/$defs/generatedVideo"
+        },
         "error": {
           "type": "object",
-          "required": ["code", "message", "retryable", "failedAt"],
+          "required": [
+            "code",
+            "message",
+            "retryable",
+            "failedAt"
+          ],
           "properties": {
-            "code": { "type": "string", "minLength": 1 },
-            "message": { "type": "string", "minLength": 1 },
-            "retryable": { "type": "boolean" },
-            "failedAt": { "type": "string", "format": "date-time" }
+            "code": {
+              "type": "string",
+              "minLength": 1
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "failedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
           },
           "additionalProperties": false
         }
@@ -446,28 +956,78 @@
     },
     "finalVideo": {
       "type": "object",
-      "required": ["status"],
+      "required": [
+        "status"
+      ],
       "properties": {
-        "status": { "enum": ["waiting", "merging", "done", "unavailable", "failed"] },
-        "reason": { "type": "string", "minLength": 1 },
-        "generated_video": { "$ref": "#/$defs/generatedVideo" }
+        "status": {
+          "enum": [
+            "waiting",
+            "merging",
+            "done",
+            "unavailable",
+            "failed"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generated_video": {
+          "$ref": "#/$defs/generatedVideo"
+        }
       },
       "additionalProperties": false
     },
     "videoPackage": {
       "type": "object",
-      "required": ["requestedAt", "aspect_ratio", "mode", "video_generation", "final_video"],
+      "required": [
+        "requestedAt",
+        "aspect_ratio",
+        "mode",
+        "video_generation",
+        "final_video"
+      ],
       "properties": {
-        "requestedAt": { "type": "string", "format": "date-time" },
-        "aspect_ratio": { "enum": ["9:16", "16:9", "1:1", "4:5", "3:4", "2:3"] },
-        "mode": { "enum": ["waiting", "provider", "partial", "done"] },
+        "requestedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "aspect_ratio": {
+          "enum": [
+            "9:16",
+            "16:9",
+            "1:1",
+            "4:5",
+            "3:4",
+            "2:3"
+          ]
+        },
+        "mode": {
+          "enum": [
+            "waiting",
+            "provider",
+            "partial",
+            "done"
+          ]
+        },
         "video_generation": {
           "type": "array",
-          "minItems": 2,
+          "minItems": 1,
           "maxItems": 2,
-          "items": { "$ref": "#/$defs/videoGenerationItem" }
+          "items": {
+            "$ref": "#/$defs/videoGenerationItem"
+          }
         },
-        "final_video": { "$ref": "#/$defs/finalVideo" }
+        "final_video": {
+          "$ref": "#/$defs/finalVideo"
+        },
+        "workflow_mode": {
+          "enum": [
+            "single_video",
+            "legacy_multi_segment"
+          ]
+        }
       },
       "additionalProperties": false
     },
@@ -486,37 +1046,106 @@
         "promptCharCount"
       ],
       "properties": {
-        "projectId": { "type": "string", "minLength": 1 },
-        "segmentId": { "enum": ["0-10s", "10-20s"] },
-        "assetId": { "type": "string", "minLength": 1 },
-        "attemptId": { "type": "string", "minLength": 1 },
-        "startedAt": { "type": "string", "format": "date-time" },
-        "elapsedMs": { "type": "integer", "minimum": 0 },
-        "model": { "type": "string", "minLength": 1 },
-        "requestedSize": { "type": "string", "minLength": 1 },
-        "referenceImageCount": { "type": "integer", "minimum": 0 },
-        "referenceImageTotalBytes": { "type": "integer", "minimum": 0 },
-        "promptCharCount": { "type": "integer", "minimum": 0 },
-        "drawChannelId": { "type": "string", "minLength": 1 },
-        "drawChannelTitle": { "type": "string", "minLength": 1 },
-        "keyPreview": { "type": "string" },
-        "providerHost": { "type": "string" },
-        "providerPath": { "type": "string" },
-        "responseFormat": { "type": "string", "minLength": 1 },
-        "providerStatus": { "type": "integer" },
-        "providerRequestId": { "type": "string", "minLength": 1 },
-        "outcome": { "enum": ["success", "failed"] },
-        "errorCode": { "type": "string", "minLength": 1 }
+        "projectId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "segmentId": {
+          "enum": [
+            "0-10s",
+            "10-20s",
+            "full"
+          ]
+        },
+        "assetId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attemptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "elapsedMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "requestedSize": {
+          "type": "string",
+          "minLength": 1
+        },
+        "referenceImageCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "referenceImageTotalBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "promptCharCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "drawChannelId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "drawChannelTitle": {
+          "type": "string",
+          "minLength": 1
+        },
+        "keyPreview": {
+          "type": "string"
+        },
+        "providerHost": {
+          "type": "string"
+        },
+        "providerPath": {
+          "type": "string"
+        },
+        "responseFormat": {
+          "type": "string",
+          "minLength": 1
+        },
+        "providerStatus": {
+          "type": "integer"
+        },
+        "providerRequestId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outcome": {
+          "enum": [
+            "success",
+            "failed"
+          ]
+        },
+        "errorCode": {
+          "type": "string",
+          "minLength": 1
+        }
       },
       "additionalProperties": false
     },
     "providerDiagnosticsSummary": {
       "type": "object",
-      "required": ["attempts", "evidence"],
+      "required": [
+        "attempts",
+        "evidence"
+      ],
       "properties": {
         "attempts": {
           "type": "array",
-          "items": { "$ref": "#/$defs/providerDiagnostic" }
+          "items": {
+            "$ref": "#/$defs/providerDiagnostic"
+          }
         },
         "evidence": {
           "type": "object",
@@ -534,29 +1163,55 @@
             "conclusion"
           ],
           "properties": {
-            "concurrentAttemptCount": { "type": "integer", "minimum": 0 },
-            "sameModel": { "type": "boolean" },
-            "sameRequestedSize": { "type": "boolean" },
-            "sameReferencePayload": { "type": "boolean" },
-            "sameKeyPreview": { "type": "boolean" },
-            "sameEndpoint": { "type": "boolean" },
+            "concurrentAttemptCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sameModel": {
+              "type": "boolean"
+            },
+            "sameRequestedSize": {
+              "type": "boolean"
+            },
+            "sameReferencePayload": {
+              "type": "boolean"
+            },
+            "sameKeyPreview": {
+              "type": "boolean"
+            },
+            "sameEndpoint": {
+              "type": "boolean"
+            },
             "drawChannelIds": {
               "type": "array",
-              "items": { "type": "string", "minLength": 1 }
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
             },
             "keyPreviews": {
               "type": "array",
-              "items": { "type": "string" }
+              "items": {
+                "type": "string"
+              }
             },
             "promptCharCounts": {
               "type": "array",
-              "items": { "type": "integer", "minimum": 0 }
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
             },
             "providerStatuses": {
               "type": "array",
-              "items": { "type": "integer" }
+              "items": {
+                "type": "integer"
+              }
             },
-            "conclusion": { "type": "string", "minLength": 1 }
+            "conclusion": {
+              "type": "string",
+              "minLength": 1
+            }
           },
           "additionalProperties": false
         }

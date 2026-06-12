@@ -111,6 +111,7 @@ export async function handleApi(request, response, url) {
       name: cleanString(body.name, "未命名鞋款"),
       targetCountry: cleanString(body.targetCountry, "Thailand"),
       audience: cleanString(body.audience, "日常运动与通勤人群"),
+      workflowMode: "single_video",
       status: "assets",
       createdAt: now,
       updatedAt: now,
@@ -299,7 +300,7 @@ export async function handleApi(request, response, url) {
     }
   }
 
-  const videoRetryMatch = action?.match(/^videos\/(0-10s|10-20s)\/retry$/);
+  const videoRetryMatch = action?.match(/^videos\/(0-10s|10-20s|full)\/retry$/);
   if (request.method === "POST" && videoRetryMatch) {
     try {
       await retryProjectVideoSegment(project, videoRetryMatch[1]);
@@ -321,7 +322,7 @@ export async function handleApi(request, response, url) {
     }
   }
 
-  const videoDownloadMatch = action?.match(/^videos\/(0-10s|10-20s)\/download$/);
+  const videoDownloadMatch = action?.match(/^videos\/(0-10s|10-20s|full)\/download$/);
   if (request.method === "GET" && videoDownloadMatch) {
     const item = project.videoPackage?.video_generation?.find(
       (entry) => entry.segment_id === videoDownloadMatch[1]

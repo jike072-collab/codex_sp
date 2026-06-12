@@ -19,7 +19,7 @@ const providerEnvKeys = [
   "IMAGE_SECONDARY_API_KEY",
   "IMAGE_SECONDARY_API_URL",
   "IMAGE_SECONDARY_MODEL",
-  "VIDEO_API_KEY",
+  "VIDEO_MODEL_API_KEY",
   "VIDEO_API_URL",
   "VIDEO_MODEL"
 ];
@@ -60,7 +60,7 @@ test("provider model discovery returns real models, caches them, and refreshes o
     IMAGE_SECONDARY_API_KEY: "image-key-b",
     IMAGE_SECONDARY_API_URL: "https://image-b.example.test/draw/v1/images/generations",
     IMAGE_SECONDARY_MODEL: "gpt-image-2",
-    VIDEO_API_KEY: "video-key",
+    VIDEO_MODEL_API_KEY: "video-key",
     VIDEO_API_URL: "https://video.example.test/v1/videos/generations",
     VIDEO_MODEL: "seedance2.0 720p-fast"
   }, async () => {
@@ -160,7 +160,7 @@ test("provider model discovery degrades safely for unsupported and error respons
     IMAGE_SECONDARY_API_KEY: "image-key-b",
     IMAGE_SECONDARY_API_URL: "https://image-b.example.test/draw/v1/images/generations",
     IMAGE_SECONDARY_MODEL: "gpt-image-2",
-    VIDEO_API_KEY: "video-key",
+    VIDEO_MODEL_API_KEY: "video-key",
     VIDEO_API_URL: "https://video.example.test/v1/videos/generations",
     VIDEO_MODEL: "seedance2.0 720p-fast"
   }, async () => {
@@ -217,7 +217,7 @@ test("provider model discovery cache is invalidated when API keys change", async
     IMAGE_SECONDARY_API_KEY: "image-key-b",
     IMAGE_SECONDARY_API_URL: "https://image-b.example.test/draw/v1/images/generations",
     IMAGE_SECONDARY_MODEL: "gpt-image-2",
-    VIDEO_API_KEY: "video-key-a",
+    VIDEO_MODEL_API_KEY: "video-key-a",
     VIDEO_API_URL: "https://video.example.test/v1/videos/generations",
     VIDEO_MODEL: "seedance2.0 720p-fast"
   }, async () => {
@@ -266,7 +266,7 @@ test("provider model discovery cache is invalidated when API keys change", async
     process.env.TEXT_MODEL_API_KEY = "text-key-z";
     process.env.IMAGE_MODEL_API_KEY = "image-key-z";
     process.env.IMAGE_SECONDARY_API_KEY = "image-key-y";
-    process.env.VIDEO_API_KEY = "video-key-z";
+    process.env.VIDEO_MODEL_API_KEY = "video-key-z";
 
     const second = await discoverAdminProviderModels({ fetchImpl });
     assert.ok(second.providers.vision.models.some((model) => model.id === "gemini-beta"));

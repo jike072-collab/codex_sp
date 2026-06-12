@@ -1,7 +1,11 @@
 import { DomainError } from "./domain-error.mjs";
 import { getExportReadiness } from "./export-package.mjs";
+import {
+  isSingleVideoMode,
+  selectedVideoDurationSeconds
+} from "./workflow-mode.mjs";
 
-const VIDEO_SEGMENTS = Object.freeze(["0-10s", "10-20s"]);
+const LEGACY_VIDEO_SEGMENTS = Object.freeze(["0-10s", "10-20s"]);
 const VIDEO_STATUSES = new Set([
   "waiting",
   "submitting",
@@ -13,6 +17,11 @@ const VIDEO_STATUSES = new Set([
 ]);
 
 function scriptBySegmentId(project) {
+  if (isSingleVideoMode(project)) {
+    return {
+      full: project.planningPackage?.script_video?.segment_full
+    };
+  }
   return {
     "0-10s": project.planningPackage?.script_20s?.segment_a_0_10s,
     "10-20s": project.planningPackage?.script_20s?.segment_b_10_20s
@@ -27,28 +36,41 @@ function storyboardBySegmentId(project) {
   );
 }
 
+function videoSegmentsForProject(project) {
+  if (isSingleVideoMode(project)) {
+    return [{
+      segmentId: "full",
+      durationSec: selectedVideoDurationSeconds(project)
+    }];
+  }
+  return LEGACY_VIDEO_SEGMENTS.map((segmentId) => ({
+    segmentId,
+    durationSec: 10
+  }));
+}
+
 function emptyFinalVideo() {
   return {
     status: "waiting"
   };
 }
 
-function normalizeVideoItem(project, segmentId, existing = {}) {
-  const storyboard = storyboardBySegmentId(project)[segmentId];
-  const script = scriptBySegmentId(project)[segmentId];
+function normalizeVideoItem(project, segment, existing = {}) {
+  const storyboard = storyboardBySegmentId(project)[segment.segmentId];
+  const script = scriptBySegmentId(project)[segment.segmentId];
   if (!storyboard?.generated_image?.url || !script) {
-    throw new DomainError("请先生成两张当前尺寸故事板，再生成视频。", {
+    throw new DomainError("请先生成当前尺寸故事板，再生成视频。", {
       code: "VIDEO_NOT_READY"
     });
   }
 
   const status = VIDEO_STATUSES.has(existing.status) ? existing.status : "waiting";
   return {
-    asset_id: `${segmentId}_video_segment`,
-    segment_id: segmentId,
+    asset_id: `${segment.segmentId}_video_segment`,
+    segment_id: segment.segmentId,
     type: "video_segment",
     aspect_ratio: project.marketBrief?.outputAspectRatio || "9:16",
-    duration_sec: 10,
+    duration_sec: segment.durationSec,
     storyboard_asset_id: storyboard.asset_id,
     storyboard_image_url: storyboard.generated_image.url,
     status,
@@ -75,7 +97,7 @@ function packageMode(items) {
 export function ensureVideoPackage(project, requestedAt = new Date().toISOString()) {
   const readiness = getExportReadiness(project);
   if (!readiness.ready) {
-    throw new DomainError("请先生成两张当前尺寸故事板，再生成视频。", {
+    throw new DomainError("请先生成当前尺寸故事板，再生成视频。", {
       code: "VIDEO_NOT_READY"
     });
   }
@@ -83,8 +105,8 @@ export function ensureVideoPackage(project, requestedAt = new Date().toISOString
   const existingItems = Object.fromEntries(
     (project.videoPackage?.video_generation || []).map((item) => [item.segment_id, item])
   );
-  const video_generation = VIDEO_SEGMENTS.map((segmentId) => (
-    normalizeVideoItem(project, segmentId, existingItems[segmentId])
+  const video_generation = videoSegmentsForProject(project).map((segment) => (
+    normalizeVideoItem(project, segment, existingItems[segment.segmentId])
   ));
 
   const existingFinalVideo = project.videoPackage?.final_video
@@ -95,10 +117,13 @@ export function ensureVideoPackage(project, requestedAt = new Date().toISOString
     requestedAt: project.videoPackage?.requestedAt || requestedAt,
     aspect_ratio: project.marketBrief?.outputAspectRatio || "9:16",
     mode: packageMode(video_generation),
+    workflow_mode: isSingleVideoMode(project) ? "single_video" : "legacy_multi_segment",
     video_generation,
-    final_video: existingFinalVideo
+    final_video: isSingleVideoMode(project)
+      ? { status: "unavailable", reason: "single_video_mode" }
+      : existingFinalVideo
   };
-  if (project.videoPackage.mode !== "done") {
+  if (!isSingleVideoMode(project) && project.videoPackage.mode !== "done") {
     project.videoPackage.final_video = emptyFinalVideo();
   }
   return project.videoPackage;
@@ -140,6 +165,14 @@ export function resetVideoItemForRetry(item) {
 export function syncVideoPackageMode(project) {
   if (!project.videoPackage) return null;
   project.videoPackage.mode = packageMode(project.videoPackage.video_generation || []);
+  project.videoPackage.workflow_mode = isSingleVideoMode(project) ? "single_video" : "legacy_multi_segment";
+  if (isSingleVideoMode(project)) {
+    project.videoPackage.final_video = {
+      status: "unavailable",
+      reason: "single_video_mode"
+    };
+    return project.videoPackage;
+  }
   if (project.videoPackage.mode !== "done" && project.videoPackage.final_video?.status === "done") {
     project.videoPackage.final_video = emptyFinalVideo();
   }

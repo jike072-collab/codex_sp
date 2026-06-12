@@ -14,6 +14,7 @@ import {
   syncVideoPackageMode,
   allSegmentVideosDone
 } from "../workflow-domain/video-package.mjs";
+import { isSingleVideoMode } from "../workflow-domain/workflow-mode.mjs";
 import {
   hasUsableApiKey,
   maskedApiKeyPreview,
@@ -23,12 +24,33 @@ import {
 
 const DEFAULT_VIDEO_API_URL = "https://clmm-mall.top/v1/videos/generations";
 const DEFAULT_VIDEO_MODEL = "seedance2.0 720p-fast";
+const VIDEO_STATES = new Set([
+  "waiting",
+  "submitting",
+  "queued",
+  "generating",
+  "downloading",
+  "done",
+  "failed"
+]);
 
 function scriptBySegmentId(project) {
+  if (isSingleVideoMode(project)) {
+    return { full: project.planningPackage?.script_video?.segment_full };
+  }
   return {
     "0-10s": project.planningPackage?.script_20s?.segment_a_0_10s,
     "10-20s": project.planningPackage?.script_20s?.segment_b_10_20s
   };
+}
+
+function safeEndpointMeta(apiUrl) {
+  try {
+    const parsed = new URL(apiUrl);
+    return { providerHost: parsed.host, providerPath: parsed.pathname };
+  } catch {
+    return { providerHost: "", providerPath: "" };
+  }
 }
 
 async function readReferenceImageDataUrls(
@@ -53,7 +75,7 @@ async function readStoryboardImageDataUrl(
   const storyboard = (project.imagePackage?.image_generation || [])
     .find((entry) => entry.segment_id === item.segment_id);
   if (!storyboard?.generated_image?.storedName) {
-    throw new ProviderError("当前分段故事板图片还没有本地文件，无法生成视频。", {
+    throw new ProviderError("当前分段故事板还没有本地文件，无法生成视频。", {
       code: "VIDEO_STORYBOARD_NOT_READY"
     });
   }
@@ -66,27 +88,12 @@ async function readStoryboardImageDataUrl(
   };
 }
 
-function safeEndpointMeta(apiUrl) {
-  try {
-    const parsed = new URL(apiUrl);
-    return {
-      providerHost: parsed.host,
-      providerPath: parsed.pathname
-    };
-  } catch {
-    return {
-      providerHost: "",
-      providerPath: ""
-    };
-  }
-}
-
 function normalizeVideoStatus(status) {
   const normalized = String(status || "").trim().toLowerCase();
-  if (["submitting"].includes(normalized)) return "submitting";
+  if (normalized === "submitting") return "submitting";
   if (["queued", "submitted", "pending", "waiting"].includes(normalized)) return "queued";
   if (["generating", "processing", "running", "in_progress"].includes(normalized)) return "generating";
-  if (["downloading"].includes(normalized)) return "downloading";
+  if (normalized === "downloading") return "downloading";
   if (["done", "completed", "succeeded", "success"].includes(normalized)) return "done";
   if (["failed", "error", "cancelled", "canceled", "expired"].includes(normalized)) return "failed";
   return "";
@@ -96,11 +103,9 @@ function resultFromPayload(payload) {
   const first = payload?.data?.[0] || payload?.video || payload?.result || payload || {};
   const sourceUrl = first.url || first.video_url || first.output_url || first.download_url
     || payload?.url || payload?.video_url || payload?.output_url || payload?.download_url;
-  const jobId = first.id || first.video_id || payload?.id || payload?.video_id || "";
-  const providerStatus = normalizeVideoStatus(first.status || payload?.status);
   return {
-    jobId,
-    providerStatus,
+    jobId: first.id || first.video_id || payload?.id || payload?.video_id || "",
+    providerStatus: normalizeVideoStatus(first.status || payload?.status),
     statusUrl: first.status_url || payload?.status_url || "",
     sourceUrl: sourceUrl ? String(sourceUrl) : "",
     mimeType: first.mime_type || payload?.mime_type || "",
@@ -125,25 +130,25 @@ function deriveStatusUrl(apiUrl, jobId) {
 
 function videoPrompt(project, item, segment) {
   const lines = segment.shots.map((shot, index) => (
-    `${index + 1}. ${shot.start_sec}-${shot.end_sec}s | 画面：${shot.visual} | 动作：${shot.action} | 镜头：${shot.camera} | 卖点：${shot.selling_point} | 口播/字幕：${shot.localized_caption_or_vo} | 音效：${shot.sound} | 转场：${shot.transition}`
+    `${index + 1}. ${shot.start_sec}-${shot.end_sec}s | 画面:${shot.visual} | 动作:${shot.action} | 镜头:${shot.camera} | 卖点:${shot.selling_point} | 口播/字幕:${shot.localized_caption_or_vo} | 音效:${shot.sound} | 转场:${shot.transition}`
   )).join("\n");
   return [
     `Create one ${item.aspect_ratio} ecommerce shoe video segment for ONLY ${item.segment_id}.`,
     "Use the attached storyboard sheet as the primary visual plan.",
     "Use the uploaded shoe product photos as identity references for the exact same shoe.",
-    `Target aspect ratio: ${item.aspect_ratio}. Duration: 10 seconds. Resolution: 720p.`,
+    `Target aspect ratio: ${item.aspect_ratio}. Duration: ${item.duration_sec} seconds. Resolution: 720p.`,
     "Do not include scenes from the other segment. Keep the shoe silhouette, colors, outsole, midsole, and logo placement accurate.",
     `Storyboard script copy:\n${item.script_copy}`,
     `Detailed shot plan:\n${lines}`
   ].join("\n");
 }
 
-function buildSegmentVideoRequest(project, item, segment, storyboardImage, referenceImages, env) {
+function buildVideoRequest(project, item, segment, storyboardImage, referenceImages, model) {
   return {
-    model: env.VIDEO_MODEL || DEFAULT_VIDEO_MODEL,
+    model: model || DEFAULT_VIDEO_MODEL,
     prompt: videoPrompt(project, item, segment),
     image: [storyboardImage.dataUrl, ...referenceImages.map((image) => image.dataUrl)],
-    duration: 10,
+    duration: item.duration_sec,
     resolution: "720p",
     aspect_ratio: item.aspect_ratio,
     response_format: "url"
@@ -159,7 +164,7 @@ function createDiagnostics(item, env, storyboardImage, referenceImages, startedA
     startedAt,
     model: env.VIDEO_MODEL || DEFAULT_VIDEO_MODEL,
     aspectRatio: item.aspect_ratio,
-    durationSec: 10,
+    durationSec: item.duration_sec,
     providerHost: endpoint.providerHost,
     providerPath: endpoint.providerPath,
     storyboardImageCount: 1,
@@ -167,7 +172,7 @@ function createDiagnostics(item, env, storyboardImage, referenceImages, startedA
     inputImageCount: 1 + referenceImages.length,
     referenceImageTotalBytes: referenceImages.reduce((total, image) => total + image.byteLength, 0),
     storyboardImageBytes: storyboardImage.byteLength,
-    keyPreview: maskedApiKeyPreview(env.VIDEO_API_KEY)
+    keyPreview: maskedApiKeyPreview(env.VIDEO_MODEL_API_KEY)
   };
 }
 
@@ -181,9 +186,7 @@ function finishDiagnostics(diagnostics, startedMs, outcome, extra = {}) {
 }
 
 function authHeaders(apiKey) {
-  return {
-    Authorization: `Bearer ${apiKey}`
-  };
+  return { Authorization: `Bearer ${apiKey}` };
 }
 
 function responseRequestId(response) {
@@ -255,7 +258,7 @@ async function fetchVideoStatus(statusUrl, apiKey, timeoutMs, fetchImpl) {
   };
 }
 
-function detectVideoMimeType(bytes, declaredType = "", sourceUrl = "") {
+function detectVideoMimeType(declaredType = "", sourceUrl = "") {
   const normalized = String(declaredType).split(";")[0].trim().toLowerCase();
   if (["video/mp4", "video/webm", "video/quicktime"].includes(normalized)) return normalized;
   if (/\.webm(?:\?|$)/i.test(sourceUrl)) return "video/webm";
@@ -286,7 +289,7 @@ async function storeVideoResult(projectId, result, { downloadFetchImpl, storeGen
     mimeType = response.headers.get("content-type") || mimeType;
     bytes = Buffer.from(await response.arrayBuffer());
   }
-  const detectedMimeType = detectVideoMimeType(bytes, mimeType, result.sourceUrl);
+  const detectedMimeType = detectVideoMimeType(mimeType, result.sourceUrl);
   return storeGeneratedVideoImpl(projectId, bytes, detectedMimeType, prefix);
 }
 
@@ -326,6 +329,7 @@ async function maybeMergeFinalVideo(
     storeGeneratedVideoImpl = storeGeneratedProjectVideo
   } = {}
 ) {
+  if (isSingleVideoMode(project)) return project;
   if (!allSegmentVideosDone(project)) {
     syncVideoPackageMode(project);
     return project;
@@ -397,10 +401,17 @@ async function submitVideoItem(
   delete item.error;
 
   try {
-    const requestBody = buildSegmentVideoRequest(project, item, segment, storyboardImage, referenceImages, env);
+    const requestBody = buildVideoRequest(
+      project,
+      item,
+      segment,
+      storyboardImage,
+      referenceImages,
+      env.VIDEO_MODEL || DEFAULT_VIDEO_MODEL
+    );
     const { payload, providerRequestId } = await postVideoGeneration(
       env.VIDEO_API_URL || DEFAULT_VIDEO_API_URL,
-      env.VIDEO_API_KEY,
+      env.VIDEO_MODEL_API_KEY,
       requestBody,
       positiveInteger(env.VIDEO_TIMEOUT_MS, 180000),
       fetchImpl
@@ -419,7 +430,7 @@ async function submitVideoItem(
         provider: "clmm-mall.top",
         model: env.VIDEO_MODEL || DEFAULT_VIDEO_MODEL,
         generatedAt: new Date().toISOString(),
-        durationSec: 10,
+        durationSec: item.duration_sec,
         aspectRatio: item.aspect_ratio,
         sourceUrl: result.sourceUrl,
         ...stored
@@ -477,7 +488,7 @@ async function refreshVideoItem(
   try {
     const { payload, providerRequestId } = await fetchVideoStatus(
       item.provider_job.statusUrl || deriveStatusUrl(env.VIDEO_API_URL || DEFAULT_VIDEO_API_URL, item.provider_job.id),
-      env.VIDEO_API_KEY,
+      env.VIDEO_MODEL_API_KEY,
       positiveInteger(env.VIDEO_STATUS_TIMEOUT_MS, 60000),
       fetchImpl
     );
@@ -494,7 +505,7 @@ async function refreshVideoItem(
         provider: "clmm-mall.top",
         model: env.VIDEO_MODEL || DEFAULT_VIDEO_MODEL,
         generatedAt: new Date().toISOString(),
-        durationSec: 10,
+        durationSec: item.duration_sec,
         aspectRatio: item.aspect_ratio,
         sourceUrl: result.sourceUrl,
         ...stored
@@ -536,12 +547,12 @@ function videoEnv(env) {
   return {
     VIDEO_API_URL: env.VIDEO_API_URL || DEFAULT_VIDEO_API_URL,
     VIDEO_MODEL: env.VIDEO_MODEL || DEFAULT_VIDEO_MODEL,
-    VIDEO_API_KEY: env.VIDEO_API_KEY || ""
+    VIDEO_MODEL_API_KEY: env.VIDEO_MODEL_API_KEY || ""
   };
 }
 
 function assertVideoProviderConfigured(env) {
-  if (!hasUsableApiKey(env.VIDEO_API_KEY)) {
+  if (!hasUsableApiKey(env.VIDEO_MODEL_API_KEY)) {
     throw new ProviderError("请先在管理后台配置视频生成 API Key。", {
       code: "VIDEO_PROVIDER_NOT_CONFIGURED"
     });
@@ -569,7 +580,9 @@ export async function generateProjectVideos(
   })));
 
   syncVideoPackageMode(project);
-  await maybeMergeFinalVideo(project, dependencies);
+  if (!isSingleVideoMode(project)) {
+    await maybeMergeFinalVideo(project, dependencies);
+  }
   return project;
 }
 
@@ -588,7 +601,9 @@ export async function refreshProjectVideoStatus(project, dependencies = {}) {
   })));
 
   syncVideoPackageMode(project);
-  await maybeMergeFinalVideo(project, dependencies);
+  if (!isSingleVideoMode(project)) {
+    await maybeMergeFinalVideo(project, dependencies);
+  }
   return project;
 }
 
@@ -599,7 +614,9 @@ export async function retryProjectVideoSegment(project, segmentId, dependencies 
 
   const item = videoItemForSegment(project, segmentId);
   resetVideoItemForRetry(item);
-  project.videoPackage.final_video = { status: "waiting" };
+  project.videoPackage.final_video = isSingleVideoMode(project)
+    ? { status: "unavailable", reason: "single_video_mode" }
+    : { status: "waiting" };
   await submitVideoItem(project, item, env, {
     fetchImpl: dependencies.fetchImpl || fetch,
     downloadFetchImpl: dependencies.downloadFetchImpl || fetch,
@@ -608,17 +625,19 @@ export async function retryProjectVideoSegment(project, segmentId, dependencies 
     storeGeneratedVideoImpl: dependencies.storeGeneratedVideoImpl || storeGeneratedProjectVideo
   });
   syncVideoPackageMode(project);
-  await maybeMergeFinalVideo(project, dependencies);
+  if (!isSingleVideoMode(project)) {
+    await maybeMergeFinalVideo(project, dependencies);
+  }
   return project;
 }
 
 export function buildVideoProviderRequest(project, segmentId, item, env, storyboardImage, referenceImages) {
-  return buildSegmentVideoRequest(
+  return buildVideoRequest(
     project,
     item,
     scriptBySegmentId(project)[segmentId],
     storyboardImage,
     referenceImages,
-    env
+    env.VIDEO_MODEL || DEFAULT_VIDEO_MODEL
   );
 }
