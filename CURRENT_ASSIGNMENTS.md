@@ -115,31 +115,11 @@ Route: complex
 
 后端模式切换契约已冻结并审核通过。前端必须从最新 `origin/main` 开始，只按任务文件和提交 `8667638` 的接口形状实现，不得猜字段。
 
-## DeepSeek：代码编辑助手
+## 本地执行者发布规则
 
-状态：READY - START NOW
-
-任务文件：
-
-- `tasks/deepseek-frontend-current.md`
-
-任务分支：
-
-- `deepseek/frontend-workflow-mode-code`
-
-职责：
-
-- 只做代码编辑，不做截图或识图。
-- 优先处理 `studio-v2/public/js/**`、`studio-v2/admin/*.js` 和相关测试的纯代码逻辑。
-- 不改后端契约、schema、协调文件和浏览器视觉验收步骤。
-
-禁止范围：
-
-- `studio-v2/src/**`
-- `docs/contracts/**`
-- `schemas/**`
-- `studio-v2/public/css/**`
-- `studio-v2/public/*.html`
+- 本机 Codex 任务由协调端直接发送到本地对话，不作为 GitHub 当前任务上传。
+- DeepSeek 任务由用户手动粘贴任务文本或本地直接发布，不作为 GitHub 当前任务上传。
+- GitHub 当前任务只用于另一台前端电脑领取；正式上传时只更新前端任务入口和前端任务分支。
 
 ## 固定产品规则
 

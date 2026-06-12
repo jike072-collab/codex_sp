@@ -2,35 +2,38 @@
 
 这个目录是项目任务的正式入口。聊天记录和截图只做解释，不作为开工依据。
 
-## 每次开工先读什么
+## GitHub 上传范围
 
-所有角色都先 fetch，然后读取：
+GitHub 当前任务只用于另一台前端电脑领取任务。
+
+本机 Codex 和 DeepSeek 的任务由协调端直接发布，不需要上传为 GitHub 当前任务文件。
+
+## 前端电脑每次开工先读什么
+
+前端电脑先 fetch，然后读取：
 
 1. `origin/main:CURRENT_ASSIGNMENTS.md`
 2. `origin/main:tasks/README.md`
-3. 自己对应的任务文件
-   - 后端：`origin/main:tasks/codex-backend-current.md`
-   - 前端：`origin/main:tasks/codex-frontend-current.md`
-   - DeepSeek 代码编辑助手：`origin/main:tasks/deepseek-frontend-current.md`
+3. `origin/main:tasks/codex-frontend-current.md`
 
-## 当前任务文件
+如果这些文件没有新任务，说明前端任务还没有正式发布；不要从聊天记录、截图、本机旧文件或其它旧分支开工。
 
-- 后端：`tasks/codex-backend-current.md`
-- 前端：`tasks/codex-frontend-current.md`
-- DeepSeek 代码编辑任务：`tasks/deepseek-frontend-current.md`
+## 本地执行者怎么拿任务
 
-## 任务发布方式
+- 本机 Codex：由协调端直接发送任务到本地 Codex 对话。
+- DeepSeek：由用户手动粘贴协调端给出的任务文本，或在本机直接发布。
 
-协调端发布新任务时，必须同时做到：
+本地执行者可以按要求提交代码分支并回传提交号，但它们的任务说明不作为 GitHub 当前任务上传。
+
+## 前端任务发布方式
+
+协调端发布前端任务时，必须同时做到：
 
 1. 更新 `CURRENT_ASSIGNMENTS.md`
-2. 更新对应任务文件
+2. 更新 `tasks/codex-frontend-current.md`
 3. 必要时更新 `tasks/README.md`
 4. 提交并推送到 `main / v2 / ui-v2`
-5. 创建或更新对应任务分支
-6. 本机后端任务可以直接发到本地后端对话
-7. 前端任务只通过 GitHub 发布，不发到本机前端对话
-8. DeepSeek 代码编辑任务也通过 GitHub 发布，只处理代码和测试，不负责截图或浏览器视觉验收
+5. 创建或更新前端任务分支
 
 ## 回报要求
 
