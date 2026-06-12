@@ -80,13 +80,57 @@ provider status, and safe request-id headers. Diagnostics must never include
 full API keys, prompts, base64 image bodies, uploaded image contents, or
 provider response bodies.
 
+## Video
+
+- Workflow routes:
+  - `POST /api/projects/:projectId/videos/generate`
+  - `GET /api/projects/:projectId/videos/status`
+  - `POST /api/projects/:projectId/videos/:segmentId/retry`
+  - `GET /api/projects/:projectId/videos/:segmentId/download`
+  - optional merged result: `GET /api/projects/:projectId/videos/final/download`
+- Provider: `clmm-mall.top` OpenAI-video-compatible channel
+- Default endpoint: `https://clmm-mall.top/v1/videos/generations`
+- Default model: `seedance2.0 720p-fast`
+- Authentication: `Authorization: Bearer <VIDEO_API_KEY>`
+- Request fields: `model`, segment-only `prompt`, `image[]`, `duration`,
+  `resolution`, `aspect_ratio`, `response_format`
+- Failure codes:
+  - `VIDEO_PROVIDER_NOT_CONFIGURED`
+  - `VIDEO_PROVIDER_ERROR`
+  - `VIDEO_PROVIDER_TIMEOUT`
+  - `VIDEO_PROVIDER_STATUS_ERROR`
+  - `VIDEO_PROVIDER_INVALID_OUTPUT`
+
+Each 10-second segment request uses:
+
+- the matching 0-10s or 10-20s confirmed script
+- the matching storyboard sheet image as the first reference
+- all uploaded product images as additional identity references
+- the Step 02 `marketBrief.outputAspectRatio` as the internal video framing
+
+The two missing segments are submitted concurrently. Successful local videos are
+kept. Failed segments are marked on their own item and may be retried
+individually. `HTTP 524` or similar provider timeouts are treated as possibly
+billed, so the backend does not auto-retry them.
+
+Provider diagnostics may include segment id, attempt id, timing, masked key
+preview, model, provider host/path, request id, storyboard/reference counts,
+and output size. Diagnostics must never include full API keys, prompts, base64
+payloads, source image contents, source video contents, or provider response
+bodies.
+
+If local `ffmpeg` is available, the backend may merge the two completed segment
+videos into a final local 20-second file. If `ffmpeg` is missing or merge
+fails, the product still keeps the two completed segment videos and marks the
+final merged file as unavailable instead of failing the whole workflow.
+
 ## Secret And Failure Rules
 
 - API keys are read only from the ignored root `.env` or process environment.
-- Vision, text, and image credentials are configured independently.
+- Vision, text, image, and video credentials are configured independently.
 - The old single `rightCodesApiKey` update field is no longer part of the
   settings contract. Use `visionApiKey`, `imageApiKey`, and
-  `imageSecondaryApiKey` separately.
+  `imageSecondaryApiKey` separately, plus `videoApiKey` for Step 05 video.
 - Keys must never be persisted in project JSON, exports, logs, or responses.
 - A configured provider failure must return a stable error instead of silently
   falling back to demo output.
@@ -104,6 +148,8 @@ provider response bodies.
 - DeepSeek API quick start: `https://api-docs.deepseek.com/`
 
 No public provider documentation was found for a model-list endpoint or for an
-asynchronous draw-job endpoint during this task. The Admin model-discovery API
-therefore falls back to the current configured model whenever a provider does
-not explicitly support discovery.
+asynchronous draw-job endpoint during the earlier storyboard task, and no
+public `clmm-mall.top` video API reference was available during this video
+task. The backend therefore follows the frozen local contract here:
+OpenAI-video-compatible request fields, optional async job polling, and
+provider-model discovery only when a real `/models` endpoint responds.

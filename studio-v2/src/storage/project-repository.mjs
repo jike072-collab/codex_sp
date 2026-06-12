@@ -38,6 +38,16 @@ function safeProjectUploadPath(projectId) {
   return target;
 }
 
+function safeProjectUploadFilePath(projectId, storedName) {
+  const uploadDir = safeProjectUploadPath(projectId);
+  const target = resolve(uploadDir, storedName);
+  const pathFromUploadDir = relative(uploadDir, target);
+  if (!pathFromUploadDir || pathFromUploadDir.startsWith("..") || pathFromUploadDir.includes(":")) {
+    throw new Error("素材路径超出允许范围。");
+  }
+  return target;
+}
+
 function assertStringField(project, field) {
   if (typeof project[field] !== "string" || !project[field].trim()) {
     throw new Error(`Project is missing required string field: ${field}`);
@@ -138,6 +148,7 @@ export async function listProjects() {
       visionAnalysis,
       planningPackage,
       imagePackage,
+      videoPackage,
       manualOmniPackages,
       ...project
     }) => ({
@@ -145,6 +156,7 @@ export async function listProjects() {
       hasAnalysis: Boolean(visionAnalysis),
       hasPlanningPackage: Boolean(planningPackage),
       hasImagePackage: Boolean(imagePackage),
+      hasVideoPackage: Boolean(videoPackage),
       exportReady: getExportReadiness({ ...project, planningPackage, imagePackage }).ready,
       visualNeedsRegeneration: project.status === "export"
         && !getExportReadiness({ ...project, planningPackage, imagePackage }).ready,
@@ -191,12 +203,7 @@ export async function removeProjectAsset(project, assetId) {
   if (index < 0) return false;
 
   const [asset] = project.assets.splice(index, 1);
-  const uploadDir = safeProjectUploadPath(project.id);
-  const target = resolve(uploadDir, asset.storedName);
-  const pathFromUploadDir = relative(uploadDir, target);
-  if (!pathFromUploadDir || pathFromUploadDir.startsWith("..") || pathFromUploadDir.includes(":")) {
-    throw new Error("素材路径超出允许范围。");
-  }
+  const target = safeProjectUploadFilePath(project.id, asset.storedName);
   await rm(target, { force: true });
   return true;
 }
@@ -222,5 +229,37 @@ export async function storeGeneratedProjectImage(projectId, bytes, mimeType = "i
     storedName,
     mimeType,
     size: bytes.length
+  };
+}
+
+export async function storeGeneratedProjectVideo(projectId, bytes, mimeType = "video/mp4", prefix = "video") {
+  if (!Buffer.isBuffer(bytes) || !bytes.length) {
+    throw new Error("生成视频内容为空。");
+  }
+  const extensions = {
+    "video/mp4": ".mp4",
+    "video/webm": ".webm",
+    "video/quicktime": ".mov"
+  };
+  const extension = extensions[mimeType];
+  if (!extension) throw new Error(`不支持的生成视频格式：${mimeType}`);
+
+  const uploadDir = safeProjectUploadPath(projectId);
+  await mkdir(uploadDir, { recursive: true });
+  const storedName = `${prefix}-${randomUUID()}${extension}`;
+  await writeFile(join(uploadDir, storedName), bytes);
+  return {
+    url: `/uploads/${projectId}/${storedName}`,
+    storedName,
+    mimeType,
+    size: bytes.length
+  };
+}
+
+export async function readProjectUploadFile(projectId, storedName) {
+  const target = safeProjectUploadFilePath(projectId, storedName);
+  return {
+    path: target,
+    bytes: await readFile(target)
   };
 }

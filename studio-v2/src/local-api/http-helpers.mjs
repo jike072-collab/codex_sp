@@ -27,6 +27,15 @@ export function sendText(response, status, text, contentType = "text/plain; char
   response.end(text);
 }
 
+export function sendBinaryDownload(response, bytes, filename, contentType = "application/octet-stream") {
+  response.writeHead(200, {
+    "Content-Type": contentType,
+    "Content-Disposition": `attachment; filename="${filename}"`,
+    "Content-Length": bytes.length
+  });
+  response.end(bytes);
+}
+
 export async function readJsonBody(request, maxBytes = 30 * 1024 * 1024) {
   const chunks = [];
   let size = 0;

@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
 
-import { readJsonBody, sendJson, sendJsonDownload } from "./http-helpers.mjs";
+import { readJsonBody, sendBinaryDownload, sendJson, sendJsonDownload } from "./http-helpers.mjs";
 import {
   deleteProject,
   deleteProjects,
   listProjects,
+  readProjectUploadFile,
   readProject,
   removeProjectAsset,
   saveProject,
@@ -31,6 +32,12 @@ import { discoverAdminProviderModels } from "../ai-providers/provider-models.mjs
 import { ProviderError } from "../ai-providers/provider-utils.mjs";
 import { buildExportPackage } from "../workflow-domain/export-package.mjs";
 import { recordVisualGenerationFailure } from "../workflow-domain/visual-package.mjs";
+import {
+  generateProjectVideos,
+  refreshProjectVideoStatus,
+  retryProjectVideoSegment,
+  videoFileExtension
+} from "../ai-providers/video-provider.mjs";
 
 function projectIdsFromBody(body) {
   const projectIds = Array.isArray(body.projectIds) ? body.projectIds : [];
@@ -116,6 +123,7 @@ export async function handleApi(request, response, url) {
       scriptGeneratedAt: null,
       scriptConfirmedAt: null,
       imagePackage: null,
+      videoPackage: null,
       manualOmniPackages: [],
       visualGeneratedAt: null,
       visualGenerationFailure: null
@@ -247,6 +255,107 @@ export async function handleApi(request, response, url) {
       }
       throw error;
     }
+  }
+
+  if (request.method === "POST" && action === "videos/generate") {
+    try {
+      await generateProjectVideos(project);
+      await saveProject(project);
+      return sendJson(response, 200, { project });
+    } catch (error) {
+      if (error instanceof ProviderError && String(error.code || "").startsWith("VIDEO_")) {
+        try {
+          await saveProject(project);
+        } catch (saveError) {
+          console.error("Failed to save video provider state.", {
+            projectId,
+            originalError: error,
+            saveError
+          });
+        }
+      }
+      throw error;
+    }
+  }
+
+  if (request.method === "GET" && action === "videos/status") {
+    try {
+      await refreshProjectVideoStatus(project);
+      await saveProject(project);
+      return sendJson(response, 200, { project });
+    } catch (error) {
+      if (error instanceof ProviderError && String(error.code || "").startsWith("VIDEO_")) {
+        try {
+          await saveProject(project);
+        } catch (saveError) {
+          console.error("Failed to save video status state.", {
+            projectId,
+            originalError: error,
+            saveError
+          });
+        }
+      }
+      throw error;
+    }
+  }
+
+  const videoRetryMatch = action?.match(/^videos\/(0-10s|10-20s)\/retry$/);
+  if (request.method === "POST" && videoRetryMatch) {
+    try {
+      await retryProjectVideoSegment(project, videoRetryMatch[1]);
+      await saveProject(project);
+      return sendJson(response, 200, { project });
+    } catch (error) {
+      if (error instanceof ProviderError && String(error.code || "").startsWith("VIDEO_")) {
+        try {
+          await saveProject(project);
+        } catch (saveError) {
+          console.error("Failed to save retried video provider state.", {
+            projectId,
+            originalError: error,
+            saveError
+          });
+        }
+      }
+      throw error;
+    }
+  }
+
+  const videoDownloadMatch = action?.match(/^videos\/(0-10s|10-20s)\/download$/);
+  if (request.method === "GET" && videoDownloadMatch) {
+    const item = project.videoPackage?.video_generation?.find(
+      (entry) => entry.segment_id === videoDownloadMatch[1]
+    );
+    if (!item?.generated_video?.storedName) {
+      throw new DomainError("当前分段视频还没有可下载的本地文件。", {
+        code: "VIDEO_NOT_READY",
+        statusCode: 409
+      });
+    }
+    const file = await readProjectUploadFile(project.id, item.generated_video.storedName);
+    return sendBinaryDownload(
+      response,
+      file.bytes,
+      `${project.id}-${videoDownloadMatch[1]}${videoFileExtension(item.generated_video.mimeType)}`,
+      item.generated_video.mimeType || "video/mp4"
+    );
+  }
+
+  if (request.method === "GET" && action === "videos/final/download") {
+    const finalVideo = project.videoPackage?.final_video?.generated_video;
+    if (!finalVideo?.storedName) {
+      throw new DomainError("当前项目还没有可下载的最终合并视频。", {
+        code: "FINAL_VIDEO_NOT_READY",
+        statusCode: 409
+      });
+    }
+    const file = await readProjectUploadFile(project.id, finalVideo.storedName);
+    return sendBinaryDownload(
+      response,
+      file.bytes,
+      `${project.id}-final${videoFileExtension(finalVideo.mimeType)}`,
+      finalVideo.mimeType || "video/mp4"
+    );
   }
 
   if (request.method === "GET" && action === "export") {

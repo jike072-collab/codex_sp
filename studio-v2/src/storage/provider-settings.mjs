@@ -8,10 +8,12 @@ import {
 } from "../ai-providers/provider-utils.mjs";
 import { DomainError } from "../workflow-domain/domain-error.mjs";
 
-export const PROVIDER_SETTINGS_SCHEMA_VERSION = 2;
+export const PROVIDER_SETTINGS_SCHEMA_VERSION = 3;
 
 const DEFAULT_IMAGE_API_URL = "https://www.right.codes/draw/v1/images/generations";
 const DEFAULT_IMAGE_MODEL = "gpt-image-2";
+const DEFAULT_VIDEO_API_URL = "https://clmm-mall.top/v1/videos/generations";
+const DEFAULT_VIDEO_MODEL = "seedance2.0 720p-fast";
 
 const IMAGE_CHANNEL_SPECS = Object.freeze([
   {
@@ -158,6 +160,41 @@ const PROVIDER_DEFINITIONS = Object.freeze([
       segmentId
     })),
     fields: imageChannelFields()
+  },
+  {
+    id: "video",
+    title: "视频生成模型",
+    provider: "clmm-mall.top",
+    role: "Step 05 两段视频生成",
+    channel: "OpenAI-video 兼容通道",
+    fields: [
+      {
+        name: "apiUrl",
+        label: "API 地址",
+        type: "url",
+        valueKey: "videoApiUrl",
+        clearable: false,
+        envKey: "VIDEO_API_URL",
+        defaultValue: DEFAULT_VIDEO_API_URL
+      },
+      {
+        name: "model",
+        label: "模型",
+        type: "select",
+        valueKey: "videoModel",
+        clearable: false,
+        envKey: "VIDEO_MODEL",
+        defaultValue: DEFAULT_VIDEO_MODEL
+      },
+      {
+        name: "apiKey",
+        label: "API Key",
+        type: "secret",
+        valueKey: "videoApiKey",
+        clearable: true,
+        envKey: "VIDEO_API_KEY"
+      }
+    ]
   }
 ]);
 

@@ -103,6 +103,12 @@
         { "$ref": "#/$defs/imagePackage" }
       ]
     },
+    "videoPackage": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/videoPackage" }
+      ]
+    },
     "manualOmniPackages": {
       "type": "array",
       "items": false,
@@ -324,6 +330,146 @@
           "items": { "type": "string", "minLength": 1 }
         }
       }
+    },
+    "generatedVideo": {
+      "type": "object",
+      "required": ["provider", "model", "url", "mimeType", "size", "storedName"],
+      "properties": {
+        "provider": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "minLength": 1 },
+        "storedName": { "type": "string", "minLength": 1 },
+        "mimeType": { "type": "string", "minLength": 1 },
+        "size": { "type": "integer", "minimum": 1 },
+        "sourceUrl": { "type": "string", "minLength": 1 },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "durationSec": { "type": "integer", "minimum": 1 },
+        "aspectRatio": { "enum": ["9:16", "16:9", "1:1", "4:5", "3:4", "2:3"] }
+      },
+      "additionalProperties": false
+    },
+    "videoProviderJob": {
+      "type": "object",
+      "required": ["id", "submittedAt"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "statusUrl": { "type": "string", "minLength": 1 },
+        "submittedAt": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "videoProviderDiagnostic": {
+      "type": "object",
+      "required": [
+        "segmentId",
+        "assetId",
+        "attemptId",
+        "startedAt",
+        "model",
+        "aspectRatio",
+        "durationSec",
+        "providerHost",
+        "providerPath",
+        "storyboardImageCount",
+        "referenceImageCount",
+        "inputImageCount",
+        "referenceImageTotalBytes",
+        "storyboardImageBytes",
+        "keyPreview"
+      ],
+      "properties": {
+        "segmentId": { "enum": ["0-10s", "10-20s"] },
+        "assetId": { "type": "string", "minLength": 1 },
+        "attemptId": { "type": "string", "minLength": 1 },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "elapsedMs": { "type": "integer", "minimum": 0 },
+        "model": { "type": "string", "minLength": 1 },
+        "aspectRatio": { "enum": ["9:16", "16:9", "1:1", "4:5", "3:4", "2:3"] },
+        "durationSec": { "type": "integer", "minimum": 1 },
+        "providerHost": { "type": "string" },
+        "providerPath": { "type": "string" },
+        "storyboardImageCount": { "type": "integer", "minimum": 0 },
+        "referenceImageCount": { "type": "integer", "minimum": 0 },
+        "inputImageCount": { "type": "integer", "minimum": 0 },
+        "referenceImageTotalBytes": { "type": "integer", "minimum": 0 },
+        "storyboardImageBytes": { "type": "integer", "minimum": 0 },
+        "keyPreview": { "type": "string" },
+        "providerStatus": { "type": "integer" },
+        "providerRequestId": { "type": "string", "minLength": 1 },
+        "outputSizeBytes": { "type": "integer", "minimum": 0 },
+        "errorCode": { "type": "string", "minLength": 1 },
+        "outcome": { "enum": ["submitted", "success", "failed"] }
+      },
+      "additionalProperties": false
+    },
+    "videoGenerationItem": {
+      "type": "object",
+      "required": [
+        "asset_id",
+        "segment_id",
+        "type",
+        "aspect_ratio",
+        "duration_sec",
+        "storyboard_asset_id",
+        "storyboard_image_url",
+        "status",
+        "script_copy"
+      ],
+      "properties": {
+        "asset_id": { "type": "string", "minLength": 1 },
+        "segment_id": { "enum": ["0-10s", "10-20s"] },
+        "type": { "const": "video_segment" },
+        "aspect_ratio": { "enum": ["9:16", "16:9", "1:1", "4:5", "3:4", "2:3"] },
+        "duration_sec": { "const": 10 },
+        "storyboard_asset_id": { "type": "string", "minLength": 1 },
+        "storyboard_image_url": { "type": "string", "minLength": 1 },
+        "status": {
+          "enum": ["waiting", "submitting", "queued", "generating", "downloading", "done", "failed"]
+        },
+        "script_copy": { "type": "string" },
+        "provider_job": { "$ref": "#/$defs/videoProviderJob" },
+        "provider_diagnostics": { "$ref": "#/$defs/videoProviderDiagnostic" },
+        "generated_video": { "$ref": "#/$defs/generatedVideo" },
+        "error": {
+          "type": "object",
+          "required": ["code", "message", "retryable", "failedAt"],
+          "properties": {
+            "code": { "type": "string", "minLength": 1 },
+            "message": { "type": "string", "minLength": 1 },
+            "retryable": { "type": "boolean" },
+            "failedAt": { "type": "string", "format": "date-time" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "finalVideo": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["waiting", "merging", "done", "unavailable", "failed"] },
+        "reason": { "type": "string", "minLength": 1 },
+        "generated_video": { "$ref": "#/$defs/generatedVideo" }
+      },
+      "additionalProperties": false
+    },
+    "videoPackage": {
+      "type": "object",
+      "required": ["requestedAt", "aspect_ratio", "mode", "video_generation", "final_video"],
+      "properties": {
+        "requestedAt": { "type": "string", "format": "date-time" },
+        "aspect_ratio": { "enum": ["9:16", "16:9", "1:1", "4:5", "3:4", "2:3"] },
+        "mode": { "enum": ["waiting", "provider", "partial", "done"] },
+        "video_generation": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/videoGenerationItem" }
+        },
+        "final_video": { "$ref": "#/$defs/finalVideo" }
+      },
+      "additionalProperties": false
     },
     "providerDiagnostic": {
       "type": "object",
