@@ -1,0 +1,904 @@
+import {
+  aspectRatioOptions,
+  audienceOptions,
+  creativeThemeOptions,
+  countryNames,
+  el,
+  escapeHtml,
+  formatTime,
+  isSingleVideoProject,
+  lines,
+  marketCountryOptions,
+  projectSetup,
+  readProjectPreferences,
+  saveProjectPreferences,
+  state,
+  statusLabel,
+  toneOptions,
+  valueAt,
+  videoDurationOptions,
+  WORKFLOW_MODE_LABEL,
+  workflowMode,
+  workflowModeLabel
+} from "./core.js";
+import {
+  hasReadyStoryboards,
+  renderExportStage,
+  renderScriptStage,
+  renderVisualStage
+} from "./demo-loop.js";
+import {
+  fillMarketForm,
+  renderMarketProductSummary
+} from "./market.js";
+
+const STAGE_ORDER = ["assets", "review", "market", "script", "visual", "export"];
+
+const STAGE_PANEL_COPY = {
+  assets: "上传 1 张四视图拼图即可开始识别，补充更多角度会更稳。",
+  review: "确认产品锁定、受众、比例和创意方向。",
+  market: "把已确认的产品信息整理成脚本输入。",
+  script: "按所选时长检查单条脚本、镜头和文案。",
+  visual: "img2img 生成一张完整故事板，作为视频参考。",
+  export: "使用脚本和故事板生成最终广告视频。"
+};
+
+const STAGE_PANEL_TITLE = {
+  assets: "上传进度",
+  review: "产品设定",
+  market: "创意确认",
+  script: "脚本进度",
+  visual: "故事板状态",
+  export: "生成视频"
+};
+
+const VISIBLE_STAGE_NUMBER = {
+  assets: 1,
+  analyzing: 1,
+  review: 2,
+  market: 2,
+  script: 3,
+  visual: 4,
+  export: 5
+};
+
+function publicQualityNotes(analysis) {
+  const notes = [
+    ...(analysis?.image_quality?.missing_or_unclear || []),
+    ...(analysis?.image_quality?.notes || [])
+  ];
+  const publicNotes = notes.filter((note) => !/API\s*Key|API\s*URL|模型名|视觉模型/i.test(note));
+  if (publicNotes.length !== notes.length) {
+    publicNotes.push("供应商未就绪时使用演示识别；可在管理后台查看就绪状态。");
+  }
+  return publicNotes;
+}
+
+function viewStatus() {
+  if (!state.project) return "assets";
+  if (!state.viewStatus) state.viewStatus = state.project.status;
+  return state.viewStatus;
+}
+
+function isStageReached(step) {
+  if (!state.project) return false;
+  if (step === "export" && !hasReadyStoryboards(state.project)) return false;
+  const currentStatus = state.project.status === "analyzing" ? "assets" : state.project.status;
+  const current = STAGE_ORDER.indexOf(currentStatus);
+  const target = STAGE_ORDER.indexOf(step);
+  return target >= 0 && target <= current;
+}
+
+export function renderProjectList() {
+  const container = el("projectList");
+  const bulkActions = el("projectBulkActions");
+  if (bulkActions) {
+    const selectedCount = state.selectedProjectIds.size;
+    const allCount = state.projects.length;
+    bulkActions.innerHTML = state.projectSelectionMode
+      ? `
+        <button class="sidebar-tool-button" type="button" data-project-select-all
+          ${allCount ? "" : "disabled"}>${selectedCount === allCount ? "清空" : "全选"}</button>
+        <button class="sidebar-tool-button danger" type="button" data-project-bulk-delete
+          ${selectedCount ? "" : "disabled"}>删除 ${selectedCount}</button>
+        <button class="sidebar-tool-button" type="button" data-project-bulk-cancel>取消</button>
+      `
+      : `
+        <button class="sidebar-tool-button" type="button" data-project-bulk-start
+          ${state.projects.length > 1 ? "" : "disabled"}>批量清理旧项目</button>
+      `;
+  }
+  if (!state.projects.length) {
+    container.innerHTML = `<div class="project-link"><small>还没有项目</small></div>`;
+    return;
+  }
+  container.innerHTML = state.projects.map((project) => `
+    <div class="project-item ${project.id === state.project?.id ? "active" : ""}">
+      ${state.projectSelectionMode ? `
+        <label class="project-select">
+          <input type="checkbox" data-project-select-id="${escapeHtml(project.id)}"
+            ${state.selectedProjectIds.has(project.id) ? "checked" : ""}>
+          <span class="sr-only">选择 ${escapeHtml(project.name)}</span>
+        </label>
+      ` : ""}
+      <button class="project-link"
+        data-project-id="${escapeHtml(project.id)}" type="button">
+        <strong>${escapeHtml(project.name)}</strong>
+        <small>${statusLabel(project.status)} · ${formatTime(project.updatedAt)}</small>
+      </button>
+      <button class="project-delete" data-delete-project-id="${escapeHtml(project.id)}"
+        type="button" ${state.deletingProjectIds.has(project.id) ? "disabled" : ""}
+        aria-label="删除 ${escapeHtml(project.name)}">
+        ${state.deletingProjectIds.has(project.id) ? "…" : "×"}
+      </button>
+    </div>
+  `).join("");
+}
+
+function renderWorkflowModeControl(project) {
+  const currentMode = workflowMode(project);
+  const header = document.querySelector(".workspace-header");
+  if (!header) return;
+
+  let modeControl = el("workflowModeControl");
+  if (!modeControl) {
+    modeControl = document.createElement("div");
+    modeControl.id = "workflowModeControl";
+    modeControl.className = "workflow-mode-control";
+    const titleRow = header.querySelector(".title-row");
+    if (titleRow) {
+      titleRow.after(modeControl);
+    } else {
+      header.append(modeControl);
+    }
+  }
+
+  modeControl.innerHTML = Object.entries(WORKFLOW_MODE_LABEL).map(([mode, label]) => `
+    <button class="mode-segment ${mode === currentMode ? "active" : ""}"
+      type="button"
+      data-workflow-mode="${escapeHtml(mode)}"
+      ${mode === currentMode ? "aria-pressed=\"true\"" : "aria-pressed=\"false\""}>
+      ${escapeHtml(label)}
+    </button>
+  `).join("");
+}
+
+export function renderWorkspace() {
+  const project = state.project;
+  if (!project) return;
+  const activeStatus = viewStatus();
+  const needsStoryboardCompletion = project.status === "export" && activeStatus === "visual" && !hasReadyStoryboards(project);
+  const isReviewingPast = !needsStoryboardCompletion && activeStatus !== project.status && isStageReached(activeStatus);
+
+  el("projectTitle").textContent = project.name;
+  el("projectState").textContent = isReviewingPast
+    ? `${statusLabel(project.status)} · 回看${statusLabel(activeStatus)}`
+    : statusLabel(project.status);
+  renderWorkflowModeControl(project);
+  const subtitleByStatus = {
+    assets: "上传 1 张四视图拼图即可进入识别和锁定，更多角度只是建议。",
+    analyzing: "正在识别鞋款，稍后会进入产品设定。",
+    review: "确认产品信息、受众、比例和创意方向。",
+    market: "整理创意 brief，准备生成单条视频脚本。",
+    script: "查看完整中文脚本，按所选时长检查镜头与文案。",
+    visual: "img2img 生成一张完整故事板。",
+    export: "生成、播放和下载最终广告视频。"
+  };
+  el("workspaceSubtitle").textContent = subtitleByStatus[activeStatus] || subtitleByStatus.assets;
+  const setup = projectSetup(project);
+  const briefCountry = el("briefCountry");
+  const briefAudience = el("briefAudience");
+  const briefAspect = el("briefAspect");
+  if (briefCountry) briefCountry.value = countryNames[setup.targetCountry] || setup.targetCountry || "";
+  if (briefAudience) briefAudience.value = setup.audience || "";
+  if (briefAspect) briefAspect.value = setup.outputAspectRatio;
+
+  renderAssets();
+  renderStepper(activeStatus);
+  renderCompletionList(activeStatus);
+  renderWorkspacePanel(project, activeStatus);
+
+  el("assetsStage").classList.toggle("hidden", !["assets", "analyzing"].includes(activeStatus));
+  el("reviewStage").classList.toggle("hidden", activeStatus !== "review");
+  el("marketStage").classList.toggle("hidden", activeStatus !== "market");
+  el("scriptStage").classList.toggle("hidden", activeStatus !== "script");
+  el("visualStage").classList.toggle("hidden", activeStatus !== "visual");
+  el("exportStage").classList.toggle("hidden", activeStatus !== "export");
+
+  if (activeStatus === "review") fillReviewForm(project.visionAnalysis);
+  if (activeStatus === "market") {
+    fillMarketForm(project);
+    renderMarketProductSummary(project);
+  }
+  if (activeStatus === "script") renderScriptStage(project);
+  if (activeStatus === "visual") renderVisualStage(project);
+  if (activeStatus === "export") renderExportStage(project);
+  renderProductionExperience(activeStatus);
+  if (project.reviewConfirmedAt) {
+    el("confirmedTime").textContent = `确认时间：${formatTime(project.reviewConfirmedAt)}`;
+  }
+
+  lockStageForReview(isReviewingPast);
+}
+
+function renderProductionExperience(activeStatus) {
+  const visibleStep = VISIBLE_STAGE_NUMBER[activeStatus] || 1;
+  const workspace = el("workspace");
+  const stageChanged = workspace.dataset.renderedStage !== activeStatus;
+  workspace.dataset.stage = activeStatus;
+  workspace.dataset.status = state.project?.status || activeStatus;
+  workspace.dataset.renderedStage = activeStatus;
+  if (stageChanged) {
+    workspace.classList.remove("production-enter");
+    requestAnimationFrame(() => workspace.classList.add("production-enter"));
+  }
+
+  el("productionSceneLabel").textContent = `SCENE ${String(visibleStep).padStart(2, "0")} / 05`;
+}
+
+function renderWorkspacePanel(project, activeStatus) {
+  const assets = project.assets || [];
+  const totalSteps = 5;
+  const visibleStep = VISIBLE_STAGE_NUMBER[activeStatus] || 1;
+  const progressStep = visibleStep;
+  const workflowProgress = state.workflowProgress;
+  const completedPercent = workflowProgress?.active && workflowProgress.stage === activeStatus
+    ? workflowProgress.percent
+    : activeStatus === "export"
+    ? 100
+    : Math.max(10, Math.min(100, Math.round((progressStep / totalSteps) * 100)));
+  const readinessText = (() => {
+    if (activeStatus !== "assets" && activeStatus !== "analyzing") return `${statusLabel(activeStatus)} 已进入后续流程`;
+    if (!assets.length) return "等待上传素材";
+    if (assets.length === 1) return "已上传 1 张，可以开始识别";
+    return `已上传 ${assets.length} 张，可以开始识别`;
+  })();
+  const panelStageKicker = el("panelStageKicker");
+  const panelStageTitle = el("panelStageTitle");
+  const panelStageCopy = el("panelStageCopy");
+  const panelAssetCount = el("panelAssetCount");
+  const panelWorkflowState = el("panelWorkflowState");
+  const panelProgressBar = el("panelProgressBar");
+  const panelProgressText = el("panelProgressText");
+  if (panelStageKicker) panelStageKicker.textContent = `STEP 0${visibleStep}`;
+  if (panelStageTitle) panelStageTitle.textContent = STAGE_PANEL_TITLE[activeStatus] || "工作进度";
+  if (panelStageCopy) panelStageCopy.textContent = STAGE_PANEL_COPY[activeStatus] || "";
+  if (panelAssetCount) panelAssetCount.textContent = `${assets.length} 张`;
+  if (panelWorkflowState) panelWorkflowState.textContent = statusLabel(activeStatus);
+  if (panelProgressBar) panelProgressBar.style.width = `${completedPercent}%`;
+  if (panelProgressText) panelProgressText.textContent = workflowProgress?.active && workflowProgress.stage === activeStatus
+    ? workflowProgress.message
+    : readinessText;
+  renderPanelStageVisual(project, activeStatus);
+}
+
+function panelVideoStatusLabel(status) {
+  return {
+    waiting: "等待生成",
+    submitting: "正在提交",
+    queued: "排队中",
+    generating: "生成中",
+    downloading: "取回视频",
+    done: "已完成",
+    failed: "生成失败"
+  }[status] || "等待生成";
+}
+
+function renderPanelStageVisual(project, activeStatus) {
+  const container = el("panelStageVisual");
+  if (!container) return;
+  const assets = project.assets || [];
+  const singleVideo = isSingleVideoProject(project);
+  const script = singleVideo
+    ? project.planningPackage?.script_video?.segment_full || {}
+    : project.planningPackage?.script_20s || {};
+  const shotCount = singleVideo
+    ? (script.shots || []).length
+    : [
+        ...(script.segment_a_0_10s?.shots || []),
+        ...(script.segment_b_10_20s?.shots || [])
+      ].length;
+  const generated = (project.imagePackage?.image_generation || [])
+    .filter((item) => item?.status === "done" && item?.generated_image?.url && (
+      singleVideo ? item.segment_id === "full" : ["0-10s", "10-20s"].includes(item.segment_id)
+    )).length;
+
+  if (activeStatus === "script") {
+    const shots = singleVideo ? (script.shots || []) : [
+      ...(script.segment_a_0_10s?.shots || []),
+      ...(script.segment_b_10_20s?.shots || [])
+    ];
+    container.innerHTML = `
+      <div class="stage-visual-heading">
+        <span>${singleVideo ? "完整时间线" : "20 秒时间线"}</span>
+        <strong>${escapeHtml(shotCount || 10)} 镜头</strong>
+      </div>
+      <div class="script-segment-chart">
+        ${singleVideo
+          ? `<div><span>完整视频</span><i></i></div>`
+          : `<div><span>0-10s</span><i></i></div><div><span>10-20s</span><i></i></div>`}
+      </div>
+      <div class="shot-tick-chart" aria-hidden="true">
+        ${Array.from({ length: shotCount || 10 }, (_, index) => `<i style="--tick:${index}"></i>`).join("")}
+      </div>
+      ${singleVideo ? `
+        <div class="panel-shot-list">
+          ${shots.slice(0, 5).map((shot, index) => `
+            <div>
+              <span>镜头 ${String(index + 1).padStart(2, "0")}</span>
+              <strong>${escapeHtml(shot.start_sec ?? index)}-${escapeHtml(shot.end_sec ?? index + 1)}s</strong>
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
+      <div class="stage-visual-stats">
+        <div><strong>${escapeHtml(singleVideo ? `${project.marketBrief?.videoDurationSeconds || 10}s` : "20s")}</strong><span>总时长</span></div>
+        <div><strong>${escapeHtml(singleVideo ? 1 : 2)}</strong><span>交付分段</span></div>
+        <div><strong>${escapeHtml(shotCount || 10)}</strong><span>镜头总数</span></div>
+      </div>
+    `;
+    return;
+  }
+
+  if (activeStatus === "export" && singleVideo) {
+    const video = (project.videoPackage?.video_generation || [])
+      .find((item) => item.segment_id === "full");
+    const videoStatus = video?.status || "waiting";
+    const videoReady = videoStatus === "done" && video?.generated_video?.url;
+    container.innerHTML = `
+      <div class="stage-visual-heading">
+        <span>视频任务</span>
+        <strong>${escapeHtml(panelVideoStatusLabel(videoStatus))}</strong>
+      </div>
+      <div class="video-mini-meter" data-ready="${videoReady ? "true" : "false"}">
+        <i></i><i></i><i></i><i></i><i></i>
+      </div>
+      <div class="asset-readiness-chart video-status-chart">
+        <div data-ready="${generated >= 1}">
+          <span>故事板</span>
+          <strong>${escapeHtml(generated)}/1</strong>
+        </div>
+        <div data-ready="true">
+          <span>时长</span>
+          <strong>${escapeHtml(project.marketBrief?.videoDurationSeconds || 10)} 秒</strong>
+        </div>
+        <div data-ready="${videoReady ? "true" : "false"}">
+          <span>视频</span>
+          <strong>${escapeHtml(videoReady ? "可下载" : panelVideoStatusLabel(videoStatus))}</strong>
+        </div>
+      </div>
+      <div class="stage-visual-stats">
+        <div><strong>${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")}</strong><span>比例</span></div>
+        <div><strong>${escapeHtml(videoReady ? 100 : videoStatus === "failed" ? 0 : 50)}%</strong><span>进度</span></div>
+      </div>
+    `;
+    return;
+  }
+
+  if (activeStatus === "visual" || activeStatus === "export") {
+    container.innerHTML = `
+      <div class="stage-visual-heading">
+        <span>故事板交付</span>
+        <strong>${escapeHtml(generated)}/${escapeHtml(singleVideo ? 1 : 2)}</strong>
+      </div>
+      <div class="storyboard-mini-grid">
+        ${(singleVideo ? [0] : [0, 1]).map((index) => `
+          <div data-complete="${index < generated}">
+            <span>${singleVideo ? "完整视频" : (index === 0 ? "0-10s" : "10-20s")}</span>
+            <i></i>
+          </div>
+        `).join("")}
+      </div>
+      <div class="stage-visual-stats">
+        <div><strong>${escapeHtml(generated)}</strong><span>已完成</span></div>
+        <div><strong>${escapeHtml((singleVideo ? 1 : 2) - generated)}</strong><span>待生成</span></div>
+      </div>
+    `;
+    return;
+  }
+
+  const canIdentify = assets.length >= 1;
+  container.innerHTML = `
+    <div class="stage-visual-heading">
+      <span>素材状态</span>
+      <strong>${escapeHtml(canIdentify ? "可以识别" : "等待上传")}</strong>
+    </div>
+    <div class="asset-readiness-chart">
+      <div data-ready="${assets.length >= 1}">
+        <span>已上传</span>
+        <strong>${escapeHtml(assets.length)} 张</strong>
+      </div>
+      <div data-ready="${canIdentify}">
+        <span>当前状态</span>
+        <strong>${escapeHtml(canIdentify ? "可以识别" : "继续上传")}</strong>
+      </div>
+      <div data-ready="true">
+        <span>补图建议</span>
+        <strong>${escapeHtml(assets.length ? "侧面 / 后跟 / 鞋底更稳" : "1 张即可开始")}</strong>
+      </div>
+    </div>
+    <div class="stage-visual-stats">
+      <div><strong>${escapeHtml(assets.length)}</strong><span>已上传</span></div>
+      <div><strong>${escapeHtml(canIdentify ? "可以识别" : "待上传")}</strong><span>识别状态</span></div>
+    </div>
+  `;
+}
+
+export function renderStepper(activeStatus = viewStatus()) {
+  const active = Math.max(0, STAGE_ORDER.indexOf(activeStatus));
+  document.querySelectorAll("#stepper li").forEach((item, index) => {
+    const reached = isStageReached(item.dataset.step);
+    const current = Math.max(0, STAGE_ORDER.indexOf(state.project.status));
+    item.classList.toggle("active", index === active);
+    item.classList.toggle("complete", index < current);
+    item.classList.toggle("available", reached);
+    item.classList.toggle("unavailable", !reached);
+    item.setAttribute("role", "button");
+    item.setAttribute("tabindex", reached ? "0" : "-1");
+    item.setAttribute("aria-disabled", reached ? "false" : "true");
+  });
+}
+
+export function renderAssets() {
+  const project = state.project;
+  const assets = state.project?.assets || [];
+  const canUpload = project?.status === "assets" && !state.busy;
+  el("assetGrid").innerHTML = assets.map((asset) => {
+    const deleting = state.deletingAssetIds.has(asset.id);
+    return `
+      <article class="asset-card">
+        <div class="asset-card-actions">
+        <button class="asset-icon-button danger" type="button"
+          data-delete-asset-id="${escapeHtml(asset.id)}" aria-label="删除 ${escapeHtml(asset.name)}"
+          aria-busy="${deleting}" ${canUpload && !deleting ? "" : "disabled"}>${deleting ? "…" : "×"}</button>
+        </div>
+        <img src="${escapeHtml(asset.url)}" alt="${escapeHtml(asset.name)}">
+        <span>${escapeHtml(asset.name)}</span>
+      </article>
+    `;
+  }).join("");
+  el("assetHint").textContent = project?.status !== "assets"
+    ? "当前项目已进入后续步骤，素材已锁定；如需上传新鞋图，请新建项目。"
+    : assets.length >= 1
+      ? `已上传 ${assets.length} 张图片，识别已可开始。建议补充更多角度提升稳定性。`
+      : "至少上传 1 张四视图拼图即可开始识别。建议补充更多角度提升稳定性。";
+  el("dropZone").disabled = !canUpload;
+  el("fileInput").disabled = !canUpload;
+  el("analyzeButton").disabled = state.busy || assets.length < 1;
+}
+
+export function canViewStep(step) {
+  return isStageReached(step);
+}
+
+function lockStageForReview(value) {
+  document.querySelectorAll(".stage-view.readonly-stage").forEach((stage) => {
+    stage.classList.remove("readonly-stage");
+  });
+  document.querySelectorAll("[data-review-locked='true']").forEach((control) => {
+    if ("disabled" in control) control.disabled = control.dataset.wasDisabled === "true";
+    if ("readOnly" in control) control.readOnly = control.dataset.wasReadonly === "true";
+    delete control.dataset.reviewLocked;
+    delete control.dataset.wasDisabled;
+    delete control.dataset.wasReadonly;
+  });
+
+  if (!value) return;
+  const visibleStage = document.querySelector(".stage-card .stage-view:not(.hidden)");
+  if (!visibleStage) return;
+
+  visibleStage.classList.add("readonly-stage");
+  visibleStage.querySelectorAll("button, input, textarea, select").forEach((control) => {
+    if (control.matches('[data-preview-image], [data-copy-target], [data-action="view-export"], [data-action="view-visual"]')) {
+      return;
+    }
+    control.dataset.reviewLocked = "true";
+    control.dataset.wasDisabled = String(control.disabled);
+    control.dataset.wasReadonly = String(control.readOnly);
+    if ("disabled" in control) control.disabled = true;
+    if ("readOnly" in control) control.readOnly = true;
+  });
+}
+
+function renderCompletionList(status) {
+  const singleVideo = isSingleVideoProject(state.project);
+  const itemsByStatus = {
+    assets: ["图片属于同一款鞋", "关键角度足够清晰", "产品外观可以稳定锁定"],
+    analyzing: ["等待识别完成", "保留原始素材", "准备进入人工审核"],
+    review: ["目标人群和尺寸已选择", "创意方向和核心信息已整理", "产品锁定已确认"],
+    market: ["目标国家已选择", "目标人群已确认", "创意主题、核心信息和语气已填写"],
+    script: singleVideo
+      ? ["完整视频脚本已生成", "全部镜头按所选时长可审核", "确认后生成一张故事板"]
+      : ["完整 20 秒脚本已生成", "全部镜头按时间顺序可审核", "确认后按两个 10 秒分段生成故事板"],
+    visual: singleVideo
+      ? ["脚本已确认", "故事板方向清晰", "准备生成一张完整故事板"]
+      : ["脚本已确认", "故事板方向清晰", "准备生成两张分段故事板"],
+    export: singleVideo
+      ? ["故事板和脚本已整理", "可生成单个广告视频", "第一版交付内容已就绪"]
+      : ["两张故事板已整理", "两段 10 秒脚本可复制", "第一版交付内容已就绪"]
+  };
+  const items = itemsByStatus[status] || itemsByStatus.assets;
+  if (status === "visual") {
+    const ratio = state.project?.marketBrief?.outputAspectRatio || "9:16";
+    const entries = (state.project?.imagePackage?.image_generation || []).filter((item) =>
+      item.type === "storyboard_board" && item.aspect_ratio === ratio && (
+        singleVideo ? item.segment_id === "full" : ["0-10s", "10-20s"].includes(item.segment_id)
+      )
+    );
+    const complete = entries.filter((item) => item.status === "done" && item.generated_image?.url).length;
+    const total = singleVideo ? 1 : 2;
+    items[1] = `故事板完成 ${complete}/${total}`;
+    items[2] = complete === total ? (singleVideo ? "可进入生成视频" : "可进入最终交付") : "成功图片保留，缺失项可继续生成";
+  }
+  el("completionList").innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+}
+
+function listText(value) {
+  return Array.isArray(value) ? value.join("\n") : "";
+}
+
+function displayValue(value) {
+  if (Array.isArray(value)) return value.length ? value.join("、") : "未识别";
+  return value || "未识别";
+}
+
+function optionLabels(options, selectedValue) {
+  return options.map(([value, label, description]) => `
+    <label class="choice-card compact-choice">
+      <input type="radio" name="${options === creativeThemeOptions ? "creativeTheme" : "tone"}"
+        value="${escapeHtml(value)}" ${value === selectedValue ? "checked" : ""}>
+      <span>
+        <strong>${escapeHtml(label)}</strong>
+        ${description ? `<small>${escapeHtml(description)}</small>` : ""}
+      </span>
+    </label>
+  `).join("");
+}
+
+export function updateAspectSummary(value) {
+  const option = aspectRatioOptions.find(([item]) => item === value) || aspectRatioOptions[0];
+  const [ratio, label] = option;
+  const form = el("reviewForm");
+  if (form?.elements.output_aspect_ratio) form.elements.output_aspect_ratio.value = ratio;
+  const icon = el("aspectSummaryIcon");
+  if (icon) icon.style.setProperty("--ratio", ratio.replace(":", " / "));
+  if (el("aspectSummaryValue")) el("aspectSummaryValue").textContent = ratio;
+  if (el("aspectSummaryLabel")) el("aspectSummaryLabel").textContent = label;
+}
+
+function labelFor(options, value, fallback = "") {
+  return options.find(([item]) => item === value)?.[1] || fallback || value || "";
+}
+
+function compactOptionsHtml(name, options, selectedValue, { valueAsLabel = false, withIcons = false } = {}) {
+  return options.map(([value, label, description]) => {
+    const selected = String(value) === String(selectedValue);
+    const icon = withIcons
+      ? `<span class="aspect-icon" style="--ratio:${escapeHtml(String(value).replace(":", " / "))}"></span>`
+      : "";
+    return `
+      <button class="review-option ${selected ? "selected" : ""}" type="button"
+        data-review-select="${escapeHtml(name)}"
+        data-value="${escapeHtml(value)}"
+        data-label="${escapeHtml(valueAsLabel ? value : label)}">
+        ${icon}
+        <strong>${escapeHtml(valueAsLabel ? value : label)}</strong>
+        ${description ? `<small>${escapeHtml(description)}</small>` : ""}
+      </button>
+    `;
+  }).join("");
+}
+
+function renderReviewControls(setup) {
+  const container = el("reviewControlBox");
+  if (!container) return;
+  const singleVideo = isSingleVideoProject(state.project);
+  const countryLabel = countryNames[setup.targetCountry] || setup.targetCountry;
+  const themeLabel = labelFor(creativeThemeOptions, setup.creativeTheme);
+  const toneLabel = labelFor(toneOptions, setup.tone);
+  const modifiedSettings = new Set(readProjectPreferences(state.project).modifiedSettings || []);
+  const groups = [
+    {
+      name: "targetCountry",
+      icon: "地",
+      label: "国家",
+      value: countryLabel,
+      options: compactOptionsHtml("targetCountry", marketCountryOptions, setup.targetCountry)
+    },
+    {
+      name: "audience",
+      icon: "众",
+      label: "人群",
+      value: setup.audience,
+      options: compactOptionsHtml("audience", audienceOptions.map(([value, label, description]) => [label, label, description]), setup.audience)
+    },
+    {
+      name: "output_aspect_ratio",
+      icon: "幅",
+      label: "尺寸",
+      value: setup.outputAspectRatio,
+      options: compactOptionsHtml("output_aspect_ratio", aspectRatioOptions, setup.outputAspectRatio, { valueAsLabel: true, withIcons: true })
+    },
+    {
+      name: "creativeTheme",
+      icon: "题",
+      label: "主题",
+      value: themeLabel,
+      options: compactOptionsHtml("creativeTheme", creativeThemeOptions, setup.creativeTheme)
+    },
+    {
+      name: "tone",
+      icon: "调",
+      label: "语气",
+      value: toneLabel,
+      options: compactOptionsHtml("tone", toneOptions, setup.tone)
+    },
+    singleVideo ? {
+      name: "videoDurationSeconds",
+      icon: "秒",
+      label: "视频时长",
+      value: `${setup.videoDurationSeconds} 秒`,
+      options: compactOptionsHtml("videoDurationSeconds", videoDurationOptions, setup.videoDurationSeconds)
+    } : {
+      name: "shotsPerSegment",
+      icon: "镜",
+      label: "镜头",
+      value: `${setup.shotsPerSegment} 个`,
+      options: compactOptionsHtml("shotsPerSegment", [[3, "3 个", "每 10 秒"], [4, "4 个", "每 10 秒"], [5, "5 个", "每 10 秒"]], setup.shotsPerSegment)
+    }
+  ];
+  container.innerHTML = groups.map((group) => `
+    <div class="review-menu" data-review-menu-root="${escapeHtml(group.name)}">
+      <button class="review-chip" type="button" data-review-menu="${escapeHtml(group.name)}" aria-expanded="false">
+        <i aria-hidden="true">${escapeHtml(group.icon)}</i>
+        <span>
+          <small>${escapeHtml(group.label)}</small>
+          <strong>${escapeHtml(group.value)}</strong>
+          <em class="setting-origin ${modifiedSettings.has(group.name) ? "modified" : "recommended"}">
+            ${modifiedSettings.has(group.name) ? "用户已修改" : "AI 建议"}
+          </em>
+        </span>
+        <b>⌄</b>
+      </button>
+      <div class="review-popover hidden" data-review-panel="${escapeHtml(group.name)}">
+        ${group.options}
+      </div>
+    </div>
+  `).join("");
+
+  let modeNote = el("reviewModeNote");
+  if (!singleVideo) {
+    if (!modeNote) {
+      modeNote = document.createElement("p");
+      modeNote.id = "reviewModeNote";
+      modeNote.className = "aspect-ratio-note";
+      container.after(modeNote);
+    }
+    modeNote.textContent = "当前模式：双段 20 秒（2 × 10 秒），每个分段独立生成脚本和故事板。";
+    modeNote.hidden = false;
+  } else if (modeNote) {
+    modeNote.hidden = true;
+  }
+}
+
+function renderProductLockCard(analysis) {
+  const container = el("productLockCard");
+  if (!container) return;
+  const lock = analysis?.product_lock_manifest || {};
+  const confidence = lock.confidence || analysis?.confidence || analysis?.product_summary?.confidence;
+  const heroAsset = state.project?.assets?.[0]?.url;
+  const rows = [
+    ["产品类型", valueAt(analysis, "product_summary.shoe_type")],
+    ["主色", displayValue(lock.main_colors)],
+    ["鞋型轮廓", [lock.toe_shape, lock.lace_system].filter(Boolean).join("；")],
+    ["鞋底 / 外底", [lock.midsole_shape, lock.outsole_color, lock.outsole_pattern].filter(Boolean).join("；")],
+    ["材质 / 纹理", lock.upper_material_visible],
+    ["Logo / 图案", [lock.side_pattern_or_logo, lock.heel_structure].filter(Boolean).join("；")],
+    ["必须保持", displayValue(lock.must_keep)],
+    ["禁止修改", displayValue(lock.must_not_change)]
+  ];
+  container.innerHTML = `
+    <div class="product-lock-heading">
+      <div><span class="product-lock-icon">锁</span><div><small>PRODUCT LOCK</small><h3>产品身份锁定</h3></div></div>
+      <span class="lock-confidence">${confidence ? `置信度 ${escapeHtml(confidence)}` : "人工确认前"}</span>
+    </div>
+    <div class="product-lock-layout">
+      ${heroAsset ? `<div class="product-lock-visual"><img src="${escapeHtml(heroAsset)}" alt="产品锁定主参考图"><span>MASTER REFERENCE</span></div>` : ""}
+      <div class="product-lock-grid">
+        ${rows.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(displayValue(value))}</dd></div>`).join("")}
+      </div>
+    </div>
+  `;
+}
+
+export function syncReviewSummaries() {
+  const form = el("reviewForm");
+  if (!form) return;
+  const aspectValue = form.elements.output_aspect_ratio?.value || "9:16";
+  updateAspectSummary(aspectValue);
+}
+
+function renderAutoAnalysisSummary(analysis) {
+  const lock = analysis?.product_lock_manifest || {};
+  const rows = [
+    ["鞋款", valueAt(analysis, "product_summary.shoe_type")],
+    ["用途", valueAt(analysis, "product_summary.likely_usage.value")],
+    ["风格", valueAt(analysis, "product_summary.overall_style")],
+    ["颜色", displayValue(lock.main_colors)],
+    ["材质", lock.upper_material_visible],
+    ["鞋底", [lock.midsole_shape, lock.outsole_color, lock.outsole_pattern].filter(Boolean).join("；")]
+  ];
+  return `
+    <div class="auto-analysis-grid">
+      ${rows.map(([label, value]) => `
+        <div>
+          <dt>${escapeHtml(label)}</dt>
+          <dd>${escapeHtml(displayValue(value))}</dd>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+export function fillReviewForm(analysis) {
+  const form = el("reviewForm");
+  const lock = analysis?.product_lock_manifest || {};
+  const setup = projectSetup(state.project);
+  const hasAnalysis = Boolean(analysis);
+  form.elements.shoe_type.value = valueAt(analysis, "product_summary.shoe_type");
+  form.elements.likely_usage.value = valueAt(analysis, "product_summary.likely_usage.value");
+  form.elements.overall_style.value = valueAt(analysis, "product_summary.overall_style");
+  form.elements.main_colors.value = (lock.main_colors || []).join(", ");
+  form.elements.supporting_colors.value = (lock.supporting_colors || []).join(", ");
+  form.elements.upper_material_visible.value = lock.upper_material_visible || "";
+  form.elements.toe_and_lace.value = [lock.toe_shape, lock.lace_system].filter(Boolean).join("\n");
+  form.elements.sole_structure.value = [
+    lock.midsole_shape,
+    lock.outsole_color,
+    lock.outsole_pattern
+  ].filter(Boolean).join("\n");
+  form.elements.side_and_heel.value = [
+    lock.side_pattern_or_logo,
+    lock.heel_structure
+  ].filter(Boolean).join("\n");
+  form.elements.must_keep.value = listText(lock.must_keep);
+  form.elements.must_not_change.value = listText(lock.must_not_change);
+  form.elements.targetCountry.value = setup.targetCountry;
+  form.elements.audience.value = setup.audience;
+  form.elements.output_aspect_ratio.value = setup.outputAspectRatio;
+  form.elements.creativeTheme.value = setup.creativeTheme;
+  form.elements.tone.value = setup.tone;
+  form.elements.shotsPerSegment.value = setup.shotsPerSegment;
+  form.elements.videoDurationSeconds.value = setup.videoDurationSeconds;
+  updateAspectSummary(setup.outputAspectRatio);
+  renderReviewControls(setup);
+  if (form.elements.coreMessage && !form.elements.coreMessage.value) {
+    form.elements.coreMessage.value = setup.coreMessage;
+  }
+  syncReviewSummaries();
+  el("autoAnalysisSummary").innerHTML = renderAutoAnalysisSummary(analysis);
+  renderProductLockCard(analysis);
+  el("mustKeepPreview").textContent = displayValue(lock.must_keep);
+  el("mustNotChangePreview").textContent = displayValue(lock.must_not_change);
+  el("analysisMode").textContent = analysis?.mode === "api"
+    ? "AI 识别 · 待审核"
+    : hasAnalysis
+      ? "演示识别 · 请修改"
+      : "正在识别 · 请稍候";
+  const hasMinimumAssets = (state.project?.assets || []).length >= 1;
+  document.querySelectorAll("#reviewForm button[type='submit'], button[form='reviewForm']").forEach((button) => {
+    button.disabled = !hasAnalysis || !hasMinimumAssets || state.busy;
+  });
+  const gateHint = el("reviewGateHint");
+  if (gateHint) {
+    gateHint.textContent = hasMinimumAssets
+      ? `已上传 ${state.project?.assets?.length || 0} 张图片，确认后进入脚本；建议继续补充更多角度。`
+      : "至少上传 1 张图片并完成产品识别后才能进入脚本。";
+    gateHint.classList.toggle("ready", hasMinimumAssets);
+  }
+
+  el("qualityNote").textContent = publicQualityNotes(analysis).join("；");
+}
+
+export function analysisFromForm() {
+  const form = el("reviewForm");
+  const previous = state.project.visionAnalysis || {};
+  const targetCountry = form.elements.targetCountry?.value || "Thailand";
+  const audience = form.elements.audience?.value || "日常运动与通勤人群";
+  const outputAspectRatio = form.elements.output_aspect_ratio?.value || "9:16";
+  const creativeTheme = form.elements.creativeTheme?.value || "city-motion";
+  const tone = form.elements.tone?.value || "energetic";
+  const rawCoreMessage = form.elements.coreMessage?.value.trim() || "";
+  const shotsPerSegment = Number(form.elements.shotsPerSegment?.value || 5);
+  const videoDuration = Number(form.elements.videoDurationSeconds?.value || 10);
+  const toeAndLace = lines(form.elements.toe_and_lace.value);
+  const sole = lines(form.elements.sole_structure.value);
+  const sideAndHeel = lines(form.elements.side_and_heel.value);
+  const preferences = {
+    targetCountry,
+    audience,
+    outputAspectRatio,
+    creativeTheme,
+    tone,
+    shotsPerSegment: [3, 4, 5].includes(shotsPerSegment) ? shotsPerSegment : 5,
+    videoDurationSeconds: Number.isInteger(videoDuration) && videoDuration >= 5 && videoDuration <= 15 ? videoDuration : 10
+  };
+  if (rawCoreMessage) preferences.coreMessage = rawCoreMessage;
+  saveProjectPreferences(state.project, preferences);
+  const briefCountry = el("briefCountry");
+  const briefAudience = el("briefAudience");
+  const briefAspect = el("briefAspect");
+  if (briefCountry) briefCountry.value = countryNames[targetCountry] || targetCountry;
+  if (briefAudience) briefAudience.value = audience;
+  if (briefAspect) briefAspect.value = outputAspectRatio;
+
+  return {
+    ...previous,
+    mode: "reviewed",
+    product_summary: {
+      shoe_type: form.elements.shoe_type.value,
+      likely_usage: {
+        value: form.elements.likely_usage.value,
+        evidence: valueAt(previous, "product_summary.likely_usage.evidence", "unknown")
+      },
+      overall_style: form.elements.overall_style.value
+    },
+    product_lock_manifest: {
+      main_colors: lines(form.elements.main_colors.value),
+      supporting_colors: lines(form.elements.supporting_colors.value),
+      upper_material_visible: form.elements.upper_material_visible.value,
+      toe_shape: toeAndLace[0] || "",
+      lace_system: toeAndLace.slice(1).join("；"),
+      midsole_shape: sole[0] || "",
+      outsole_color: sole[1] || "",
+      outsole_pattern: sole.slice(2).join("；"),
+      side_pattern_or_logo: sideAndHeel[0] || "",
+      heel_structure: sideAndHeel.slice(1).join("；"),
+      must_keep: lines(form.elements.must_keep.value),
+      must_not_change: lines(form.elements.must_not_change.value)
+    }
+  };
+}
+
+function autoCoreMessage(analysis, audience) {
+  const summary = analysis?.product_summary || {};
+  const lock = analysis?.product_lock_manifest || {};
+  const colors = Array.isArray(lock.main_colors) && lock.main_colors.length
+    ? `${lock.main_colors.slice(0, 2).join("、")} 配色`
+    : "清晰鞋型";
+  const usage = summary.likely_usage?.value || "日常出行";
+  return `${colors}，适合${audience || usage}的轻快稳定穿搭。`;
+}
+
+export function marketBriefFromReviewForm() {
+  const form = el("reviewForm");
+  const setup = projectSetup(state.project);
+  const targetCountry = form.elements.targetCountry?.value || setup.targetCountry;
+  const audience = form.elements.audience?.value || setup.audience;
+  const creativeTheme = form.elements.creativeTheme?.value || setup.creativeTheme;
+  const tone = form.elements.tone?.value || setup.tone;
+  const rawCoreMessage = form.elements.coreMessage?.value.trim() || "";
+  const coreMessage = rawCoreMessage || autoCoreMessage(state.project?.visionAnalysis, audience);
+  const shotsPerSegment = Number(form.elements.shotsPerSegment?.value || setup.shotsPerSegment);
+  const videoDuration = Number(form.elements.videoDurationSeconds?.value || setup.videoDurationSeconds);
+  const preferences = {
+    targetCountry,
+    audience,
+    outputAspectRatio: form.elements.output_aspect_ratio?.value || setup.outputAspectRatio,
+    creativeTheme,
+    tone,
+    shotsPerSegment: [3, 4, 5].includes(shotsPerSegment) ? shotsPerSegment : 5,
+    videoDurationSeconds: Number.isInteger(videoDuration) && videoDuration >= 5 && videoDuration <= 15 ? videoDuration : 10
+  };
+  if (rawCoreMessage) preferences.coreMessage = rawCoreMessage;
+  saveProjectPreferences(state.project, preferences);
+  return {
+    targetCountry,
+    audience,
+    creativeTheme,
+    coreMessage,
+    tone,
+    outputAspectRatio: form.elements.output_aspect_ratio?.value || setup.outputAspectRatio,
+    videoDurationSeconds: preferences.videoDurationSeconds
+  };
+}
