@@ -56,7 +56,7 @@ Route: simple|standard|complex
 
 ## 当前基线
 
-- 正式基线：`4cac041`
+- 正式基线：`d786f95`
 - 正式分支：`main / v2 / ui-v2`
 - 协调端负责发布任务、审查、回归测试与正式分支同步。
 
@@ -88,8 +88,6 @@ Route: simple|standard|complex
 ## Codex A：本机后端
 
 状态：DONE - MERGED INTO MAIN
-
-状态：CHANGES REQUESTED - REVISE `c930526`
 
 任务入口：
 
@@ -124,9 +122,7 @@ Route: simple|standard|complex
 
 ## Codex B：另一台电脑前端
 
-状态：READY - START NOW
-
-状态：READY - WAIT FOR REVISED SINGLE-VIDEO CONTRACT, THEN START
+状态：DONE - REVIEWED AND MERGED (`d786f95`)
 
 任务入口：
 
