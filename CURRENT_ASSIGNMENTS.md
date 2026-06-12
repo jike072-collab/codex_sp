@@ -56,7 +56,7 @@ Route: simple|standard|complex
 
 ## 当前基线
 
-- 正式基线：`64bf753`
+- 正式基线：`4cac041`
 - 正式分支：`main / v2 / ui-v2`
 - 协调端负责发布任务、审查、回归测试与正式分支同步。
 
@@ -86,6 +86,8 @@ Route: simple|standard|complex
 价格只作为内部选型参考，不进入产品界面。
 
 ## Codex A：本机后端
+
+状态：DONE - MERGED INTO MAIN
 
 状态：CHANGES REQUESTED - REVISE `c930526`
 
@@ -121,6 +123,8 @@ Route: simple|standard|complex
 - `studio-v2/admin/**`
 
 ## Codex B：另一台电脑前端
+
+状态：READY - START NOW
 
 状态：READY - WAIT FOR REVISED SINGLE-VIDEO CONTRACT, THEN START
 

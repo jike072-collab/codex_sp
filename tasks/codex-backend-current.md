@@ -1,6 +1,6 @@
 # Codex A Current Backend Task
 
-Status: CHANGES REQUESTED - REVISE EXISTING IMPLEMENTATION
+Status: DONE - MERGED INTO MAIN
 
 Target: 本机后端 Codex 对话
 
@@ -10,7 +10,7 @@ Route: complex
 
 Branch: `codex/backend-video-generation-provider`
 
-Start from: latest `origin/main`
+Start from: latest `origin/main` at or after `4cac041`
 
 ## Required Skills
 

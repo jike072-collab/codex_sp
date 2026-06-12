@@ -1,6 +1,6 @@
 # Codex B Current Frontend Task
 
-Status: READY - WAIT FOR REVISED SINGLE-VIDEO CONTRACT, THEN START
+Status: READY - START NOW
 
 Target: 另一台前端电脑
 
@@ -10,7 +10,7 @@ Route: complex
 
 Branch: `codex/frontend-video-generation-step`
 
-Start from: latest `origin/main`
+Start from: latest `origin/main` at or after `4cac041`
 
 Backend dependency branch: `codex/backend-video-generation-provider`
 
