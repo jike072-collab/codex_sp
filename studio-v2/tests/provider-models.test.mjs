@@ -146,6 +146,52 @@ test("provider model discovery returns real models, caches them, and refreshes o
   });
 });
 
+test("provider model discovery supports Sub2API OpenAI-compatible vision endpoints", async () => {
+  await withProviderEnv({
+    VISION_MODEL_API_KEY: "sub2api-client-key",
+    VISION_API_URL: "http://127.0.0.1:8080/v1/chat/completions",
+    VISION_MODEL: "gpt-4o",
+    TEXT_MODEL_API_KEY: "text-key",
+    TEXT_API_URL: "https://text.example.test/chat/completions",
+    TEXT_MODEL: "deepseek-v4-pro",
+    IMAGE_MODEL_API_KEY: "image-key-a",
+    IMAGE_API_URL: "https://image-a.example.test/draw/v1/images/generations",
+    IMAGE_MODEL: "gpt-image-2",
+    IMAGE_SECONDARY_API_KEY: "image-key-b",
+    IMAGE_SECONDARY_API_URL: "https://image-b.example.test/draw/v1/images/generations",
+    IMAGE_SECONDARY_MODEL: "gpt-image-2",
+    VIDEO_MODEL_API_KEY: "video-key",
+    VIDEO_API_URL: "https://video.example.test/v1/videos/generations",
+    VIDEO_MODEL: "seedance2.0 720p-fast"
+  }, async () => {
+    const result = await discoverAdminProviderModels({
+      fetchImpl: async (url, options) => {
+        if (String(url) === "http://127.0.0.1:8080/v1/models") {
+          assert.equal(options.headers.Authorization, "Bearer sub2api-client-key");
+          assert.equal("x-goog-api-key" in options.headers, false);
+          return jsonResponse({ data: [{ id: "gpt-4o" }, { id: "gemini-2.5-flash" }] });
+        }
+        if (String(url).includes("text.example.test/models")) {
+          return jsonResponse({ data: [{ id: "deepseek-v4-pro" }] });
+        }
+        if (String(url).includes("image-a.example.test/draw/v1/models")) {
+          return jsonResponse({ data: [{ id: "gpt-image-2" }] });
+        }
+        if (String(url).includes("image-b.example.test/draw/v1/models")) {
+          return jsonResponse({ data: [{ id: "gpt-image-2" }] });
+        }
+        if (String(url).includes("video.example.test/v1/models")) {
+          return jsonResponse({ data: [{ id: "seedance2.0 720p-fast" }] });
+        }
+        throw new Error(`unexpected url: ${url}`);
+      }
+    });
+
+    assert.equal(result.providers.vision.status, "ok");
+    assert.ok(result.providers.vision.models.some((model) => model.id === "gemini-2.5-flash"));
+  });
+});
+
 test("provider model discovery degrades safely for unsupported and error responses", async () => {
   await withProviderEnv({
     VISION_MODEL_API_KEY: "vision-key",

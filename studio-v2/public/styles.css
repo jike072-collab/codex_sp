@@ -3524,28 +3524,36 @@ body.ui-v2:has(dialog[open]) .production-action-dock {
 
 body.ui-v2 .empty-screen {
   display: grid;
-  grid-template-columns: minmax(360px, 1fr) minmax(420px, 1.1fr);
-  gap: 42px;
-  align-items: center;
+  place-items: center;
   min-height: 100vh;
-  padding: 42px;
-  color: #f4f7f1;
-  background: var(--studio-black);
+  padding: 24px;
+  color: var(--studio-ink);
+  background:
+    radial-gradient(circle at 0 0, rgba(202,255,65,.18), transparent 320px),
+    var(--studio-page);
 }
 body.ui-v2 .empty-story {
   display: grid;
-  gap: 16px;
-  max-width: 620px;
+  gap: 14px;
+  width: min(560px, 100%);
+  padding: 24px;
+  background: var(--studio-card);
+  border: 1px solid var(--studio-border-light);
+  border-radius: 8px;
+  box-shadow: 0 18px 46px rgba(42, 54, 36, .08);
+}
+body.ui-v2 .empty-quickstart {
+  justify-items: start;
 }
 body.ui-v2 .empty-screen h1 {
-  max-width: 620px;
+  max-width: 520px;
   margin: 0;
-  color: #fff;
+  color: var(--studio-ink);
   font-family: "Inter", "Microsoft YaHei", system-ui, sans-serif;
-  font-size: 48px;
-  line-height: 1.08;
+  font-size: 28px;
+  line-height: 1.18;
 }
-body.ui-v2 .empty-copy { max-width: 560px; color: #929d90; font-size: 14px; line-height: 1.8; }
+body.ui-v2 .empty-copy { max-width: 520px; color: var(--studio-muted-ink); font-size: 14px; line-height: 1.75; }
 body.ui-v2 .empty-delivery-promise {
   display: flex;
   align-items: center;
@@ -3630,9 +3638,8 @@ body.ui-v2 .workspace[data-stage="export"] .panel-progress-track i {
   body.ui-v2 .production-action-dock { left: 12px; right: 12px; bottom: 10px; }
   body.ui-v2 .stepper { scrollbar-width: none; }
   body.ui-v2 .stepper::-webkit-scrollbar { display: none; }
-  body.ui-v2 .empty-screen { grid-template-columns: 1fr; padding: 24px; }
-  body.ui-v2 .empty-production-preview { min-height: 320px; order: 2; }
-  body.ui-v2 .empty-screen h1 { font-size: 38px; }
+  body.ui-v2 .empty-screen { padding: 16px; }
+  body.ui-v2 .empty-screen h1 { font-size: 26px; }
 }
 @media (max-width: 720px) {
   body.ui-v2 .workspace-header { align-items: flex-start; }

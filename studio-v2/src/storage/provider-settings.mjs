@@ -14,6 +14,14 @@ const DEFAULT_IMAGE_API_URL = "https://www.right.codes/draw/v1/images/generation
 const DEFAULT_IMAGE_MODEL = "gpt-image-2";
 const DEFAULT_VIDEO_API_URL = "https://clmm-mall.top/v1/videos/generations";
 const DEFAULT_VIDEO_MODEL = "seedance2.0 720p-fast";
+const SUB2API_BASE_URL = "http://127.0.0.1:8080/v1";
+
+function urlPresets(defaultPreset, sub2apiPreset = null) {
+  return [
+    defaultPreset,
+    ...(sub2apiPreset ? [sub2apiPreset] : [])
+  ];
+}
 
 const IMAGE_CHANNEL_SPECS = Object.freeze([
   {
@@ -52,7 +60,20 @@ function imageChannelFields() {
       valueKey: channel.apiUrlValueKey,
       clearable: false,
       envKey: channel.apiUrlEnvKey,
-      defaultValue: DEFAULT_IMAGE_API_URL
+      defaultValue: DEFAULT_IMAGE_API_URL,
+      presets: urlPresets(
+        {
+          id: "right-code-draw",
+          label: "Right Code Draw",
+          value: DEFAULT_IMAGE_API_URL
+        },
+        {
+          id: "sub2api-local-images",
+          label: "Sub2API 本机图片通道",
+          value: `${SUB2API_BASE_URL}/images/generations`,
+          hint: "需要本机 Sub2API 容器支持 images/generations，并使用对应客户端 Key。"
+        }
+      )
     },
     {
       name: "model",
@@ -91,7 +112,20 @@ const PROVIDER_DEFINITIONS = Object.freeze([
         valueKey: "visionApiUrl",
         clearable: false,
         envKey: "VISION_API_URL",
-        defaultValue: "https://right.codes/gemini"
+        defaultValue: "https://right.codes/gemini",
+        presets: urlPresets(
+          {
+            id: "right-code-gemini",
+            label: "Right Code Gemini",
+            value: "https://right.codes/gemini"
+          },
+          {
+            id: "sub2api-local-chat",
+            label: "Sub2API 本机图文通道",
+            value: `${SUB2API_BASE_URL}/chat/completions`,
+            hint: "需要选择支持图片输入的模型；Key 从 Sub2API 的 openai-default 或 gemini-default 复制。"
+          }
+        )
       },
       {
         name: "model",
@@ -126,7 +160,20 @@ const PROVIDER_DEFINITIONS = Object.freeze([
         valueKey: "textApiUrl",
         clearable: false,
         envKey: "TEXT_API_URL",
-        defaultValue: "https://api.deepseek.com/chat/completions"
+        defaultValue: "https://api.deepseek.com/chat/completions",
+        presets: urlPresets(
+          {
+            id: "deepseek-chat",
+            label: "DeepSeek 官方",
+            value: "https://api.deepseek.com/chat/completions"
+          },
+          {
+            id: "sub2api-local-chat",
+            label: "Sub2API 本机对话通道",
+            value: `${SUB2API_BASE_URL}/chat/completions`,
+            hint: "选择后保存，再刷新模型列表；Key 从 Sub2API 客户端 Key 页面复制。"
+          }
+        )
       },
       {
         name: "model",
@@ -175,7 +222,20 @@ const PROVIDER_DEFINITIONS = Object.freeze([
         valueKey: "videoApiUrl",
         clearable: false,
         envKey: "VIDEO_API_URL",
-        defaultValue: DEFAULT_VIDEO_API_URL
+        defaultValue: DEFAULT_VIDEO_API_URL,
+        presets: urlPresets(
+          {
+            id: "clmm-video",
+            label: "clmm-mall 视频通道",
+            value: DEFAULT_VIDEO_API_URL
+          },
+          {
+            id: "sub2api-local-videos",
+            label: "Sub2API 本机视频通道",
+            value: `${SUB2API_BASE_URL}/videos/generations`,
+            hint: "只有当本机 Sub2API 映射的视频模型支持 videos/generations 时才可用。"
+          }
+        )
       },
       {
         name: "model",

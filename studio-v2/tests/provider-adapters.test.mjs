@@ -204,6 +204,38 @@ test("Right Code vision adapter keeps legacy Draw channel compatibility", async 
   });
 });
 
+test("vision adapter supports Sub2API OpenAI-compatible chat completions", async () => {
+  await withProviderEnv({
+    VISION_MODEL_API_KEY: "sub2api-client-key",
+    VISION_API_URL: "http://127.0.0.1:8080/v1/chat/completions",
+    VISION_MODEL: "gpt-4o"
+  }, async () => {
+    let requestBody;
+    const analysis = await analyzeProject(
+      { id: "vision-project", assets: [] },
+      {
+        fetchImpl: async (url, options) => {
+          assert.equal(url, "http://127.0.0.1:8080/v1/chat/completions");
+          assert.equal(options.headers.Authorization, "Bearer sub2api-client-key");
+          assert.equal("x-goog-api-key" in options.headers, false);
+          requestBody = JSON.parse(options.body);
+          return new Response(JSON.stringify({
+            choices: [{
+              message: {
+                content: JSON.stringify(reviewedProject().visionAnalysis)
+              }
+            }]
+          }), { status: 200 });
+        }
+      }
+    );
+
+    assert.equal(requestBody.model, "gpt-4o");
+    assert.equal(requestBody.messages[1].content[0].type, "text");
+    assert.equal(analysis.mode, "api");
+  });
+});
+
 test("provider HTTP 524 is classified as a possibly billed timeout", async () => {
   await assert.rejects(
     postProviderJson({

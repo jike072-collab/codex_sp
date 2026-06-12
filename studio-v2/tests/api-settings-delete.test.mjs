@@ -115,6 +115,14 @@ test("public provider status stays redacted while admin settings persist locally
   assert.equal(providerById(schema.body, "vision").fields.some(
     (field) => field.valueKey === "visionModel" && field.type === "select"
   ), true);
+  assert.equal(providerById(schema.body, "vision").fields.some(
+    (field) => field.valueKey === "visionApiUrl"
+      && field.presets?.some((preset) => preset.value === "http://127.0.0.1:8080/v1/chat/completions")
+  ), true);
+  assert.equal(providerById(schema.body, "text").fields.some(
+    (field) => field.valueKey === "textApiUrl"
+      && field.presets?.some((preset) => preset.value === "http://127.0.0.1:8080/v1/chat/completions")
+  ), true);
   assert.deepEqual(providerById(schema.body, "image").channels.map((channel) => channel.id), [
     "primary",
     "secondary"
@@ -122,8 +130,16 @@ test("public provider status stays redacted while admin settings persist locally
   assert.equal(providerById(schema.body, "image").fields.some(
     (field) => field.valueKey === "imageSecondaryModel" && field.type === "select"
   ), true);
+  assert.equal(providerById(schema.body, "image").fields.some(
+    (field) => field.valueKey === "imageApiUrl"
+      && field.presets?.some((preset) => preset.value === "http://127.0.0.1:8080/v1/images/generations")
+  ), true);
   assert.equal(providerById(schema.body, "video").fields.some(
     (field) => field.valueKey === "videoModel" && field.type === "select"
+  ), true);
+  assert.equal(providerById(schema.body, "video").fields.some(
+    (field) => field.valueKey === "videoApiUrl"
+      && field.presets?.some((preset) => preset.value === "http://127.0.0.1:8080/v1/videos/generations")
   ), true);
   assert.equal(JSON.stringify(schema.body).includes("VISION_MODEL_API_KEY"), false);
 

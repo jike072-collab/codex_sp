@@ -124,12 +124,50 @@ function renderModelField(provider, field, wrapper) {
   wrapper.append(help);
 }
 
+function renderPresetSelect(field, currentValue, wrapper) {
+  if (!Array.isArray(field.presets) || !field.presets.length) return;
+
+  const preset = document.createElement("select");
+  preset.className = "preset-select";
+  preset.dataset.presetFor = field.valueKey;
+  preset.setAttribute("aria-label", `${FIELD_LABELS[field.name] || field.label || field.name}方案`);
+
+  const custom = document.createElement("option");
+  custom.value = "";
+  custom.textContent = "自定义 / 当前地址";
+  preset.append(custom);
+
+  for (const item of field.presets) {
+    if (!item?.value) continue;
+    const option = document.createElement("option");
+    option.value = item.value;
+    option.textContent = item.label || item.id || item.value;
+    option.selected = item.value === currentValue;
+    preset.append(option);
+  }
+  wrapper.append(preset);
+
+  const selected = field.presets.find((item) => item?.value === currentValue);
+  const hintText = selected?.hint
+    || field.presets.find((item) => String(item?.id || "").startsWith("sub2api"))?.hint
+    || "";
+  if (hintText) {
+    const hint = document.createElement("small");
+    hint.className = "preset-hint";
+    hint.textContent = hintText;
+    wrapper.append(hint);
+  }
+}
+
 function renderInputField(provider, field, wrapper) {
+  const currentValue = field.type === "secret" ? "" : fieldConfig(provider, field)?.apiUrl || "";
+  renderPresetSelect(field, currentValue, wrapper);
+
   const input = document.createElement("input");
   input.id = field.valueKey;
   input.name = field.valueKey;
   input.type = field.type === "secret" ? "password" : "url";
-  input.value = field.type === "secret" ? "" : fieldConfig(provider, field)?.apiUrl || "";
+  input.value = currentValue;
   input.autocomplete = field.type === "secret" ? "new-password" : "off";
   input.dataset.fieldType = field.type;
   input.placeholder = field.type === "secret" ? "留空表示保持当前密钥" : "";
@@ -356,6 +394,17 @@ form.addEventListener("input", () => {
 });
 
 form.addEventListener("change", (event) => {
+  const preset = event.target.closest("[data-preset-for]");
+  if (preset) {
+    const target = form.elements[preset.dataset.presetFor];
+    if (target && preset.value) {
+      target.value = preset.value;
+      dirty = true;
+      setSaveState("已切换接口地址，保存后生效。");
+    }
+    return;
+  }
+
   const clearInput = event.target.closest("[data-clear-for]");
   if (!clearInput) return;
   const keyInput = form.elements[clearInput.dataset.clearFor];

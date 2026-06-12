@@ -72,9 +72,20 @@ function replaceEndpointPath(apiUrl, pattern, replacement) {
   return parsed.toString();
 }
 
+function isChatCompletionsEndpoint(apiUrl) {
+  try {
+    return /\/chat\/completions\/?$/i.test(new URL(apiUrl).pathname);
+  } catch {
+    return false;
+  }
+}
+
 function modelListUrl(providerId, apiUrl) {
   if (providerId === "vision") {
     if (/\/draw(?:\/|$)/i.test(apiUrl)) return null;
+    if (isChatCompletionsEndpoint(apiUrl)) {
+      return replaceEndpointPath(apiUrl, /\/chat\/completions\/?$/i, "/models");
+    }
     if (/\/v1beta\/models\/?$/i.test(apiUrl)) return apiUrl;
     return appendPath(apiUrl, "/v1beta/models");
   }
@@ -93,8 +104,10 @@ function modelListUrl(providerId, apiUrl) {
   return null;
 }
 
-function authHeaders(providerId, apiKey) {
-  if (providerId === "vision") return { "x-goog-api-key": apiKey };
+function authHeaders(providerId, apiUrl, apiKey) {
+  if (providerId === "vision" && !isChatCompletionsEndpoint(apiUrl)) {
+    return { "x-goog-api-key": apiKey };
+  }
   return { Authorization: `Bearer ${apiKey}` };
 }
 
@@ -144,7 +157,7 @@ async function fetchModelList(providerId, { apiUrl, apiKey, currentModel, fetchI
   try {
     response = await fetchImpl(url, {
       method: "GET",
-      headers: authHeaders(providerId, apiKey),
+      headers: authHeaders(providerId, apiUrl, apiKey),
       signal: AbortSignal.timeout(timeoutMs)
     });
   } catch {
