@@ -18,7 +18,10 @@ const providerEnvKeys = [
   "IMAGE_MODEL",
   "IMAGE_SECONDARY_API_KEY",
   "IMAGE_SECONDARY_API_URL",
-  "IMAGE_SECONDARY_MODEL"
+  "IMAGE_SECONDARY_MODEL",
+  "VIDEO_MODEL_API_KEY",
+  "VIDEO_API_URL",
+  "VIDEO_MODEL"
 ];
 
 async function withProviderEnv(values, callback) {
@@ -56,7 +59,10 @@ test("provider model discovery returns real models, caches them, and refreshes o
     IMAGE_MODEL: "gpt-image-2",
     IMAGE_SECONDARY_API_KEY: "image-key-b",
     IMAGE_SECONDARY_API_URL: "https://image-b.example.test/draw/v1/images/generations",
-    IMAGE_SECONDARY_MODEL: "gpt-image-2"
+    IMAGE_SECONDARY_MODEL: "gpt-image-2",
+    VIDEO_MODEL_API_KEY: "video-key",
+    VIDEO_API_URL: "https://video.example.test/v1/videos/generations",
+    VIDEO_MODEL: "seedance2.0 720p-fast"
   }, async () => {
     const seenUrls = [];
     const result = await discoverAdminProviderModels({
@@ -83,6 +89,10 @@ test("provider model discovery returns real models, caches them, and refreshes o
           assert.equal(options.headers.Authorization, "Bearer image-key-b");
           return jsonResponse({ data: [{ id: "gpt-image-2" }, { id: "gpt-image-4" }] });
         }
+        if (String(url).includes("video.example.test/v1/models")) {
+          assert.equal(options.headers.Authorization, "Bearer video-key");
+          return jsonResponse({ data: [{ id: "seedance2.0 720p-fast" }, { id: "seedance2.0 1080p" }] });
+        }
         throw new Error(`unexpected url: ${url}`);
       }
     });
@@ -90,6 +100,7 @@ test("provider model discovery returns real models, caches them, and refreshes o
     assert.equal(result.providers.vision.status, "ok");
     assert.equal(result.providers.text.status, "ok");
     assert.equal(result.providers.image.status, "ok");
+    assert.equal(result.providers.video.status, "ok");
     assert.equal(result.providers.image.source, "provider");
     assert.equal(result.providers.image.channels.length, 2);
     assert.deepEqual(result.providers.image.channels.map((channel) => channel.id), [
@@ -98,6 +109,7 @@ test("provider model discovery returns real models, caches them, and refreshes o
     ]);
     assert.ok(result.providers.image.channels[0].models.some((model) => model.id === "gpt-image-3"));
     assert.ok(result.providers.image.channels[1].models.some((model) => model.id === "gpt-image-4"));
+    assert.ok(result.providers.video.models.some((model) => model.id === "seedance2.0 1080p"));
 
     const cached = await discoverAdminProviderModels({
       fetchImpl: async () => {
@@ -121,12 +133,16 @@ test("provider model discovery returns real models, caches them, and refreshes o
         if (String(url).includes("image-b.example.test/draw/v1/models")) {
           return jsonResponse({ data: [{ id: "gpt-image-2" }] });
         }
+        if (String(url).includes("video.example.test/v1/models")) {
+          return jsonResponse({ data: [{ id: "seedance2.0 720p-fast" }] });
+        }
         throw new Error(`unexpected url: ${url}`);
       }
     });
     assert.equal(refreshed.providers.vision.models.length, 1);
     assert.equal(refreshed.providers.image.channels[0].models.length, 1);
-    assert.equal(seenUrls.length >= 4, true);
+    assert.equal(refreshed.providers.video.models.length, 1);
+    assert.equal(seenUrls.length >= 5, true);
   });
 });
 
@@ -143,7 +159,10 @@ test("provider model discovery degrades safely for unsupported and error respons
     IMAGE_MODEL: "gpt-image-2",
     IMAGE_SECONDARY_API_KEY: "image-key-b",
     IMAGE_SECONDARY_API_URL: "https://image-b.example.test/draw/v1/images/generations",
-    IMAGE_SECONDARY_MODEL: "gpt-image-2"
+    IMAGE_SECONDARY_MODEL: "gpt-image-2",
+    VIDEO_MODEL_API_KEY: "video-key",
+    VIDEO_API_URL: "https://video.example.test/v1/videos/generations",
+    VIDEO_MODEL: "seedance2.0 720p-fast"
   }, async () => {
     const result = await discoverAdminProviderModels({
       fetchImpl: async (url) => {
@@ -159,6 +178,9 @@ test("provider model discovery degrades safely for unsupported and error respons
         if (String(url).includes("image-b.example.test/draw/v1/models")) {
           return new Response("", { status: 500 });
         }
+        if (String(url).includes("video.example.test/v1/models")) {
+          return new Response("", { status: 404 });
+        }
         throw new Error(`unexpected url: ${url}`);
       }
     });
@@ -172,9 +194,12 @@ test("provider model discovery degrades safely for unsupported and error respons
     assert.equal(result.providers.image.channels[1].status, "error");
     assert.equal(result.providers.image.channels[0].models[0].id, "gpt-image-2");
     assert.equal(result.providers.image.channels[1].models[0].id, "gpt-image-2");
+    assert.equal(result.providers.video.status, "unsupported");
+    assert.equal(result.providers.video.models[0].id, "seedance2.0 720p-fast");
     assert.match(result.providers.text.message, /HTTP 500/);
     assert.match(result.providers.image.channels[0].message, /模型列表端点/);
     assert.match(result.providers.image.channels[1].message, /HTTP 500/);
+    assert.match(result.providers.video.message, /模型列表端点/);
   });
 });
 
@@ -191,7 +216,10 @@ test("provider model discovery cache is invalidated when API keys change", async
     IMAGE_MODEL: "gpt-image-2",
     IMAGE_SECONDARY_API_KEY: "image-key-b",
     IMAGE_SECONDARY_API_URL: "https://image-b.example.test/draw/v1/images/generations",
-    IMAGE_SECONDARY_MODEL: "gpt-image-2"
+    IMAGE_SECONDARY_MODEL: "gpt-image-2",
+    VIDEO_MODEL_API_KEY: "video-key-a",
+    VIDEO_API_URL: "https://video.example.test/v1/videos/generations",
+    VIDEO_MODEL: "seedance2.0 720p-fast"
   }, async () => {
     const requestCounts = new Map();
     const fetchImpl = async (url, options) => {
@@ -219,6 +247,11 @@ test("provider model discovery cache is invalidated when API keys change", async
           data: [{ id: auth === "Bearer image-key-b" ? "gpt-image-b1" : "gpt-image-b2" }]
         });
       }
+      if (String(url).includes("video.example.test/v1/models")) {
+        return jsonResponse({
+          data: [{ id: auth === "Bearer video-key-a" ? "seedance-alpha" : "seedance-beta" }]
+        });
+      }
       throw new Error(`unexpected url: ${url}`);
     };
 
@@ -227,21 +260,25 @@ test("provider model discovery cache is invalidated when API keys change", async
     assert.ok(first.providers.text.models.some((model) => model.id === "deepseek-alpha"));
     assert.ok(first.providers.image.channels[0].models.some((model) => model.id === "gpt-image-a1"));
     assert.ok(first.providers.image.channels[1].models.some((model) => model.id === "gpt-image-b1"));
+    assert.ok(first.providers.video.models.some((model) => model.id === "seedance-alpha"));
 
     process.env.VISION_MODEL_API_KEY = "vision-key-z";
     process.env.TEXT_MODEL_API_KEY = "text-key-z";
     process.env.IMAGE_MODEL_API_KEY = "image-key-z";
     process.env.IMAGE_SECONDARY_API_KEY = "image-key-y";
+    process.env.VIDEO_MODEL_API_KEY = "video-key-z";
 
     const second = await discoverAdminProviderModels({ fetchImpl });
     assert.ok(second.providers.vision.models.some((model) => model.id === "gemini-beta"));
     assert.ok(second.providers.text.models.some((model) => model.id === "deepseek-beta"));
     assert.ok(second.providers.image.channels[0].models.some((model) => model.id === "gpt-image-a2"));
     assert.ok(second.providers.image.channels[1].models.some((model) => model.id === "gpt-image-b2"));
+    assert.ok(second.providers.video.models.some((model) => model.id === "seedance-beta"));
     assert.equal(second.providers.vision.models.some((model) => model.id === "gemini-alpha"), false);
     assert.equal(second.providers.text.models.some((model) => model.id === "deepseek-alpha"), false);
     assert.equal(second.providers.image.channels[0].models.some((model) => model.id === "gpt-image-a1"), false);
     assert.equal(second.providers.image.channels[1].models.some((model) => model.id === "gpt-image-b1"), false);
+    assert.equal(second.providers.video.models.some((model) => model.id === "seedance-alpha"), false);
 
     assert.equal(
       [...requestCounts.keys()].filter((key) => key.includes("vision.example.test")).length,
@@ -257,6 +294,10 @@ test("provider model discovery cache is invalidated when API keys change", async
     );
     assert.equal(
       [...requestCounts.keys()].filter((key) => key.includes("image-b.example.test")).length,
+      2
+    );
+    assert.equal(
+      [...requestCounts.keys()].filter((key) => key.includes("video.example.test")).length,
       2
     );
 

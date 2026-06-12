@@ -120,12 +120,18 @@ test("review then market advances the project to script", async () => {
   });
   assert.equal(market.status, 200);
   assert.equal(market.body.project.status, "script");
-  assert.deepEqual(market.body.project.marketBrief, marketBrief);
+  assert.deepEqual(market.body.project.marketBrief, {
+    ...marketBrief,
+    videoDurationSeconds: 10
+  });
   assert.ok(market.body.project.marketConfirmedAt);
 
   const persisted = await repository.readProject(project.id);
   assert.equal(persisted.status, "script");
-  assert.deepEqual(persisted.marketBrief, marketBrief);
+  assert.deepEqual(persisted.marketBrief, {
+    ...marketBrief,
+    videoDurationSeconds: 10
+  });
 });
 
 test("market rejects an invalid workflow stage with 400", async () => {

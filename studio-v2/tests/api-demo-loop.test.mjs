@@ -115,13 +115,11 @@ test("no-key mode keeps storyboard generation in Step 4 and blocks export", asyn
   assert.equal(firstGeneration.response.status, 200);
   assert.equal(firstGeneration.body.project.status, "script");
   assert.equal(firstGeneration.body.project.planningPackage.mode, "demo");
+  assert.equal(firstGeneration.body.project.planningPackage.workflow_mode, "single_video");
+  assert.equal(firstGeneration.body.project.planningPackage.script_video.total_duration_sec, 10);
   assert.equal(
-    firstGeneration.body.project.planningPackage.script_20s.segment_a_0_10s.shots.length,
-    4
-  );
-  assert.equal(
-    firstGeneration.body.project.planningPackage.script_20s.segment_b_10_20s.shots.length,
-    4
+    firstGeneration.body.project.planningPackage.script_video.segment_full.shots.length,
+    5
   );
 
   const secondGeneration = await jsonRequest(`/api/projects/${projectId}/script/generate`, {
@@ -134,7 +132,7 @@ test("no-key mode keeps storyboard generation in Step 4 and blocks export", asyn
   );
 
   const editedPlanning = structuredClone(secondGeneration.body.project.planningPackage);
-  editedPlanning.script_20s.segment_a_0_10s.shots[0].visual =
+  editedPlanning.script_video.segment_full.shots[0].visual =
     "User edited product-first opening shot.";
 
   const confirmed = await jsonRequest(`/api/projects/${projectId}/script/confirm`, {
@@ -144,7 +142,7 @@ test("no-key mode keeps storyboard generation in Step 4 and blocks export", asyn
   assert.equal(confirmed.response.status, 200);
   assert.equal(confirmed.body.project.status, "visual");
   assert.equal(
-    confirmed.body.project.planningPackage.script_20s.segment_a_0_10s.shots[0].visual,
+    confirmed.body.project.planningPackage.script_video.segment_full.shots[0].visual,
     "User edited product-first opening shot."
   );
 
@@ -163,10 +161,10 @@ test("no-key mode keeps storyboard generation in Step 4 and blocks export", asyn
   );
   assert.deepEqual(
     reopened.body.project.imagePackage.image_generation.map((item) => item.status),
-    ["waiting", "waiting"]
+    ["waiting"]
   );
   assert.equal(
-    reopened.body.project.planningPackage.script_20s.segment_a_0_10s.shots[0].visual,
+    reopened.body.project.planningPackage.script_video.segment_full.shots[0].visual,
     "User edited product-first opening shot."
   );
 
@@ -331,7 +329,7 @@ test("script confirmation rejects a broken timeline", async () => {
     method: "POST"
   });
   const broken = structuredClone(generated.body.project.planningPackage);
-  broken.script_20s.segment_a_0_10s.shots[1].start_sec = 3;
+  broken.script_video.segment_full.shots[1].start_sec = 3;
 
   const response = await jsonRequest(`/api/projects/${projectId}/script/confirm`, {
     method: "POST",
@@ -437,7 +435,7 @@ test("visual generation timeout records a retryable failure state", async () => 
     assert.equal(reopened.body.project.visualGenerationFailure.retryable, true);
     assert.equal(
       reopened.body.project.visualGenerationFailure.providerDiagnostics.evidence.concurrentAttemptCount,
-      2
+      1
     );
     assert.equal(
       reopened.body.project.visualGenerationFailure.providerDiagnostics.evidence.sameReferencePayload,
@@ -445,7 +443,7 @@ test("visual generation timeout records a retryable failure state", async () => 
     );
     assert.deepEqual(
       reopened.body.project.visualGenerationFailure.providerDiagnostics.evidence.drawChannelIds,
-      ["primary", "secondary"]
+      ["primary"]
     );
     assert.equal(
       reopened.body.project.visualGenerationFailure.providerDiagnostics.evidence.conclusion,
@@ -459,8 +457,8 @@ test("visual generation timeout records a retryable failure state", async () => 
       false
     );
     assert.equal(reopened.body.project.visualGeneratedAt, null);
-    assert.equal(reopened.body.project.imagePackage.image_generation.length, 2);
-    assert.equal(providerRequests.length, 2);
+    assert.equal(reopened.body.project.imagePackage.image_generation.length, 1);
+    assert.equal(providerRequests.length, 1);
 
     const projectList = await jsonRequest("/api/projects");
     const summary = projectList.body.projects.find((item) => item.id === projectId);

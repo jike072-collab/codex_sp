@@ -71,10 +71,11 @@ Response:
   "providers": {
     "vision": { "configured": false },
     "text": { "configured": true },
-    "image": { "configured": false }
+    "image": { "configured": false },
+    "video": { "configured": true }
   },
-  "configuredCount": 1,
-  "total": 3
+  "configuredCount": 2,
+  "total": 4
 }
 ```
 
@@ -93,7 +94,7 @@ Response:
 
 ```json
 {
-  "schemaVersion": 2,
+  "schemaVersion": 4,
   "providers": [
     {
       "id": "vision",
@@ -194,6 +195,42 @@ Response:
           }
         ]
       }
+    },
+    {
+      "id": "video",
+      "title": "视频生成模型",
+      "provider": "clmm-mall.top",
+      "role": "Step 05 两段视频生成",
+      "channel": "OpenAI-video 兼容通道",
+      "fields": [
+        {
+          "name": "apiUrl",
+          "label": "API 地址",
+          "type": "url",
+          "valueKey": "videoApiUrl",
+          "clearable": false
+        },
+        {
+          "name": "model",
+          "label": "模型",
+          "type": "select",
+          "valueKey": "videoModel",
+          "clearable": false
+        },
+        {
+          "name": "apiKey",
+          "label": "API Key",
+          "type": "secret",
+          "valueKey": "videoApiKey",
+          "clearable": true
+        }
+      ],
+      "config": {
+        "model": "seedance2.0 720p-fast",
+        "apiUrl": "https://clmm-mall.top/v1/videos/generations",
+        "configured": false,
+        "keyPreview": ""
+      }
     }
   ]
 }
@@ -254,6 +291,14 @@ Response:
           "message": "供应商未提供可用的模型列表端点。"
         }
       ]
+    },
+    "video": {
+      "status": "ok",
+      "currentModel": "seedance2.0 720p-fast",
+      "models": [
+        { "id": "seedance2.0 720p-fast", "label": "seedance2.0 720p-fast" }
+      ],
+      "source": "provider"
     }
   }
 }
@@ -272,6 +317,9 @@ Statuses:
   returned.
 - `partial`: mixed channel results, for example one draw channel supports model
   discovery while the other only falls back to its current configured model.
+
+For `video`, the backend derives `/models` from the configured
+`/v1/videos/generations` endpoint and never invents unavailable models.
 
 No response includes a full API key, provider response body, prompt, image
 content, or base64 payload.
@@ -298,7 +346,10 @@ Request fields are optional and independent:
   "imageApiKey": "right-code-image-key-a",
   "imageSecondaryApiUrl": "https://www.right.codes/draw/v1/images/generations",
   "imageSecondaryModel": "gpt-image-2",
-  "imageSecondaryApiKey": "right-code-image-key-b"
+  "imageSecondaryApiKey": "right-code-image-key-b",
+  "videoApiUrl": "https://clmm-mall.top/v1/videos/generations",
+  "videoModel": "seedance2.0 720p-fast",
+  "videoApiKey": "video-provider-key"
 }
 ```
 
@@ -306,13 +357,15 @@ Rules:
 
 - `visionApiUrl`, `textApiUrl`, `imageApiUrl`, and `imageSecondaryApiUrl` must
   be valid `http` or `https` URLs.
-- `visionModel`, `textModel`, `imageModel`, and `imageSecondaryModel` must be
-  non-empty strings with no line breaks.
+- `videoApiUrl` must also be a valid `http` or `https` URL.
+- `visionModel`, `textModel`, `imageModel`, `imageSecondaryModel`, and
+  `videoModel` must be non-empty strings with no line breaks.
 - API key fields accept a non-empty string to replace the key.
 - API key fields accept `null` to clear the local key.
 - Omitted fields keep their current values.
 - Empty API key strings are invalid; Admin UI should omit empty key inputs.
 - Values are stored only in the ignored local `.env` file using atomic writes.
+- `videoApiKey` is persisted to the dedicated `VIDEO_MODEL_API_KEY` setting.
 - System environment variables still take precedence over `.env`.
 - Success returns the same shape as `GET /api/admin/providers`.
 

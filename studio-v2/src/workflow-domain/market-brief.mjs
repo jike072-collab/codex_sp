@@ -1,6 +1,11 @@
 import { DomainError } from "./domain-error.mjs";
 import { assertProjectStage, transitionProject } from "./project-workflow.mjs";
 import { cleanString } from "./value-normalizers.mjs";
+import {
+  SINGLE_VIDEO_DURATION_DEFAULT,
+  SINGLE_VIDEO_DURATION_MAX,
+  SINGLE_VIDEO_DURATION_MIN
+} from "./workflow-mode.mjs";
 
 export const CREATIVE_THEMES = Object.freeze([
   "city-motion",
@@ -46,6 +51,25 @@ function allowedValue(value, fieldName, allowedValues) {
   return normalized;
 }
 
+function videoDurationSeconds(value) {
+  if (value === undefined || value === null || value === "") {
+    return SINGLE_VIDEO_DURATION_DEFAULT;
+  }
+  const duration = Number(value);
+  if (!Number.isInteger(duration)) {
+    throw new DomainError("市场创意字段“videoDurationSeconds”必须是整数。", {
+      code: "INVALID_MARKET_BRIEF"
+    });
+  }
+  if (duration < SINGLE_VIDEO_DURATION_MIN || duration > SINGLE_VIDEO_DURATION_MAX) {
+    throw new DomainError(
+      `市场创意字段“videoDurationSeconds”必须在 ${SINGLE_VIDEO_DURATION_MIN}-${SINGLE_VIDEO_DURATION_MAX} 秒之间。`,
+      { code: "INVALID_MARKET_BRIEF" }
+    );
+  }
+  return duration;
+}
+
 export function normalizeMarketBrief(input) {
   return {
     targetCountry: requiredString(input?.targetCountry, "targetCountry"),
@@ -55,7 +79,8 @@ export function normalizeMarketBrief(input) {
     tone: allowedValue(input?.tone, "tone", CREATIVE_TONES),
     outputAspectRatio: input?.outputAspectRatio
       ? allowedValue(input.outputAspectRatio, "outputAspectRatio", OUTPUT_ASPECT_RATIOS)
-      : "9:16"
+      : "9:16",
+    videoDurationSeconds: videoDurationSeconds(input?.videoDurationSeconds)
   };
 }
 

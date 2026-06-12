@@ -1,6 +1,9 @@
 import { DomainError } from "./domain-error.mjs";
 import { assertProjectStage, transitionProject } from "./project-workflow.mjs";
 import { cleanString, normalizeList } from "./value-normalizers.mjs";
+import {
+  normalizeSingleVideoDurationSeconds
+} from "./workflow-mode.mjs";
 
 const REQUIRED_SHOT_TEXT_FIELDS = Object.freeze([
   "visual",
@@ -65,13 +68,13 @@ function normalizeSegment(input, expected) {
   if (input?.segment_id !== expected.segmentId) {
     invalidScript(`分段编号必须是 ${expected.segmentId}。`);
   }
-  if (Number(input?.duration_sec) !== 10) {
-    invalidScript(`${expected.segmentId} 时长必须是 10 秒。`);
+  if (Number(input?.duration_sec) !== expected.durationSec) {
+    invalidScript(`${expected.segmentId} 时长必须是 ${expected.durationSec} 秒。`);
   }
   return {
     segment_id: expected.segmentId,
     theme: requiredString(input?.theme, `${expected.segmentId}.theme`),
-    duration_sec: 10,
+    duration_sec: expected.durationSec,
     shots: normalizeShots(
       input?.shots,
       expected.segmentId,
@@ -96,36 +99,64 @@ function validateProductLock(submittedLock, confirmedLock) {
   }
 }
 
-export function normalizeConfirmedPlanningPackage(input, confirmedLock) {
-  if (!input || typeof input !== "object") invalidScript("请提交完整的脚本包。");
-  validateProductLock(input.product_lock_manifest, confirmedLock);
-
-  const script = input.script_20s;
+function normalizeLegacyScript(script) {
   if (Number(script?.total_duration_sec) !== 20) {
     invalidScript("广告脚本总时长必须是 20 秒。");
   }
-
   return {
+    total_duration_sec: 20,
+    segment_a_0_10s: normalizeSegment(script.segment_a_0_10s, {
+      segmentId: "0-10s",
+      start: 0,
+      end: 10,
+      durationSec: 10
+    }),
+    segment_b_10_20s: normalizeSegment(script.segment_b_10_20s, {
+      segmentId: "10-20s",
+      start: 10,
+      end: 20,
+      durationSec: 10
+    })
+  };
+}
+
+function normalizeSingleVideoScript(script, duration) {
+  const normalizedDuration = normalizeSingleVideoDurationSeconds(duration);
+  return {
+    total_duration_sec: normalizedDuration,
+    segment_full: normalizeSegment(script.segment_full, {
+      segmentId: "full",
+      start: 0,
+      end: normalizedDuration,
+      durationSec: normalizedDuration
+    })
+  };
+}
+
+function resolveWorkflowMode(input, confirmedLock, options) {
+  const explicit = String(options?.workflowMode || input?.workflow_mode || "").trim();
+  if (explicit === "single_video") return "single_video";
+  if (explicit === "legacy_multi_segment") return "legacy_multi_segment";
+  if (input?.script_video?.segment_full) return "single_video";
+  if (Number.isInteger(options?.videoDurationSeconds)) return "single_video";
+  if (confirmedLock && input?.script_20s) return "legacy_multi_segment";
+  return input?.script_video ? "single_video" : "legacy_multi_segment";
+}
+
+export function normalizeConfirmedPlanningPackage(input, confirmedLock, options = {}) {
+  if (!input || typeof input !== "object") invalidScript("请提交完整的脚本包。");
+  validateProductLock(input.product_lock_manifest, confirmedLock);
+
+  const workflowMode = resolveWorkflowMode(input, confirmedLock, options);
+  const result = {
     mode: cleanString(input.mode, "demo"),
+    workflow_mode: workflowMode,
     locale_profile: structuredClone(input.locale_profile || {}),
     product_lock_manifest: structuredClone(confirmedLock),
     selling_points: Array.isArray(input.selling_points)
       ? structuredClone(input.selling_points)
       : [],
     creative_direction: structuredClone(input.creative_direction || {}),
-    script_20s: {
-      total_duration_sec: 20,
-      segment_a_0_10s: normalizeSegment(script.segment_a_0_10s, {
-        segmentId: "0-10s",
-        start: 0,
-        end: 10
-      }),
-      segment_b_10_20s: normalizeSegment(script.segment_b_10_20s, {
-        segmentId: "10-20s",
-        start: 10,
-        end: 20
-      })
-    },
     localized_copy: structuredClone(input.localized_copy || {
       caption_lines: [],
       cta_options: [],
@@ -136,6 +167,26 @@ export function normalizeConfirmedPlanningPackage(input, confirmedLock) {
       risk_notes: []
     })
   };
+
+  if (workflowMode === "single_video") {
+    const duration = normalizeSingleVideoDurationSeconds(
+      options.videoDurationSeconds
+        ?? input?.script_video?.total_duration_sec
+    );
+    if (!input.script_video?.segment_full) {
+      invalidScript("当前单视频脚本必须包含 segment_full。");
+    }
+    result.script_video = normalizeSingleVideoScript(input.script_video, duration);
+    delete result.script_20s;
+    return result;
+  }
+
+  if (!input.script_20s) {
+    invalidScript("当前脚本必须包含 script_20s。");
+  }
+  result.script_20s = normalizeLegacyScript(input.script_20s);
+  delete result.script_video;
+  return result;
 }
 
 export function confirmPlanningPackage(project, input, confirmedAt = new Date().toISOString()) {
@@ -146,9 +197,12 @@ export function confirmPlanningPackage(project, input, confirmedAt = new Date().
     });
   }
   const confirmedLock = project.visionAnalysis?.product_lock_manifest;
-  project.planningPackage = normalizeConfirmedPlanningPackage(input, confirmedLock);
+  project.planningPackage = normalizeConfirmedPlanningPackage(input, confirmedLock, {
+    workflowMode: project.workflowMode,
+    videoDurationSeconds: project.marketBrief?.videoDurationSeconds
+  });
+  project.workflowMode = project.planningPackage.workflow_mode;
   project.scriptConfirmedAt = confirmedAt;
   transitionProject(project, "visual");
   return project;
 }
-

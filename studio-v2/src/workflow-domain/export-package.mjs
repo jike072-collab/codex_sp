@@ -1,11 +1,18 @@
 import { DomainError } from "./domain-error.mjs";
+import {
+  expectedStoryboardCount,
+  expectedStoryboardSegmentIds,
+  isSingleVideoMode
+} from "./workflow-mode.mjs";
 
 function storyboardDeliverables(project) {
-  const script = project.planningPackage?.script_20s || {};
-  const segmentById = {
-    "0-10s": script.segment_a_0_10s,
-    "10-20s": script.segment_b_10_20s
-  };
+  const script = project.planningPackage || {};
+  const segmentById = isSingleVideoMode(project)
+    ? { full: script.script_video?.segment_full }
+    : {
+        "0-10s": script.script_20s?.segment_a_0_10s,
+        "10-20s": script.script_20s?.segment_b_10_20s
+      };
   return (project.imagePackage?.image_generation || []).map((item) => ({
     segment_id: item.segment_id,
     aspect_ratio: item.aspect_ratio,
@@ -24,12 +31,13 @@ export function getExportReadiness(project) {
   }
 
   const items = project.imagePackage.image_generation;
-  if (!Array.isArray(items) || items.length !== 2) {
+  const expectedCount = expectedStoryboardCount(project);
+  if (!Array.isArray(items) || items.length !== expectedCount) {
     return { ready: false, code: "EXPORT_NOT_READY", reason: "storyboard_count" };
   }
 
   const expectedAspectRatio = project.marketBrief?.outputAspectRatio || "9:16";
-  const expectedSegments = new Set(["0-10s", "10-20s"]);
+  const expectedSegments = new Set(expectedStoryboardSegmentIds(project));
   for (const item of items) {
     if (item?.type !== "storyboard_board") {
       return { ready: false, code: "EXPORT_NOT_READY", reason: "storyboard_type" };

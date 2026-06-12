@@ -86,6 +86,10 @@ function modelListUrl(providerId, apiUrl) {
     if (/\/models\/?$/i.test(new URL(apiUrl).pathname)) return apiUrl;
     return replaceEndpointPath(apiUrl, /\/images\/generations\/?$/i, "/models");
   }
+  if (providerId === "video") {
+    if (/\/models\/?$/i.test(new URL(apiUrl).pathname)) return apiUrl;
+    return replaceEndpointPath(apiUrl, /\/videos\/generations\/?$/i, "/models");
+  }
   return null;
 }
 
