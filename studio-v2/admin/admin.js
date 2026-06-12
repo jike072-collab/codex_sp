@@ -120,7 +120,9 @@ function renderModelField(provider, field, wrapper) {
   const help = document.createElement("small");
   help.className = "model-status";
   help.dataset.status = discovery.status || "error";
-  help.textContent = `模型列表：${MODEL_STATUS_TEXT[discovery.status] || "读取失败"}`;
+  help.textContent = discovery.message
+    ? `模型列表：${discovery.message}`
+    : `模型列表：${MODEL_STATUS_TEXT[discovery.status] || "读取失败"}`;
   wrapper.append(help);
 }
 
