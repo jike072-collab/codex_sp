@@ -5179,3 +5179,121 @@ body.ui-v2 .stage-layout:has(#assetsStage:not(.hidden)) .stage-visual-stats {
     min-width: 900px;
   }
 }
+
+/* Workflow mode switch and dual-mode video tasks */
+body.ui-v2 .project-state {
+  flex: 0 0 auto;
+  padding: 0;
+  background: transparent;
+}
+
+body.ui-v2 .workflow-mode-switch {
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  width: 232px;
+  min-height: 34px;
+  padding: 3px;
+  background: #e8efe2;
+  border: 1px solid #cddbc5;
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+body.ui-v2 .workflow-mode-option {
+  min-width: 0;
+  min-height: 28px;
+  padding: 0 9px;
+  overflow: hidden;
+  color: #506147;
+  font: 800 12px/1 Inter, "Segoe UI", "Microsoft YaHei", sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+body.ui-v2 .workflow-mode-option.active {
+  color: #102719;
+  background: #ffffff;
+  box-shadow: 0 5px 14px rgba(63, 79, 52, 0.14);
+}
+
+body.ui-v2 .workflow-mode-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+body.ui-v2 .fixed-review-chip {
+  cursor: default;
+}
+
+body.ui-v2 .fixed-review-chip:hover {
+  transform: none;
+}
+
+body.ui-v2 .video-task-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+body.ui-v2 .video-segment-task {
+  min-width: 0;
+}
+
+body.ui-v2 .video-segment-task .video-workflow-summary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body.ui-v2 .video-segment-task .video-workflow-main {
+  grid-template-columns: minmax(180px, 0.9fr) minmax(0, 1.1fr);
+}
+
+body.ui-v2 .video-copy-card pre {
+  max-height: 220px;
+  margin: 0;
+  overflow: auto;
+  color: #263020;
+  font: 12px/1.6 Inter, "Segoe UI", "Microsoft YaHei", sans-serif;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1180px) {
+  body.ui-v2 .workspace-header,
+  body.ui-v2 .workspace:has(#reviewStage:not(.hidden)) .workspace-header {
+    align-items: flex-start;
+  }
+
+  body.ui-v2 .workspace-title-block {
+    align-items: flex-start;
+  }
+
+  body.ui-v2 .title-row {
+    flex-wrap: wrap;
+  }
+
+  body.ui-v2 .workspace-header h1,
+  body.ui-v2 .workspace:has(#reviewStage:not(.hidden)) .workspace-header h1 {
+    max-width: min(52vw, 520px);
+  }
+
+  body.ui-v2 .video-task-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  body.ui-v2 .workflow-mode-switch {
+    width: 100%;
+    max-width: 232px;
+  }
+
+  body.ui-v2 .video-segment-task .video-workflow-main,
+  body.ui-v2 .video-workflow-main {
+    grid-template-columns: 1fr;
+  }
+}

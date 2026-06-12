@@ -87,7 +87,7 @@ Route: complex
 
 ## Codex B：另一台电脑前端
 
-状态：READY - START NOW
+状态：DONE - MERGED INTO MAIN (`5714689`)
 
 任务文件：
 
@@ -114,6 +114,8 @@ Route: complex
 - `studio-v2/admin/**`
 
 后端模式切换契约已冻结并审核通过。前端必须从最新 `origin/main` 开始，只按任务文件和提交 `8667638` 的接口形状实现，不得猜字段。
+
+前端模式切换实现已审核并合入正式分支。
 
 ## 本地执行者发布规则
 

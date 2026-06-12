@@ -650,6 +650,10 @@ function currentVideoTask(project) {
   return items.find((item) => item.segment_id === "0-10s") || items[0] || null;
 }
 
+function videoTaskForSegment(project, segmentId) {
+  return (project?.videoPackage?.video_generation || []).find((item) => item.segment_id === segmentId) || null;
+}
+
 function videoSummary(project) {
   const setup = projectSetup(project);
   const item = currentVideoTask(project);
@@ -677,6 +681,71 @@ function renderDeliverable(project, item, index) {
       ${renderStoryboardImage(item)}
       <strong class="script-copy-title">对应脚本</strong>
       <pre id="segmentScript${index}">${escapeHtml(scriptText)}</pre>
+    </article>
+  `;
+}
+
+function renderVideoTaskCard(project, storyboard, index) {
+  const item = videoTaskForSegment(project, storyboard.segment_id);
+  const segment = scriptSegmentById(project, storyboard.segment_id) || {};
+  const status = item?.status || "waiting";
+  const videoUrl = item?.generated_video?.url || "";
+  const duration = item?.duration_sec || storyboard.duration_sec || segment.duration_sec || 10;
+  const scriptText = item?.script_copy || segmentCopy(segment);
+  return `
+    <article class="video-workflow-card video-segment-task" data-status="${escapeHtml(status)}">
+      <div class="storyboard-card-heading">
+        <div>
+          <p class="section-index">${escapeHtml(storyboard.segment_id)}</p>
+          <h3>${escapeHtml(storyboard.segment_id)} 视频任务</h3>
+        </div>
+        <span class="storyboard-status">${escapeHtml(videoStatusLabel(status))}</span>
+      </div>
+      <div class="video-workflow-summary">
+        <div>
+          <span>故事板输入</span>
+          <strong>${escapeHtml(storyboard.segment_id)}</strong>
+        </div>
+        <div>
+          <span>视频时长</span>
+          <strong>${escapeHtml(duration)} 秒</strong>
+        </div>
+        <div>
+          <span>输出比例</span>
+          <strong>${escapeHtml(project.marketBrief?.outputAspectRatio || storyboard.aspect_ratio || "")}</strong>
+        </div>
+        <div>
+          <span>任务状态</span>
+          <strong>${escapeHtml(videoStatusLabel(status))}</strong>
+        </div>
+      </div>
+      <div class="video-workflow-main">
+        <article class="video-preview-card">
+          ${storyboard.generated_image?.url ? `
+            <img src="${escapeHtml(storyboard.generated_image.url)}" alt="${escapeHtml(storyboard.segment_id)} 故事板">
+          ` : `<div class="video-preview-placeholder">尚无故事板</div>`}
+        </article>
+        <div class="video-copy-card">
+          <strong>对应脚本</strong>
+          <pre id="segmentVideoScript${index}">${escapeHtml(scriptText)}</pre>
+          <button class="ghost-button small" type="button" data-copy-target="segmentVideoScript${index}">复制脚本</button>
+          <p class="video-task-note">${escapeHtml(item?.error?.message || "完成后可播放和下载这一段视频。")}</p>
+        </div>
+      </div>
+      <div class="video-workflow-actions">
+        ${status === "done" && videoUrl ? `
+          <video controls playsinline src="${escapeHtml(videoUrl)}"></video>
+          <a class="primary-button" href="${escapeHtml(videoUrl)}" download>下载视频</a>
+        ` : isVideoInFlight(status) ? `
+          <button class="primary-button" type="button" data-action="refresh-video" ${state.busy ? "disabled" : ""}>刷新视频状态</button>
+        ` : status === "failed" ? `
+          <button class="primary-button" type="button" data-action="retry-video"
+            data-video-segment="${escapeHtml(storyboard.segment_id)}" ${state.busy ? "disabled" : ""}>重新生成这一段</button>
+        ` : `
+          <button class="primary-button" type="button" data-action="generate-video" ${state.busy ? "disabled" : ""}>开始生成视频</button>
+        `}
+        ${status === "failed" ? `<button class="ghost-button" type="button" data-action="refresh-video" ${state.busy ? "disabled" : ""}>刷新状态</button>` : ""}
+      </div>
     </article>
   `;
 }
@@ -777,17 +846,19 @@ export function renderExportStage(project = state.project) {
     `;
     return;
   }
+  const videoItems = project.videoPackage?.video_generation || [];
+  const completedVideos = videoItems.filter((item) => item.status === "done" && item.generated_video?.url).length;
   container.innerHTML = `
     <div class="section-heading">
       <div>
         <p class="section-index">STEP 05</p>
         <h2>生成视频</h2>
-        <p>这里只保留你拿去生成视频需要的内容：两张故事板图片，以及各自对应的 10 秒脚本。</p>
+        <p>双段模式使用两张故事板作为输入，生成两个 10 秒视频任务；已完成的视频会保留，失败段可单独重试。</p>
       </div>
-      <span class="requirement">${escapeHtml(imageItems.length)} 张故事板 · 分镜 ${escapeHtml(project.marketBrief?.outputAspectRatio || imageItems[0]?.aspect_ratio || "")}</span>
+      <span class="requirement">${escapeHtml(completedVideos)}/2 视频 · ${escapeHtml(imageItems.length)}/2 故事板</span>
     </div>
-    <div class="deliverable-grid">
-      ${imageItems.map((item, index) => renderDeliverable(project, item, index)).join("")}
+    <div class="video-task-grid">
+      ${imageItems.map((item, index) => renderVideoTaskCard(project, item, index)).join("")}
     </div>
   `;
 }

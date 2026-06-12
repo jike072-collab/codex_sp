@@ -1,6 +1,6 @@
 # Codex B Current Frontend Task
 
-Status: READY - START NOW
+Status: DONE - MERGED INTO MAIN
 
 Target: 另一台电脑前端 Codex
 
@@ -15,6 +15,8 @@ Branch: `codex/frontend-single-storyboard-script-view`
 Start from: latest `origin/main` containing this task
 
 Backend dependency commit: `8667638` (approved and merged into `origin/main`)
+
+Frontend implementation commit: `5714689`
 
 ## Backend Contract Approved
 
