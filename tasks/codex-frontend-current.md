@@ -75,6 +75,11 @@ Route: complex
 8. Admin 页面：
    - 增加“视频生成”配置卡片。
    - 支持 API URL、Model、API Key。
+   - API Key 是视频生成专用 Key，不得和识图、脚本、生图 Key 混用。
+   - Key 输入框使用密码输入样式；未输入新值时保留当前 Key。
+   - 显示当前 Key 的 masked preview，只显示安全尾号。
+   - 支持“替换视频 Key”和“清除已保存 Key”。
+   - 保存成功后刷新配置状态，明确显示“视频生成已配置”。
    - 模型可从后端 schema 或模型接口读取。
    - 只显示 masked key preview，不显示完整 key。
 9. 视觉要求：
@@ -138,6 +143,7 @@ Do not edit:
    - 能看到“视频生成”配置卡片。
    - 能保存 API URL、Model、API Key。
    - Key 只显示 masked preview。
+   - 替换 Key 后 masked preview 更新；清除后状态变为未配置。
 4. 提供 Step 05 和 Admin 视频配置截图。
 
 ## Delivery

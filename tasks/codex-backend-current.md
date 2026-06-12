@@ -86,9 +86,13 @@ Route: complex
 11. Admin provider schema 增加 `video` provider：
    - API URL
    - Model
+   - 独立 API Key：`VIDEO_MODEL_API_KEY`
    - API Key masked preview
    - 可选模型列表
    - 不返回完整 key。
+   - 保存、替换和清除视频 Key 必须走现有 provider settings 原子写入机制。
+   - 视频 provider 只能读取视频 Key，不得复用 `VISION_MODEL_API_KEY`、`TEXT_MODEL_API_KEY`、`IMAGE_MODEL_API_KEY` 或 `IMAGE_SECONDARY_API_KEY`。
+   - Key 更新后下一次视频请求立即使用新 Key；模型发现缓存也必须随视频 Key 的安全指纹失效。
 12. 安全诊断：
     - 可以记录 segment id、model、provider host/path、状态码、耗时、请求 id、输入数量、输出大小。
     - 不得记录完整 key、prompt、base64、图片内容、视频内容或 provider 完整响应体。
@@ -138,6 +142,7 @@ Do not edit:
 - 下载和本地保存测试。
 - 无 key / no configured provider 的中文错误测试。
 - Admin provider schema 的 masked key 和 video provider 测试。
+- 视频 Key 保存、替换、清除以及不复用其它 provider Key 的测试。
 - 无敏感信息泄露测试。
 - 运行全部后端测试。
 - 对修改的 MJS 文件执行语法检查。
