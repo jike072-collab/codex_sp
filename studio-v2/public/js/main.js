@@ -20,6 +20,7 @@ import {
   toggleProjectSelection,
   refreshVideoStatus,
   retryVideo,
+  switchWorkflowMode,
   uploadFiles
 } from "./projects.js";
 import {
@@ -156,6 +157,12 @@ function wireEvents() {
       return;
     }
 
+    const workflowModeButton = event.target.closest("[data-workflow-mode]");
+    if (workflowModeButton) {
+      switchWorkflowMode(workflowModeButton.dataset.workflowMode);
+      return;
+    }
+
     const actionButton = event.target.closest("[data-action]");
     if (!actionButton) return;
 
@@ -177,7 +184,7 @@ function wireEvents() {
       "generate-visual": () => generateVisual(),
       "generate-video": () => generateVideo(),
       "refresh-video": () => refreshVideoStatus(),
-      "retry-video": () => retryVideo()
+      "retry-video": () => retryVideo(actionButton.dataset.videoSegment)
     };
     actions[actionButton.dataset.action]?.();
   });

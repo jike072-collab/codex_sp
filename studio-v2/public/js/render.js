@@ -16,7 +16,10 @@ import {
   statusLabel,
   toneOptions,
   valueAt,
-  videoDurationOptions
+  videoDurationOptions,
+  workflowMode,
+  workflowModeOptions,
+  workflowModeLabel
 } from "./core.js";
 import {
   hasReadyStoryboards,
@@ -140,17 +143,25 @@ export function renderWorkspace() {
   const isReviewingPast = !needsStoryboardCompletion && activeStatus !== project.status && isStageReached(activeStatus);
 
   el("projectTitle").textContent = project.name;
-  el("projectState").textContent = isReviewingPast
-    ? `${statusLabel(project.status)} · 回看${statusLabel(activeStatus)}`
-    : statusLabel(project.status);
+  el("projectState").innerHTML = renderWorkflowModeSwitcher(project);
+  el("projectState").setAttribute(
+    "aria-label",
+    `${isReviewingPast ? `${statusLabel(project.status)}，回看${statusLabel(activeStatus)}，` : ""}当前模式：${workflowModeLabel(workflowMode(project))}`
+  );
   const subtitleByStatus = {
     assets: "上传 1 张四视图拼图即可进入识别和锁定，更多角度只是建议。",
     analyzing: "正在识别鞋款，稍后会进入产品设定。",
     review: "确认产品信息、受众、比例和创意方向。",
     market: "整理创意 brief，准备生成单条视频脚本。",
-    script: "查看完整中文脚本，按所选时长检查镜头与文案。",
-    visual: "img2img 生成一张完整故事板。",
-    export: "生成、播放和下载最终广告视频。"
+    script: isSingleVideoProject(project)
+      ? "查看完整中文脚本，按所选时长检查镜头与文案。"
+      : "查看 20 秒中文脚本，按两个 10 秒段落检查镜头与文案。",
+    visual: isSingleVideoProject(project)
+      ? "img2img 生成一张完整故事板。"
+      : "img2img 生成两张 10 秒分段故事板。",
+    export: isSingleVideoProject(project)
+      ? "生成、播放和下载最终广告视频。"
+      : "生成、播放和下载两个 10 秒视频任务。"
   };
   el("workspaceSubtitle").textContent = subtitleByStatus[activeStatus] || subtitleByStatus.assets;
   const setup = projectSetup(project);
@@ -187,6 +198,22 @@ export function renderWorkspace() {
   }
 
   lockStageForReview(isReviewingPast);
+}
+
+function renderWorkflowModeSwitcher(project) {
+  const currentMode = workflowMode(project);
+  return `
+    <span class="workflow-mode-switch" role="group" aria-label="项目模式">
+      ${workflowModeOptions.map(([mode, label]) => `
+        <button class="workflow-mode-option ${mode === currentMode ? "active" : ""}" type="button"
+          data-workflow-mode="${escapeHtml(mode)}"
+          aria-pressed="${mode === currentMode ? "true" : "false"}"
+          ${state.busy ? "disabled" : ""}>
+          ${escapeHtml(label)}
+        </button>
+      `).join("")}
+    </span>
+  `;
 }
 
 function renderProductionExperience(activeStatus) {
@@ -230,7 +257,15 @@ function renderWorkspacePanel(project, activeStatus) {
   const panelProgressText = el("panelProgressText");
   if (panelStageKicker) panelStageKicker.textContent = `STEP 0${visibleStep}`;
   if (panelStageTitle) panelStageTitle.textContent = STAGE_PANEL_TITLE[activeStatus] || "工作进度";
-  if (panelStageCopy) panelStageCopy.textContent = STAGE_PANEL_COPY[activeStatus] || "";
+  if (panelStageCopy) {
+    const singleVideo = isSingleVideoProject(project);
+    const dynamicCopy = {
+      script: singleVideo ? "按所选时长检查单条脚本、镜头和文案。" : "按 0-10s 和 10-20s 检查脚本、镜头和文案。",
+      visual: singleVideo ? "img2img 生成一张完整故事板，作为视频参考。" : "img2img 生成两张分段故事板，成功图会保留。",
+      export: singleVideo ? "使用脚本和故事板生成最终广告视频。" : "使用两张故事板生成两个 10 秒视频任务。"
+    };
+    panelStageCopy.textContent = dynamicCopy[activeStatus] || STAGE_PANEL_COPY[activeStatus] || "";
+  }
   if (panelAssetCount) panelAssetCount.textContent = `${assets.length} 张`;
   if (panelWorkflowState) panelWorkflowState.textContent = statusLabel(activeStatus);
   if (panelProgressBar) panelProgressBar.style.width = `${completedPercent}%`;
@@ -600,22 +635,44 @@ function renderReviewControls(setup) {
       label: "语气",
       value: toneLabel,
       options: compactOptionsHtml("tone", toneOptions, setup.tone)
-    },
-    singleVideo ? {
+    }
+  ];
+  if (singleVideo) {
+    groups.push({
       name: "videoDurationSeconds",
       icon: "秒",
       label: "视频时长",
       value: `${setup.videoDurationSeconds} 秒`,
       options: compactOptionsHtml("videoDurationSeconds", videoDurationOptions, setup.videoDurationSeconds)
-    } : {
+    });
+  } else {
+    groups.push({
+      name: "fixedDuration",
+      icon: "20",
+      label: "总时长",
+      value: "20 秒（2 × 10 秒）",
+      fixed: true
+    });
+    groups.push({
       name: "shotsPerSegment",
       icon: "镜",
       label: "镜头",
       value: `${setup.shotsPerSegment} 个`,
       options: compactOptionsHtml("shotsPerSegment", [[3, "3 个", "每 10 秒"], [4, "4 个", "每 10 秒"], [5, "5 个", "每 10 秒"]], setup.shotsPerSegment)
-    }
-  ];
-  container.innerHTML = groups.map((group) => `
+    });
+  }
+  container.innerHTML = groups.map((group) => group.fixed ? `
+    <div class="review-menu fixed-review-menu" data-review-menu-root="${escapeHtml(group.name)}">
+      <div class="review-chip fixed-review-chip" aria-label="${escapeHtml(group.label)}">
+        <i aria-hidden="true">${escapeHtml(group.icon)}</i>
+        <span>
+          <small>${escapeHtml(group.label)}</small>
+          <strong>${escapeHtml(group.value)}</strong>
+          <em class="setting-origin recommended">固定模式</em>
+        </span>
+      </div>
+    </div>
+  ` : `
     <div class="review-menu" data-review-menu-root="${escapeHtml(group.name)}">
       <button class="review-chip" type="button" data-review-menu="${escapeHtml(group.name)}" aria-expanded="false">
         <i aria-hidden="true">${escapeHtml(group.icon)}</i>

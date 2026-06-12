@@ -9,7 +9,9 @@ import {
   setBusy,
   showToast,
   state,
-  toneOptions
+  toneOptions,
+  workflowMode,
+  workflowModeLabel
 } from "./core.js";
 import {
   hasReadyStoryboards,
@@ -46,6 +48,53 @@ export async function openProject(projectId) {
   el("workspace").classList.remove("hidden");
   renderWorkspace();
   renderProjectList();
+}
+
+export async function switchWorkflowMode(requestedMode) {
+  if (!state.project || state.busy) return;
+  const currentMode = workflowMode(state.project);
+  if (requestedMode === currentMode) return;
+
+  const requestSwitch = (confirmReset) => api(`/api/projects/${encodeURIComponent(state.project.id)}/workflow-mode`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ workflowMode: requestedMode, confirmReset })
+  });
+
+  state.busy = true;
+  renderWorkspace();
+  try {
+    let data;
+    try {
+      data = await requestSwitch(false);
+    } catch (error) {
+      if (error.status !== 409 || error.code !== "WORKFLOW_MODE_RESET_REQUIRED") throw error;
+      const confirmed = window.confirm([
+        `切换到「${workflowModeLabel(requestedMode)}」需要重置后续结果。`,
+        "上传素材和产品锁定会保留。",
+        "脚本、故事板和视频会清除。",
+        "是否确认切换？"
+      ].join("\n"));
+      if (!confirmed) {
+        showToast("已取消模式切换。");
+        return;
+      }
+      data = await requestSwitch(true);
+      state.viewStatus = "script";
+    }
+
+    state.project = data.project;
+    if (state.viewStatus !== "script") state.viewStatus = data.project.status;
+    state.visualGenerationError = "";
+    renderWorkspace();
+    await loadProjects();
+    showToast(`已切换为${workflowModeLabel(requestedMode)}。`);
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    state.busy = false;
+    renderWorkspace();
+  }
 }
 
 export async function deleteProject(projectId) {
@@ -702,9 +751,9 @@ export async function refreshVideoStatus() {
   }
 }
 
-export async function retryVideo() {
+export async function retryVideo(segmentIdOverride = "") {
   if (!state.project) return;
-  const segmentId = currentVideoSegmentId(state.project);
+  const segmentId = segmentIdOverride || currentVideoSegmentId(state.project);
   setBusy(true, "正在重试视频...");
   try {
     const data = await api(`/api/projects/${encodeURIComponent(state.project.id)}/videos/${encodeURIComponent(segmentId)}/retry`, {

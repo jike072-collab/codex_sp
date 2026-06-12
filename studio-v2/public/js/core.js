@@ -66,6 +66,15 @@ export const videoDurationOptions = Array.from({ length: 11 }, (_, index) => {
   return [value, `${value} 秒`, value === 10 ? "默认时长" : "单视频"];
 });
 
+export const workflowModeOptions = [
+  ["single_video", "单段 5-15 秒"],
+  ["legacy_multi_segment", "双段 20 秒"]
+];
+
+export function workflowModeLabel(mode) {
+  return workflowModeOptions.find(([value]) => value === mode)?.[1] || "双段 20 秒";
+}
+
 function preferenceKey(projectId) {
   return `shoe-ad-studio:${projectId}:preferences`;
 }
@@ -120,7 +129,10 @@ export function projectSetup(project = state.project) {
 export function workflowMode(project = state.project) {
   if (project?.workflowMode) return project.workflowMode;
   if (project?.planningPackage?.workflow_mode) return project.planningPackage.workflow_mode;
+  if (project?.imagePackage?.workflow_mode) return project.imagePackage.workflow_mode;
+  if (project?.videoPackage?.workflow_mode) return project.videoPackage.workflow_mode;
   if (project?.planningPackage?.script_video?.segment_full) return "single_video";
+  if (project?.planningPackage?.script_20s) return "legacy_multi_segment";
   if ((project?.imagePackage?.image_generation || []).some((item) => item.segment_id === "full")) return "single_video";
   if ((project?.videoPackage?.video_generation || []).some((item) => item.segment_id === "full")) return "single_video";
   if (Number.isInteger(project?.marketBrief?.videoDurationSeconds)) return "single_video";
