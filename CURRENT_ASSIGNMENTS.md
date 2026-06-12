@@ -62,7 +62,15 @@ Route: simple|standard|complex
 
 ## 本轮产品目标
 
-完善功能优先：Step 05 从“导出”升级为“生成视频”，把前面生成的脚本和故事板自动带入最终视频生成流程。
+完善功能优先：当前默认流程改成“一个脚本、一张故事板、一个视频”。
+
+- Step 02 选择视频时长，范围 `5-15` 秒，默认 `10` 秒。
+- Step 03 根据所选时长自动生成一条完整时间线脚本和对应分镜。
+- Step 04 根据这一条脚本生成一张故事板。
+- Step 05 使用该脚本和故事板生成一个视频。
+- 视频 provider 必须收到明确的时长字段；平台按秒计费，但本项目不实现消费或价格系统。
+
+原来的“两段脚本、两张故事板、双绘图通道”能力不得删除。它作为 legacy / future multi-segment 模式保留，旧项目仍可读取，未来可以重新启用；新项目和当前 UI 默认使用 `single_video` 模式。
 
 本轮明确不做：
 
@@ -79,7 +87,7 @@ Route: simple|standard|complex
 
 ## Codex A：本机后端
 
-状态：READY - START NOW
+状态：CHANGES REQUESTED - REVISE `c930526`
 
 任务入口：
 
@@ -93,8 +101,10 @@ Route: simple|standard|complex
 
 - 冻结视频生成契约。
 - 新增视频生成 provider，默认接 `clmm-mall.top` 的 `seedance2.0 720p-fast`。
-- 基于两张故事板和两段脚本生成两段视频。
+- 在现有 `c930526` 视频 provider 基础上改为默认单视频模式。
+- 新项目保存 `5-15` 秒视频时长，并据此生成一个脚本、一张故事板和一个视频。
 - 保存生成结果，支持状态查询、失败重试和下载。
+- 保留旧双段脚本、双故事板和双视频数据兼容，不删除旧能力。
 - 后台 provider schema 增加视频生成配置，但不做消费、余额或价格系统。
 
 允许修改：
@@ -111,7 +121,7 @@ Route: simple|standard|complex
 
 ## Codex B：另一台电脑前端
 
-状态：READY - WAIT FOR BACKEND CONTRACT, THEN START
+状态：READY - WAIT FOR REVISED SINGLE-VIDEO CONTRACT, THEN START
 
 任务入口：
 
@@ -123,10 +133,13 @@ Route: simple|standard|complex
 
 负责内容：
 
-- Step 05 改为“生成视频”界面。
-- 消费后端视频契约，显示两段视频状态、播放、下载和重试。
+- Step 02 增加 `5-15` 秒视频时长设置。
+- Step 03 当前模式只显示一条完整时长脚本。
+- Step 04 当前模式只显示一张故事板。
+- Step 05 改为单个“生成视频”界面，显示状态、播放、下载和重试。
 - Admin 页面增加“视频生成配置”卡片。
 - 不做消费、余额、支付、价格展示。
+- 旧双段项目仍要能查看，不删除 legacy 渲染能力。
 
 允许修改：
 
@@ -143,8 +156,10 @@ Route: simple|standard|complex
 ## 固定产品规则
 
 - 生图只能 img2img，不允许 prompt-only fallback。
-- 两张故事板必须同时发起；成功图保留，重试只补缺失。
-- Step 05 视频生成必须保留 partial success：成功视频保留，重试只补失败段。
+- 当前 `single_video` 模式只生成一张故事板。
+- legacy 双段模式的两张故事板仍必须同时发起；成功图保留，重试只补缺失。
+- 当前新项目默认 `single_video`，只生成一个视频。
+- 原双段模式不得删除；legacy 双段模式仍保留 partial success 和只补失败段能力。
 - 最终视频功能优先，不恢复 JSON / ZIP / CSV / Flow Omni 下载按钮。
 - 外层 storyboard sheet 不强行套视频比例；内部 shot frames 才按第二步比例构图。
 - Step 01 最少 1 个图片文件即可识别；单个文件允许包含多角度拼图。
