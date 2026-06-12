@@ -2,17 +2,11 @@ import { DomainError } from "./domain-error.mjs";
 import {
   expectedStoryboardCount,
   expectedStoryboardSegmentIds,
-  isSingleVideoMode
+  planningSegmentsById
 } from "./workflow-mode.mjs";
 
 function storyboardDeliverables(project) {
-  const script = project.planningPackage || {};
-  const segmentById = isSingleVideoMode(project)
-    ? { full: script.script_video?.segment_full }
-    : {
-        "0-10s": script.script_20s?.segment_a_0_10s,
-        "10-20s": script.script_20s?.segment_b_10_20s
-      };
+  const segmentById = planningSegmentsById(project);
   return (project.imagePackage?.image_generation || []).map((item) => ({
     segment_id: item.segment_id,
     aspect_ratio: item.aspect_ratio,

@@ -60,8 +60,18 @@
     }
   },
   "oneOf": [
-    { "required": ["script_20s"] },
-    { "required": ["script_video"] }
+    {
+      "properties": {
+        "workflow_mode": { "const": "legacy_multi_segment" }
+      },
+      "required": ["workflow_mode", "script_20s"]
+    },
+    {
+      "properties": {
+        "workflow_mode": { "const": "single_video" }
+      },
+      "required": ["workflow_mode", "script_video"]
+    }
   ],
   "$defs": {
     "shot": {

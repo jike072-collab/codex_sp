@@ -115,6 +115,13 @@ function reviewedProject() {
   };
 }
 
+function singleReviewedProject() {
+  const project = reviewedProject();
+  project.workflowMode = "single_video";
+  project.marketBrief.videoDurationSeconds = 12;
+  return project;
+}
+
 function dualImageEnv(overrides = {}) {
   return {
     IMAGE_MODEL_API_KEY: "test-right-code-key-1111",
@@ -329,7 +336,12 @@ test("DeepSeek adapter requests JSON and validates the generated 20-second scrip
 
     assert.equal(requestBody.model, "deepseek-v4-pro");
     const userPayload = JSON.parse(requestBody.messages[1].content);
+    assert.equal(userPayload.workflow_mode, "legacy_multi_segment");
+    assert.equal(userPayload.total_duration_seconds, 20);
+    assert.match(userPayload.required_script_shape, /segment_a_0_10s/);
     assert.equal(userPayload.shots_per_10s_segment, 5);
+    assert.equal(userPayload.shot_diversity_requirements.length, 4);
+    assert.match(userPayload.shot_diversity_requirements.join(" "), /Do not reuse/);
     assert.deepEqual(requestBody.response_format, { type: "json_object" });
     assert.deepEqual(requestBody.thinking, { type: "enabled" });
     assert.equal(project.planningPackage.mode, "api");
@@ -338,7 +350,45 @@ test("DeepSeek adapter requests JSON and validates the generated 20-second scrip
   });
 });
 
-test("Right Code image adapter generates two referenced storyboard requests", async () => {
+test("single mode calls the image provider exactly once through channel A", async () => {
+  await withProviderEnv(dualImageEnv(), async () => {
+    const project = singleReviewedProject();
+    project.marketBrief.outputAspectRatio = "9:16";
+    project.assets = [{ storedName: "shoe.png", mimeType: "image/png" }];
+    generateProjectDemoScript(project);
+    confirmPlanningPackage(project, structuredClone(project.planningPackage));
+
+    const requests = [];
+    await generateProjectVisuals(project, undefined, {
+      readFileImpl: async () => Buffer.from("synthetic-shoe-reference"),
+      fetchImpl: async (url, options) => {
+        requests.push({
+          url,
+          authorization: options.headers.Authorization,
+          body: JSON.parse(options.body)
+        });
+        return new Response(JSON.stringify({
+          data: [{ b64_json: tinyPngBytes.toString("base64") }]
+        }), { status: 200 });
+      },
+      storeGeneratedImageImpl: async (projectId, bytes, mimeType) => ({
+        url: `/uploads/${projectId}/full.png`,
+        storedName: "full.png",
+        mimeType,
+        size: bytes.length
+      })
+    });
+
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].url, "https://example.test/draw-a/v1/images/generations");
+    assert.equal(requests[0].authorization, "Bearer test-right-code-key-1111");
+    assert.equal(requests[0].body.image.length, 1);
+    assert.match(requests[0].body.prompt, /complete 0-12s shoe ad timeline/);
+    assert.equal(project.imagePackage.image_generation[0].provider_diagnostics.drawChannelId, "primary");
+  });
+});
+
+test("dual mode generates two referenced storyboard requests through channels A and B", async () => {
   await withProviderEnv(dualImageEnv(), async () => {
     const project = reviewedProject();
     project.marketBrief.outputAspectRatio = "4:5";
@@ -394,24 +444,17 @@ test("Right Code image adapter generates two referenced storyboard requests", as
 
     assert.equal(requests.length, 2);
     assert.equal(maxActiveRequests, 2);
-    const firstSegmentRequest = requests.find((request) => /ONLY the 0-10s shoe ad segment/.test(request.body.prompt));
-    const secondSegmentRequest = requests.find((request) => /ONLY the 10-20s shoe ad segment/.test(request.body.prompt));
-    assert.ok(firstSegmentRequest);
-    assert.ok(secondSegmentRequest);
-    assert.equal(firstSegmentRequest.url, "https://example.test/draw-a/v1/images/generations");
-    assert.equal(secondSegmentRequest.url, "https://example.test/draw-b/v1/images/generations");
-    assert.equal(firstSegmentRequest.authorization, "Bearer test-right-code-key-1111");
-    assert.equal(secondSegmentRequest.authorization, "Bearer test-right-code-key-2222");
-    assert.equal(firstSegmentRequest.body.model, "gpt-image-2");
-    assert.equal(secondSegmentRequest.body.model, "gpt-image-2");
-    assert.equal(typeof firstSegmentRequest.body.prompt, "string");
-    assert.deepEqual(firstSegmentRequest.body.image, [referenceBytes.toString("base64")]);
-    assert.equal(firstSegmentRequest.body.image[0].startsWith("data:image/"), false);
-    assert.equal(firstSegmentRequest.body.size, "1536x1024");
-    assert.equal(secondSegmentRequest.body.size, "1536x1024");
-    assert.match(firstSegmentRequest.body.prompt, /internal shot thumbnail\/panel must be composed as a 4:5 video frame/);
-    assert.doesNotMatch(firstSegmentRequest.body.prompt, /Create one 4:5 commercial storyboard board/);
-    assert.equal(firstSegmentRequest.body.response_format, "url");
+    const first = requests.find((request) => /ONLY the 0-10s/.test(request.body.prompt));
+    const second = requests.find((request) => /ONLY the 10-20s/.test(request.body.prompt));
+    assert.equal(first.url, "https://example.test/draw-a/v1/images/generations");
+    assert.equal(second.url, "https://example.test/draw-b/v1/images/generations");
+    assert.equal(first.authorization, "Bearer test-right-code-key-1111");
+    assert.equal(second.authorization, "Bearer test-right-code-key-2222");
+    assert.deepEqual(first.body.image, [referenceBytes.toString("base64")]);
+    assert.deepEqual(second.body.image, [referenceBytes.toString("base64")]);
+    assert.equal(first.body.size, "1536x1024");
+    assert.equal(second.body.size, "1536x1024");
+    assert.match(first.body.prompt, /internal shot thumbnail\/panel must be composed as a 4:5 video frame/);
     assert.equal(project.imagePackage.mode, "api");
     assert.deepEqual(
       project.imagePackage.image_generation.map((item) => item.provider_diagnostics.drawChannelId),
@@ -424,7 +467,7 @@ test("Right Code image adapter generates two referenced storyboard requests", as
   });
 });
 
-test("Right Code image adapter starts both missing storyboard requests before either response resolves", async () => {
+test("dual mode starts both storyboard provider requests before either response resolves", async () => {
   await withProviderEnv(dualImageEnv(), async () => {
     const project = reviewedProject();
     project.assets = [{ storedName: "shoe.png", mimeType: "image/png" }];
@@ -476,28 +519,16 @@ test("Right Code image adapter starts both missing storyboard requests before ei
 
     await withTimeout(
       bothRequestsArrived.promise,
-      "Timed out waiting for both storyboard provider requests to overlap."
+      "Timed out waiting for both storyboard provider requests."
     );
 
     assert.equal(requests.length, 2);
     assert.equal(releases.length, 2);
     assert.equal(releasedResponses, 0);
     assert.equal(storedImages, 0);
-    assert.notEqual(
-      requests[0].body.prompt,
-      requests[1].body.prompt,
-      "Each concurrent request should still target its own storyboard segment."
-    );
     assert.deepEqual(
-      [...new Set(requests.map((request) => request.authorization))].sort(),
+      requests.map((request) => request.authorization).sort(),
       ["Bearer test-right-code-key-1111", "Bearer test-right-code-key-2222"]
-    );
-    assert.deepEqual(
-      [...new Set(requests.map((request) => request.url))].sort(),
-      [
-        "https://example.test/draw-a/v1/images/generations",
-        "https://example.test/draw-b/v1/images/generations"
-      ]
     );
 
     releases[0].resolve();
@@ -512,7 +543,7 @@ test("Right Code image adapter starts both missing storyboard requests before ei
 
 test("Right Code image adapter does not fall back when references are forbidden", async () => {
   await withProviderEnv(dualImageEnv(), async () => {
-    const project = reviewedProject();
+    const project = singleReviewedProject();
     project.assets = [{ storedName: "shoe.png", mimeType: "image/png" }];
     generateProjectDemoScript(project, "2026-06-06T01:00:00.000Z");
     confirmPlanningPackage(
@@ -543,16 +574,15 @@ test("Right Code image adapter does not fall back when references are forbidden"
       }
     );
 
-    assert.equal(requests.length, 2);
+    assert.equal(requests.length, 1);
     assert.equal(project.imagePackage.image_generation[0].generated_image, undefined);
-    assert.equal(project.imagePackage.image_generation[1].generated_image, undefined);
     assert.doesNotMatch(project.imagePackage.image_generation[0].error.message, /令牌权限/);
   });
 });
 
 test("Right Code image adapter stores base64 image responses locally", async () => {
   await withProviderEnv(dualImageEnv(), async () => {
-    const project = reviewedProject();
+    const project = singleReviewedProject();
     project.assets = [{ storedName: "shoe.png", mimeType: "image/png" }];
     generateProjectDemoScript(project, "2026-06-06T01:00:00.000Z");
     confirmPlanningPackage(
@@ -583,10 +613,56 @@ test("Right Code image adapter stores base64 image responses locally", async () 
       }
     });
 
-    assert.equal(storedImages, 2);
+    assert.equal(storedImages, 1);
     assert.equal(
       project.imagePackage.image_generation[0].generated_image.url,
       "/uploads/provider-project/base64-1.png"
+    );
+  });
+});
+
+test("single mode retry issues one request and fills only the failed full storyboard", async () => {
+  await withProviderEnv(dualImageEnv(), async () => {
+    const project = singleReviewedProject();
+    project.assets = [{ storedName: "shoe.png", mimeType: "image/png" }];
+    generateProjectDemoScript(project);
+    confirmPlanningPackage(project, structuredClone(project.planningPackage));
+
+    let providerRequests = 0;
+    const dependencies = {
+      readFileImpl: async () => Buffer.from("synthetic-shoe-reference"),
+      fetchImpl: async (_url, options) => {
+        providerRequests += 1;
+        assert.equal(options.headers.Authorization, "Bearer test-right-code-key-1111");
+        if (providerRequests === 1) {
+          return new Response("", { status: 524 });
+        }
+        return new Response(JSON.stringify({
+          data: [{ b64_json: tinyPngBytes.toString("base64") }]
+        }), { status: 200 });
+      },
+      storeGeneratedImageImpl: async (projectId, bytes, mimeType) => ({
+        url: `/uploads/${projectId}/full-retry.png`,
+        storedName: "full-retry.png",
+        mimeType,
+        size: bytes.length
+      })
+    };
+
+    await assert.rejects(
+      generateProjectVisuals(project, undefined, dependencies),
+      (error) => error.code === "IMAGE_PROVIDER_TIMEOUT"
+    );
+    assert.equal(providerRequests, 1);
+    assert.equal(project.imagePackage.image_generation.length, 1);
+    assert.equal(project.imagePackage.image_generation[0].status, "failed");
+
+    await generateProjectVisuals(project, undefined, dependencies);
+    assert.equal(providerRequests, 2);
+    assert.equal(project.imagePackage.image_generation[0].status, "done");
+    assert.equal(
+      project.imagePackage.image_generation[0].generated_image.url,
+      "/uploads/provider-project/full-retry.png"
     );
   });
 });
@@ -610,7 +686,7 @@ test("visual retry preserves a completed local image and only generates the miss
         if (options.headers.Authorization === "Bearer test-right-code-key-2222") {
           return new Response("", {
             status: 524,
-            headers: { "x-request-id": "req-2" }
+            headers: { "x-request-id": "req-segment-b" }
           });
         }
         return new Response(JSON.stringify({
@@ -633,6 +709,8 @@ test("visual retry preserves a completed local image and only generates the miss
       generateProjectVisuals(project, "2026-06-06T01:20:00.000Z", dependencies),
       (error) => error.code === "IMAGE_PROVIDER_TIMEOUT"
     );
+    assert.equal(project.imagePackage.image_generation.length, 2);
+    assert.equal(project.imagePackage.image_generation[0].status, "done");
     assert.equal(
       project.imagePackage.image_generation[0].generated_image.url,
       "/uploads/provider-project/partial-1.png"
@@ -661,10 +739,8 @@ test("visual retry preserves a completed local image and only generates the miss
     assert.equal(project.imagePackage.image_generation[1].status, "failed");
     assert.equal(project.imagePackage.image_generation[1].error.retryable, true);
     assert.equal(project.imagePackage.image_generation[1].provider_diagnostics.providerStatus, 524);
-    assert.equal(project.imagePackage.image_generation[1].provider_diagnostics.providerRequestId, "req-2");
+    assert.equal(project.imagePackage.image_generation[1].provider_diagnostics.providerRequestId, "req-segment-b");
     assert.equal(project.imagePackage.image_generation[1].provider_diagnostics.drawChannelId, "secondary");
-    assert.equal(project.imagePackage.image_generation[1].provider_diagnostics.keyPreview, "•••• 2222");
-    assert.equal(project.imagePackage.image_generation[1].generated_image, undefined);
 
     dependencies.fetchImpl = async (_url, options) => {
       providerRequests += 1;

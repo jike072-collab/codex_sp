@@ -32,6 +32,7 @@ import { discoverAdminProviderModels } from "../ai-providers/provider-models.mjs
 import { ProviderError } from "../ai-providers/provider-utils.mjs";
 import { buildExportPackage } from "../workflow-domain/export-package.mjs";
 import { recordVisualGenerationFailure } from "../workflow-domain/visual-package.mjs";
+import { switchProjectWorkflowMode } from "../workflow-domain/workflow-mode.mjs";
 import {
   generateProjectVideos,
   refreshProjectVideoStatus,
@@ -147,6 +148,13 @@ export async function handleApi(request, response, url) {
   if (request.method === "DELETE" && !action) {
     await deleteProject(projectId);
     return sendJson(response, 200, { deletedProjectId: projectId });
+  }
+
+  if (request.method === "PUT" && action === "workflow-mode") {
+    const body = await readJsonBody(request, 64 * 1024);
+    const result = switchProjectWorkflowMode(project, body);
+    await saveProject(project);
+    return sendJson(response, 200, { project, ...result });
   }
 
   if (request.method === "POST" && action === "assets") {

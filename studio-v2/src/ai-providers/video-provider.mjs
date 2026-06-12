@@ -132,12 +132,17 @@ function videoPrompt(project, item, segment) {
   const lines = segment.shots.map((shot, index) => (
     `${index + 1}. ${shot.start_sec}-${shot.end_sec}s | 画面:${shot.visual} | 动作:${shot.action} | 镜头:${shot.camera} | 卖点:${shot.selling_point} | 口播/字幕:${shot.localized_caption_or_vo} | 音效:${shot.sound} | 转场:${shot.transition}`
   )).join("\n");
+  const singleMode = item.segment_id === "full";
   return [
-    `Create one ${item.aspect_ratio} ecommerce shoe video segment for ONLY ${item.segment_id}.`,
+    singleMode
+      ? `Create one complete ${item.aspect_ratio} ecommerce shoe video for the full 0-${item.duration_sec}s timeline.`
+      : `Create one ${item.aspect_ratio} ecommerce shoe video segment for ONLY ${item.segment_id}.`,
     "Use the attached storyboard sheet as the primary visual plan.",
     "Use the uploaded shoe product photos as identity references for the exact same shoe.",
     `Target aspect ratio: ${item.aspect_ratio}. Duration: ${item.duration_sec} seconds. Resolution: 720p.`,
-    "Do not include scenes from the other segment. Keep the shoe silhouette, colors, outsole, midsole, and logo placement accurate.",
+    singleMode
+      ? "Include every confirmed shot in chronological order. Keep the shoe silhouette, colors, outsole, midsole, and logo placement accurate."
+      : "Do not include scenes from the other segment. Keep the shoe silhouette, colors, outsole, midsole, and logo placement accurate.",
     `Storyboard script copy:\n${item.script_copy}`,
     `Detailed shot plan:\n${lines}`
   ].join("\n");

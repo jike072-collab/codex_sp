@@ -9,6 +9,10 @@ import {
 } from "../workflow-domain/demo-script.mjs";
 import { normalizeConfirmedPlanningPackage } from "../workflow-domain/script-review.mjs";
 import {
+  isSingleVideoMode,
+  selectedVideoDurationSeconds
+} from "../workflow-domain/workflow-mode.mjs";
+import {
   extractJsonObject,
   hasUsableApiKey,
   positiveInteger,
@@ -33,6 +37,8 @@ export async function generateProjectScript(
 
   const apiUrl = env.TEXT_API_URL || "https://api.deepseek.com/chat/completions";
   const model = env.TEXT_MODEL || "deepseek-v4-pro";
+  const singleMode = isSingleVideoMode(project);
+  const durationSeconds = selectedVideoDurationSeconds(project);
   const systemPrompt = await readFile(
     join(projectRoot, "prompts", "01_planning_and_script.system.md"),
     "utf8"
@@ -52,7 +58,18 @@ export async function generateProjectScript(
           role: "user",
           content: JSON.stringify({
             task: "Generate the complete planning package JSON for this reviewed shoe project.",
+            workflow_mode: singleMode ? "single_video" : "legacy_multi_segment",
+            total_duration_seconds: durationSeconds,
+            required_script_shape: singleMode
+              ? "Return script_video.segment_full covering exactly 0 through total_duration_seconds. Do not return script_20s."
+              : "Return script_20s with segment_a_0_10s and segment_b_10_20s. Do not return script_video.",
             shots_per_10s_segment: options.shotsPerSegment || 5,
+            shot_diversity_requirements: [
+              "Every shot must advance a distinct narrative stage: hook, product identity, visible proof, movement or use context, and closing CTA.",
+              "Do not reuse the same visual, action, and camera sentence while only changing timestamps.",
+              "Do not repeat the same template across a majority of shots for any two of visual, action, and camera.",
+              "Keep product identity rules consistent without copying the same full shot row."
+            ],
             vision_analysis: project.visionAnalysis,
             market_brief: project.marketBrief
           })
@@ -76,7 +93,11 @@ export async function generateProjectScript(
   try {
     planningPackage = normalizeConfirmedPlanningPackage(
       { ...generated, mode: "api" },
-      project.visionAnalysis.product_lock_manifest
+      project.visionAnalysis.product_lock_manifest,
+      {
+        workflowMode: project.workflowMode,
+        videoDurationSeconds: project.marketBrief?.videoDurationSeconds
+      }
     );
   } catch (error) {
     throw new ProviderError(`DeepSeek 返回的脚本未通过校验：${error.message}`, {

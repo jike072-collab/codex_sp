@@ -64,6 +64,44 @@ function normalizeShots(shots, segmentId, expectedStart, expectedEnd) {
   return normalized;
 }
 
+function normalizeSignaturePart(value) {
+  return String(value || "")
+    .normalize("NFKC")
+    .toLocaleLowerCase()
+    .replace(/[\p{P}\p{S}\s]+/gu, "");
+}
+
+function rejectRepeatedShots(shots) {
+  const parts = shots.map((shot) => ({
+    visual: normalizeSignaturePart(shot.visual),
+    action: normalizeSignaturePart(shot.action),
+    camera: normalizeSignaturePart(shot.camera)
+  }));
+  const completeSignatures = parts.map((item) => (
+    `${item.visual}|${item.action}|${item.camera}`
+  ));
+  if (new Set(completeSignatures).size !== completeSignatures.length) {
+    invalidScript("模型返回的镜头内容重复，请重新生成脚本。");
+  }
+
+  if (parts.length < 2) return;
+  const pairKeys = [
+    ["visual", "action"],
+    ["visual", "camera"],
+    ["action", "camera"]
+  ];
+  for (const [first, second] of pairKeys) {
+    const counts = new Map();
+    for (const item of parts) {
+      const key = `${item[first]}|${item[second]}`;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    if ([...counts.values()].some((count) => count > parts.length / 2)) {
+      invalidScript("模型返回的镜头内容重复，请重新生成脚本。");
+    }
+  }
+}
+
 function normalizeSegment(input, expected) {
   if (input?.segment_id !== expected.segmentId) {
     invalidScript(`分段编号必须是 ${expected.segmentId}。`);
@@ -103,7 +141,7 @@ function normalizeLegacyScript(script) {
   if (Number(script?.total_duration_sec) !== 20) {
     invalidScript("广告脚本总时长必须是 20 秒。");
   }
-  return {
+  const normalized = {
     total_duration_sec: 20,
     segment_a_0_10s: normalizeSegment(script.segment_a_0_10s, {
       segmentId: "0-10s",
@@ -118,11 +156,16 @@ function normalizeLegacyScript(script) {
       durationSec: 10
     })
   };
+  rejectRepeatedShots([
+    ...normalized.segment_a_0_10s.shots,
+    ...normalized.segment_b_10_20s.shots
+  ]);
+  return normalized;
 }
 
 function normalizeSingleVideoScript(script, duration) {
   const normalizedDuration = normalizeSingleVideoDurationSeconds(duration);
-  return {
+  const normalized = {
     total_duration_sec: normalizedDuration,
     segment_full: normalizeSegment(script.segment_full, {
       segmentId: "full",
@@ -131,6 +174,8 @@ function normalizeSingleVideoScript(script, duration) {
       durationSec: normalizedDuration
     })
   };
+  rejectRepeatedShots(normalized.segment_full.shots);
+  return normalized;
 }
 
 function resolveWorkflowMode(input, confirmedLock, options) {

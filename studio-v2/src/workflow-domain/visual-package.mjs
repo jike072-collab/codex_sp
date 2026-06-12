@@ -2,11 +2,12 @@ import { DomainError } from "./domain-error.mjs";
 import { assertProjectStage, transitionProject } from "./project-workflow.mjs";
 import {
   expectedStoryboardCount,
-  isSingleVideoMode
+  isSingleVideoMode,
+  planningSegments
 } from "./workflow-mode.mjs";
 
 const QC_CHECKLIST = Object.freeze([
-  "Each storyboard covers only its own 10-second segment.",
+  "Each storyboard covers its assigned confirmed timeline.",
   "Storyboard sheet is a delivery board, not a cropped video frame.",
   "Each internal shot panel follows the selected output aspect ratio.",
   "Shoe colors, silhouette, midsole, and outsole stay consistent.",
@@ -70,15 +71,20 @@ function storyboardPrompt({ project, segment, frameAspectRatio, rules }) {
   ].filter(Boolean).join(" | ");
   const shotRows = segment.shots.map(shotLine).join("\n");
 
+  const singleMode = isSingleVideoMode(project);
   return [
-    `Create one landscape commercial storyboard sheet for ONLY the ${segment.segment_id} shoe ad segment.`,
+    singleMode
+      ? `Create one landscape commercial storyboard sheet for the complete 0-${segment.duration_sec}s shoe ad timeline.`
+      : `Create one landscape commercial storyboard sheet for ONLY the ${segment.segment_id} shoe ad segment.`,
     "The overall canvas is a storyboard delivery sheet, not a cropped video frame.",
     `Every internal shot thumbnail/panel must be composed as a ${frameAspectRatio} video frame, matching the selected Step 02 output ratio.`,
     "Do not make the whole storyboard sheet 9:16, 16:9, 4:5, or any other selected video ratio; apply that ratio only inside each shot panel.",
-    "Do not include scenes from the other 10-second segment.",
+    singleMode
+      ? "Include every confirmed shot exactly once in chronological order."
+      : "Do not include scenes from the other 10-second segment.",
     "Visual layout reference: clean Chinese commercial storyboard sheet, bold black title, white background, thin grey table lines, numbered shot blocks, product reference strip, and structured rows similar to a desktop-shooting storyboard.",
     "Required board sections:",
-    `1) Header: ${project.name} | ${segment.segment_id} storyboard | shot panel ratio ${frameAspectRatio}.`,
+    `1) Header: ${project.name} | ${singleMode ? `full 0-${segment.duration_sec}s` : segment.segment_id} storyboard | shot panel ratio ${frameAspectRatio}.`,
     `2) Product lock zone: shoe type, colors (${colors || "confirmed colors"}), material, sole, must-keep and must-not-change notes.`,
     `3) Shot table: one block per shot; each picture panel uses ${frameAspectRatio} composition with timing, picture, action, camera, selling point, sound, voiceover, subtitle, and transition.`,
     "4) Final memory strip: large keywords for the audience to remember.",
@@ -98,22 +104,13 @@ function storyboardAsset(project, segment, frameAspectRatio, rules) {
     type: "storyboard_board",
     status: "waiting",
     aspect_ratio: frameAspectRatio,
+    duration_sec: segment.duration_sec,
     storyboard_sheet: { ...STORYBOARD_SHEET },
     prompt: storyboardPrompt({ project, segment, frameAspectRatio, rules }),
-    negative_prompt: "wrong shoe, changed color, fake logo, distorted sole, unreadable layout, missing shots, includes other time segment, keyframe-only image, single hero photo",
+    negative_prompt: "wrong shoe, changed color, fake logo, distorted sole, unreadable layout, missing shots, duplicated shots, includes other time segment, keyframe-only image, single hero photo",
     reference_policy: "Use all uploaded shoe product views as strict product identity references.",
     script_copy: scriptCopy(segment)
   };
-}
-
-function planningSegments(project) {
-  if (isSingleVideoMode(project)) {
-    return [project.planningPackage?.script_video?.segment_full].filter(Boolean);
-  }
-  return [
-    project.planningPackage?.script_20s?.segment_a_0_10s,
-    project.planningPackage?.script_20s?.segment_b_10_20s
-  ].filter(Boolean);
 }
 
 export function generateVisualPackage(project, generatedAt = new Date().toISOString()) {
@@ -143,8 +140,9 @@ export function generateVisualPackage(project, generatedAt = new Date().toISOStr
       storyboard_sheet: { ...STORYBOARD_SHEET },
       segments: imageGeneration.map((item) => ({
         segment_id: item.segment_id,
+        duration_sec: item.duration_sec,
         storyboard_goal: isSingleVideoMode(project)
-          ? `One storyboard sheet for the full ${project.marketBrief?.videoDurationSeconds || 10}-second video; internal shot panels use ${frameAspectRatio}.`
+          ? `One storyboard sheet for the full ${item.duration_sec}-second video; internal shot panels use ${frameAspectRatio}.`
           : `One storyboard sheet for ${item.segment_id}; internal shot panels use ${frameAspectRatio}.`
       }))
     },

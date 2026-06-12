@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jike072-collab/codex_sp/schemas/workflow-mode-api.schema.json",
+  "title": "Workflow Mode API",
+  "$defs": {
+    "workflowMode": {
+      "enum": [
+        "single_video",
+        "legacy_multi_segment"
+      ]
+    },
+    "resetStage": {
+      "enum": [
+        "script",
+        "storyboard",
+        "video"
+      ]
+    },
+    "request": {
+      "type": "object",
+      "required": [
+        "workflowMode"
+      ],
+      "properties": {
+        "workflowMode": {
+          "$ref": "#/$defs/workflowMode"
+        },
+        "confirmReset": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "success": {
+      "type": "object",
+      "required": [
+        "project",
+        "changed",
+        "reset",
+        "resetStages"
+      ],
+      "properties": {
+        "project": {
+          "$ref": "./studio-project.schema.json"
+        },
+        "changed": {
+          "type": "boolean"
+        },
+        "reset": {
+          "type": "boolean"
+        },
+        "resetStages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/resetStage"
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "resetRequired": {
+      "type": "object",
+      "required": [
+        "error",
+        "code",
+        "currentWorkflowMode",
+        "requestedWorkflowMode",
+        "resetStages"
+      ],
+      "properties": {
+        "error": {
+          "type": "string",
+          "minLength": 1
+        },
+        "code": {
+          "const": "WORKFLOW_MODE_RESET_REQUIRED"
+        },
+        "currentWorkflowMode": {
+          "$ref": "#/$defs/workflowMode"
+        },
+        "requestedWorkflowMode": {
+          "$ref": "#/$defs/workflowMode"
+        },
+        "resetStages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/resetStage"
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/request"
+    },
+    {
+      "$ref": "#/$defs/success"
+    },
+    {
+      "$ref": "#/$defs/resetRequired"
+    }
+  ]
+}

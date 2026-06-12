@@ -3,6 +3,21 @@
 The browser never receives provider credentials. Provider selection and request
 construction stay entirely server-side.
 
+## Workflow Mode Reset Boundary
+
+`PUT /api/projects/:projectId/workflow-mode` accepts:
+
+```json
+{ "workflowMode": "single_video", "confirmReset": false }
+```
+
+It returns `200` when no downstream package must be removed. If planning,
+storyboard, or video state exists, it returns
+`409 WORKFLOW_MODE_RESET_REQUIRED` until `confirmReset: true` is supplied.
+The confirmed update clears provider-derived script, image, video, failure,
+and timing state in one project save while preserving source assets, vision
+analysis, product lock confirmation, and market settings.
+
 ## Vision
 
 - Workflow route: `POST /api/projects/:projectId/analyze`
@@ -30,13 +45,18 @@ image intact and does not require splitting it into multiple files.
 - Failure code: `TEXT_PROVIDER_ERROR`
 - Invalid generated package code: `TEXT_PROVIDER_INVALID_OUTPUT`
 
-Current default script mode is `single_video`:
+Single mode (`single_video`):
 
 - `planningPackage.workflow_mode = "single_video"`
 - `planningPackage.script_video.total_duration_sec = marketBrief.videoDurationSeconds`
 - one full timeline from `0` to the selected duration
 
-Legacy `legacy_multi_segment` projects keep the old two 10-second segments.
+Dual 20-second mode (`legacy_multi_segment`) keeps two 10-second segments.
+The model request explicitly includes the selected mode, total duration,
+required script shape, and shot-diversity rules. Generated or edited scripts
+are rejected when `visual + action + camera` repeats exactly or when a
+majority of shots reuse the same two-field template. Invalid provider output
+is returned to the user without a paid silent retry.
 
 ## Images
 
@@ -55,8 +75,10 @@ Rules:
 - Storyboard sheet outer canvas is a delivery sheet and is not forced to match
   Step 02 video ratio.
 - Internal shot panels must follow `marketBrief.outputAspectRatio`.
-- Current default mode builds one storyboard item with `segment_id: "full"`.
-- Legacy mode keeps two storyboard items: `0-10s` and `10-20s`.
+- Single mode builds one storyboard item with `segment_id: "full"` and uses
+  draw channel A exactly once.
+- Dual 20-second mode builds `0-10s` and `10-20s` items, starts both missing
+  requests concurrently, and maps them to draw channels A and B respectively.
 - Successful storyboard results are preserved; retries only regenerate missing
   items.
 - Safe diagnostics may include segment id, attempt id, channel id/title,
@@ -72,7 +94,8 @@ Rules:
   - `GET /api/projects/:projectId/videos/status`
   - `POST /api/projects/:projectId/videos/:segmentId/retry`
   - `GET /api/projects/:projectId/videos/:segmentId/download`
-  - optional legacy merge: `GET /api/projects/:projectId/videos/final/download`
+  - optional dual-segment merge:
+    `GET /api/projects/:projectId/videos/final/download`
 - Provider: `clmm-mall.top` OpenAI-video-compatible channel
 - Default endpoint: `https://clmm-mall.top/v1/videos/generations`
 - Default model: `seedance2.0 720p-fast`
@@ -92,14 +115,15 @@ Rules:
   vision, text, image, or secondary-image keys.
 - Newly created projects default to `single_video` and submit one `full` video
   task with `duration = marketBrief.videoDurationSeconds`.
-- Legacy projects keep two concurrent tasks for `0-10s` and `10-20s`.
+- Dual 20-second projects keep two concurrent tasks for `0-10s` and
+  `10-20s`.
 - Successful local videos are preserved.
 - Failed tasks remain failed; user retry only resubmits the missing or failed
   task.
 - `HTTP 524`, `504`, and `408` are treated as possibly billed timeouts, so the
   backend does not auto-retry them.
 - Current single-video mode does not require ffmpeg merge.
-- Legacy dual-segment mode may still attempt an ffmpeg merge when both segments
+- Dual 20-second mode may still attempt an ffmpeg merge when both segments
   complete.
 - Safe diagnostics may include segment id, attempt id, timing, masked key
   preview, model, provider host/path, request id, storyboard/reference counts,
