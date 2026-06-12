@@ -44,6 +44,7 @@ Windows 也可以双击根目录的 `打开鞋类广告工作台.vbs` 启动，�
 - `CURRENT_ASSIGNMENTS.md`
 - `tasks/codex-backend-current.md`
 - `tasks/codex-frontend-current.md`
+- `tasks/deepseek-frontend-current.md`
 - `docs/MODEL-ROUTING.md`
 
 协作规则见：

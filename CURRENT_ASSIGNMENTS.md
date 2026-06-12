@@ -115,6 +115,32 @@ Route: complex
 
 后端模式切换契约已冻结并审核通过。前端必须从最新 `origin/main` 开始，只按任务文件和提交 `8667638` 的接口形状实现，不得猜字段。
 
+## DeepSeek：代码编辑助手
+
+状态：READY - START NOW
+
+任务文件：
+
+- `tasks/deepseek-frontend-current.md`
+
+任务分支：
+
+- `deepseek/frontend-workflow-mode-code`
+
+职责：
+
+- 只做代码编辑，不做截图或识图。
+- 优先处理 `studio-v2/public/js/**`、`studio-v2/admin/*.js` 和相关测试的纯代码逻辑。
+- 不改后端契约、schema、协调文件和浏览器视觉验收步骤。
+
+禁止范围：
+
+- `studio-v2/src/**`
+- `docs/contracts/**`
+- `schemas/**`
+- `studio-v2/public/css/**`
+- `studio-v2/public/*.html`
+
 ## 固定产品规则
 
 - 生图只能 img2img，必须携带已上传商品参考图。
