@@ -142,7 +142,9 @@ export function renderWorkspace() {
   const needsStoryboardCompletion = project.status === "export" && activeStatus === "visual" && !hasReadyStoryboards(project);
   const isReviewingPast = !needsStoryboardCompletion && activeStatus !== project.status && isStageReached(activeStatus);
 
-  el("projectTitle").textContent = project.name;
+  const projectTitle = el("projectTitle");
+  projectTitle.textContent = "";
+  projectTitle.hidden = true;
   el("projectState").innerHTML = renderWorkflowModeSwitcher(project);
   el("projectState").setAttribute(
     "aria-label",
@@ -814,6 +816,8 @@ export function fillReviewForm(analysis) {
 export function analysisFromForm() {
   const form = el("reviewForm");
   const previous = state.project.visionAnalysis || {};
+  const previousSummary = previous.product_summary || {};
+  const previousLock = previous.product_lock_manifest || {};
   const targetCountry = form.elements.targetCountry?.value || "Thailand";
   const audience = form.elements.audience?.value || "日常运动与通勤人群";
   const outputAspectRatio = form.elements.output_aspect_ratio?.value || "9:16";
@@ -825,6 +829,33 @@ export function analysisFromForm() {
   const toeAndLace = lines(form.elements.toe_and_lace.value);
   const sole = lines(form.elements.sole_structure.value);
   const sideAndHeel = lines(form.elements.side_and_heel.value);
+  const shoeType = form.elements.shoe_type.value.trim() || previousSummary.shoe_type || "当前鞋款";
+  const mainColors = lines(form.elements.main_colors.value).length
+    ? lines(form.elements.main_colors.value)
+    : (Array.isArray(previousLock.main_colors) ? previousLock.main_colors : []);
+  const supportingColors = lines(form.elements.supporting_colors.value).length
+    ? lines(form.elements.supporting_colors.value)
+    : (Array.isArray(previousLock.supporting_colors) ? previousLock.supporting_colors : []);
+  const upperMaterial = form.elements.upper_material_visible.value.trim() || previousLock.upper_material_visible || "";
+  let mustKeep = lines(form.elements.must_keep.value);
+  let mustNotChange = lines(form.elements.must_not_change.value);
+  if (!mustKeep.length && Array.isArray(previousLock.must_keep)) mustKeep = previousLock.must_keep.filter(Boolean);
+  if (!mustNotChange.length && Array.isArray(previousLock.must_not_change)) mustNotChange = previousLock.must_not_change.filter(Boolean);
+  if (!mustKeep.length) {
+    mustKeep = [
+      `保持${shoeType}的整体轮廓和鞋型比例`,
+      mainColors.length ? `保持主色：${mainColors.slice(0, 3).join("、")}` : "",
+      upperMaterial ? `保持可见材质和纹理：${upperMaterial}` : "",
+      toeAndLace[0] ? `保持鞋头结构：${toeAndLace[0]}` : "",
+      sole[0] ? `保持鞋底结构：${sole[0]}` : "",
+      sideAndHeel[0] ? `保持侧面图案或标识：${sideAndHeel[0]}` : ""
+    ].filter(Boolean);
+  }
+  if (!mustNotChange.length) {
+    mustNotChange = [
+      "不要改变鞋款颜色、轮廓、材质纹理、鞋底结构和品牌/图案细节"
+    ];
+  }
   const preferences = {
     targetCountry,
     audience,
@@ -847,17 +878,17 @@ export function analysisFromForm() {
     ...previous,
     mode: "reviewed",
     product_summary: {
-      shoe_type: form.elements.shoe_type.value,
+      shoe_type: shoeType,
       likely_usage: {
-        value: form.elements.likely_usage.value,
+        value: form.elements.likely_usage.value.trim() || previousSummary.likely_usage?.value || "日常穿着",
         evidence: valueAt(previous, "product_summary.likely_usage.evidence", "unknown")
       },
-      overall_style: form.elements.overall_style.value
+      overall_style: form.elements.overall_style.value.trim() || previousSummary.overall_style || "清爽运动风格"
     },
     product_lock_manifest: {
-      main_colors: lines(form.elements.main_colors.value),
-      supporting_colors: lines(form.elements.supporting_colors.value),
-      upper_material_visible: form.elements.upper_material_visible.value,
+      main_colors: mainColors,
+      supporting_colors: supportingColors,
+      upper_material_visible: upperMaterial,
       toe_shape: toeAndLace[0] || "",
       lace_system: toeAndLace.slice(1).join("；"),
       midsole_shape: sole[0] || "",
@@ -865,8 +896,8 @@ export function analysisFromForm() {
       outsole_pattern: sole.slice(2).join("；"),
       side_pattern_or_logo: sideAndHeel[0] || "",
       heel_structure: sideAndHeel.slice(1).join("；"),
-      must_keep: lines(form.elements.must_keep.value),
-      must_not_change: lines(form.elements.must_not_change.value)
+      must_keep: mustKeep,
+      must_not_change: mustNotChange
     }
   };
 }

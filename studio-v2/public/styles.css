@@ -2503,6 +2503,9 @@ body.ui-v2 .workspace-title-block > .kicker {
 body.ui-v2 .title-row {
   gap: 10px;
 }
+body.ui-v2 #projectTitle {
+  display: none;
+}
 body.ui-v2 .workspace-header h1,
 body.ui-v2 .workspace:has(#reviewStage:not(.hidden)) .workspace-header h1 {
   overflow: hidden;
