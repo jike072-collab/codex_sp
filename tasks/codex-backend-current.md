@@ -1,6 +1,6 @@
 # Codex A Current Backend Task
 
-Status: READY
+Status: DONE - PUSHED AND APPROVED
 
 Target: 本机后端 Codex 对话
 
@@ -13,6 +13,8 @@ Route: complex
 Branch: `codex/backend-single-storyboard-script-quality`
 
 Start from: latest `origin/main` containing this task
+
+Approved commit: `8667638`
 
 ## Goal
 

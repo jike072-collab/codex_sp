@@ -1,6 +1,6 @@
 # Codex B Current Frontend Task
 
-Status: WAITING FOR BACKEND CONTRACT
+Status: READY - START NOW
 
 Target: 另一台电脑前端 Codex
 
@@ -14,18 +14,18 @@ Branch: `codex/frontend-single-storyboard-script-view`
 
 Start from: latest `origin/main` containing this task
 
-Backend dependency: `codex/backend-single-storyboard-script-quality`
+Backend dependency commit: `8667638` (approved and merged into `origin/main`)
 
-## Do Not Start Until
+## Backend Contract Approved
 
-后端分支必须先推送并明确：
+后端提交 `8667638` 已推送、审核并冻结以下契约：
 
 - 模式切换 API 的 route、payload、成功响应和 `409 WORKFLOW_MODE_RESET_REQUIRED`。
 - `single_video` 返回一个 `full` 故事板和一个视频任务。
 - `legacy_multi_segment` 返回两个 10 秒故事板和两段视频任务。
 - 切换模式后的数据清理范围与项目返回阶段。
 
-在这些字段冻结前，不得根据旧双段接口猜实现。
+请先 fetch，并从包含 `8667638` 的最新 `origin/main` 开始实现；不得根据旧双段接口猜字段。
 
 ## Goal
 

@@ -26,7 +26,7 @@ Route: complex
 
 ## 当前基线
 
-- 正式基线：`origin/main` 最新提交，至少包含 `1fc7930`
+- 正式基线：`origin/main` 最新提交，至少包含后端审核提交 `8667638`
 - 正式分支：`main / v2 / ui-v2`
 - 协调端：发布任务、审核提交、合并、回归、同步正式分支
 - 本机后端：只改后端、契约、schema 和测试
@@ -60,7 +60,7 @@ Route: complex
 
 ## Codex A：本机后端
 
-状态：READY
+状态：DONE - PUSHED AND APPROVED (`8667638`)
 
 任务文件：
 
@@ -87,7 +87,7 @@ Route: complex
 
 ## Codex B：另一台电脑前端
 
-状态：WAITING FOR BACKEND CONTRACT
+状态：READY - START NOW
 
 任务文件：
 
@@ -96,6 +96,10 @@ Route: complex
 任务分支：
 
 - `codex/frontend-single-storyboard-script-view`
+
+后端依赖提交：
+
+- `8667638`（已审核并合入 `origin/main`）
 
 允许修改：
 
@@ -109,7 +113,7 @@ Route: complex
 - `schemas/**`
 - `studio-v2/admin/**`
 
-前端必须先看到后端分支的模式切换契约与交付提交，再开始依赖接口形状的实现；可以先读取任务，不得猜字段。
+后端模式切换契约已冻结并审核通过。前端必须从最新 `origin/main` 开始，只按任务文件和提交 `8667638` 的接口形状实现，不得猜字段。
 
 ## 固定产品规则
 
