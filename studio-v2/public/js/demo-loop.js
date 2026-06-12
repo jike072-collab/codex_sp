@@ -637,6 +637,10 @@ function videoStatusLabel(status) {
   }[status] || "等待生成";
 }
 
+function isVideoInFlight(status) {
+  return ["submitting", "queued", "generating", "downloading"].includes(status);
+}
+
 function currentVideoTask(project) {
   const workflow = project?.videoPackage?.workflow_mode || project?.workflowMode || (isSingleVideoProject(project) ? "single_video" : "legacy_multi_segment");
   const items = project?.videoPackage?.video_generation || [];
@@ -748,11 +752,14 @@ export function renderExportStage(project = state.project) {
           ${status === "done" && videoUrl ? `
             <video controls playsinline src="${escapeHtml(videoUrl)}"></video>
             <a class="primary-button" href="${escapeHtml(videoUrl)}" download>下载视频</a>
+          ` : isVideoInFlight(status) ? `
+            <button class="primary-button" type="button" data-action="refresh-video" ${state.busy ? "disabled" : ""}>刷新视频状态</button>
+          ` : status === "failed" ? `
+            <button class="primary-button" type="button" data-action="retry-video" ${state.busy ? "disabled" : ""}>重新生成视频</button>
           ` : `
-            <button class="primary-button" type="button" data-action="generate-video" ${state.busy ? "disabled" : ""}>${status === "failed" ? "重新生成视频" : "开始生成视频"}</button>
+            <button class="primary-button" type="button" data-action="generate-video" ${state.busy ? "disabled" : ""}>开始生成视频</button>
           `}
           ${status === "failed" ? `<button class="ghost-button" type="button" data-action="refresh-video" ${state.busy ? "disabled" : ""}>刷新状态</button>` : ""}
-          ${item?.segment_id ? `<button class="ghost-button" type="button" data-action="retry-video" ${state.busy ? "disabled" : ""}>重试当前任务</button>` : ""}
         </div>
       </div>
     `;
