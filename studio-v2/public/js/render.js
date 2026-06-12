@@ -6,6 +6,7 @@ import {
   el,
   escapeHtml,
   formatTime,
+  isSingleVideoProject,
   lines,
   marketCountryOptions,
   projectSetup,
@@ -14,7 +15,8 @@ import {
   state,
   statusLabel,
   toneOptions,
-  valueAt
+  valueAt,
+  videoDurationOptions
 } from "./core.js";
 import {
   hasReadyStoryboards,
@@ -33,9 +35,9 @@ const STAGE_PANEL_COPY = {
   assets: "上传 1 张四视图拼图即可开始识别，补充更多角度会更稳。",
   review: "确认产品锁定、受众、比例和创意方向。",
   market: "把已确认的产品信息整理成脚本输入。",
-  script: "按完整 20 秒时间线检查镜头、文案和节奏。",
-  visual: "img2img 只生成两张故事板，成功的会保留。",
-  export: "只保留两张故事板和对应脚本，方便直接交付。"
+  script: "按所选时长检查单条脚本、镜头和文案。",
+  visual: "img2img 生成一张完整故事板，作为视频参考。",
+  export: "使用脚本和故事板生成最终广告视频。"
 };
 
 const STAGE_PANEL_TITLE = {
@@ -44,7 +46,7 @@ const STAGE_PANEL_TITLE = {
   market: "创意确认",
   script: "脚本进度",
   visual: "故事板状态",
-  export: "最终交付"
+  export: "生成视频"
 };
 
 const VISIBLE_STAGE_NUMBER = {
@@ -145,10 +147,10 @@ export function renderWorkspace() {
     assets: "上传 1 张四视图拼图即可进入识别和锁定，更多角度只是建议。",
     analyzing: "正在识别鞋款，稍后会进入产品设定。",
     review: "确认产品信息、受众、比例和创意方向。",
-    market: "整理创意 brief，准备生成两段脚本。",
-    script: "查看完整 20 秒中文脚本，按时间顺序检查镜头与文案。",
-    visual: "img2img 只生成两张故事板。",
-    export: "最终页只保留两张故事板和对应脚本。"
+    market: "整理创意 brief，准备生成单条视频脚本。",
+    script: "查看完整中文脚本，按所选时长检查镜头与文案。",
+    visual: "img2img 生成一张完整故事板。",
+    export: "生成、播放和下载最终广告视频。"
   };
   el("workspaceSubtitle").textContent = subtitleByStatus[activeStatus] || subtitleByStatus.assets;
   const setup = projectSetup(project);
@@ -238,35 +240,104 @@ function renderWorkspacePanel(project, activeStatus) {
   renderPanelStageVisual(project, activeStatus);
 }
 
+function panelVideoStatusLabel(status) {
+  return {
+    waiting: "等待生成",
+    submitting: "正在提交",
+    queued: "排队中",
+    generating: "生成中",
+    downloading: "取回视频",
+    done: "已完成",
+    failed: "生成失败"
+  }[status] || "等待生成";
+}
+
 function renderPanelStageVisual(project, activeStatus) {
   const container = el("panelStageVisual");
   if (!container) return;
   const assets = project.assets || [];
-  const script = project.planningPackage?.script_20s || {};
-  const shotCount = [
-    ...(script.segment_a_0_10s?.shots || []),
-    ...(script.segment_b_10_20s?.shots || [])
-  ].length;
+  const singleVideo = isSingleVideoProject(project);
+  const script = singleVideo
+    ? project.planningPackage?.script_video?.segment_full || {}
+    : project.planningPackage?.script_20s || {};
+  const shotCount = singleVideo
+    ? (script.shots || []).length
+    : [
+        ...(script.segment_a_0_10s?.shots || []),
+        ...(script.segment_b_10_20s?.shots || [])
+      ].length;
   const generated = (project.imagePackage?.image_generation || [])
-    .filter((item) => item?.status === "done" && item?.generated_image?.url).length;
+    .filter((item) => item?.status === "done" && item?.generated_image?.url && (
+      singleVideo ? item.segment_id === "full" : ["0-10s", "10-20s"].includes(item.segment_id)
+    )).length;
 
   if (activeStatus === "script") {
+    const shots = singleVideo ? (script.shots || []) : [
+      ...(script.segment_a_0_10s?.shots || []),
+      ...(script.segment_b_10_20s?.shots || [])
+    ];
     container.innerHTML = `
       <div class="stage-visual-heading">
-        <span>20 秒时间线</span>
+        <span>${singleVideo ? "完整时间线" : "20 秒时间线"}</span>
         <strong>${escapeHtml(shotCount || 10)} 镜头</strong>
       </div>
       <div class="script-segment-chart">
-        <div><span>0-10s</span><i></i></div>
-        <div><span>10-20s</span><i></i></div>
+        ${singleVideo
+          ? `<div><span>完整视频</span><i></i></div>`
+          : `<div><span>0-10s</span><i></i></div><div><span>10-20s</span><i></i></div>`}
       </div>
       <div class="shot-tick-chart" aria-hidden="true">
         ${Array.from({ length: shotCount || 10 }, (_, index) => `<i style="--tick:${index}"></i>`).join("")}
       </div>
+      ${singleVideo ? `
+        <div class="panel-shot-list">
+          ${shots.slice(0, 5).map((shot, index) => `
+            <div>
+              <span>镜头 ${String(index + 1).padStart(2, "0")}</span>
+              <strong>${escapeHtml(shot.start_sec ?? index)}-${escapeHtml(shot.end_sec ?? index + 1)}s</strong>
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
       <div class="stage-visual-stats">
-        <div><strong>20s</strong><span>总时长</span></div>
-        <div><strong>2</strong><span>交付分段</span></div>
+        <div><strong>${escapeHtml(singleVideo ? `${project.marketBrief?.videoDurationSeconds || 10}s` : "20s")}</strong><span>总时长</span></div>
+        <div><strong>${escapeHtml(singleVideo ? 1 : 2)}</strong><span>交付分段</span></div>
         <div><strong>${escapeHtml(shotCount || 10)}</strong><span>镜头总数</span></div>
+      </div>
+    `;
+    return;
+  }
+
+  if (activeStatus === "export" && singleVideo) {
+    const video = (project.videoPackage?.video_generation || [])
+      .find((item) => item.segment_id === "full");
+    const videoStatus = video?.status || "waiting";
+    const videoReady = videoStatus === "done" && video?.generated_video?.url;
+    container.innerHTML = `
+      <div class="stage-visual-heading">
+        <span>视频任务</span>
+        <strong>${escapeHtml(panelVideoStatusLabel(videoStatus))}</strong>
+      </div>
+      <div class="video-mini-meter" data-ready="${videoReady ? "true" : "false"}">
+        <i></i><i></i><i></i><i></i><i></i>
+      </div>
+      <div class="asset-readiness-chart video-status-chart">
+        <div data-ready="${generated >= 1}">
+          <span>故事板</span>
+          <strong>${escapeHtml(generated)}/1</strong>
+        </div>
+        <div data-ready="true">
+          <span>时长</span>
+          <strong>${escapeHtml(project.marketBrief?.videoDurationSeconds || 10)} 秒</strong>
+        </div>
+        <div data-ready="${videoReady ? "true" : "false"}">
+          <span>视频</span>
+          <strong>${escapeHtml(videoReady ? "可下载" : panelVideoStatusLabel(videoStatus))}</strong>
+        </div>
+      </div>
+      <div class="stage-visual-stats">
+        <div><strong>${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")}</strong><span>比例</span></div>
+        <div><strong>${escapeHtml(videoReady ? 100 : videoStatus === "failed" ? 0 : 50)}%</strong><span>进度</span></div>
       </div>
     `;
     return;
@@ -276,19 +347,19 @@ function renderPanelStageVisual(project, activeStatus) {
     container.innerHTML = `
       <div class="stage-visual-heading">
         <span>故事板交付</span>
-        <strong>${escapeHtml(generated)}/2</strong>
+        <strong>${escapeHtml(generated)}/${escapeHtml(singleVideo ? 1 : 2)}</strong>
       </div>
       <div class="storyboard-mini-grid">
-        ${[0, 1].map((index) => `
+        ${(singleVideo ? [0] : [0, 1]).map((index) => `
           <div data-complete="${index < generated}">
-            <span>${index === 0 ? "0-10s" : "10-20s"}</span>
+            <span>${singleVideo ? "完整视频" : (index === 0 ? "0-10s" : "10-20s")}</span>
             <i></i>
           </div>
         `).join("")}
       </div>
       <div class="stage-visual-stats">
         <div><strong>${escapeHtml(generated)}</strong><span>已完成</span></div>
-        <div><strong>${escapeHtml(2 - generated)}</strong><span>待生成</span></div>
+        <div><strong>${escapeHtml((singleVideo ? 1 : 2) - generated)}</strong><span>待生成</span></div>
       </div>
     `;
     return;
@@ -398,24 +469,34 @@ function lockStageForReview(value) {
 }
 
 function renderCompletionList(status) {
+  const singleVideo = isSingleVideoProject(state.project);
   const itemsByStatus = {
     assets: ["图片属于同一款鞋", "关键角度足够清晰", "产品外观可以稳定锁定"],
     analyzing: ["等待识别完成", "保留原始素材", "准备进入人工审核"],
     review: ["目标人群和尺寸已选择", "创意方向和核心信息已整理", "产品锁定已确认"],
     market: ["目标国家已选择", "目标人群已确认", "创意主题、核心信息和语气已填写"],
-    script: ["完整 20 秒脚本已生成", "全部镜头按时间顺序可审核", "确认后按两个 10 秒分段生成故事板"],
-    visual: ["脚本已确认", "故事板方向清晰", "准备生成两张分段故事板"],
-    export: ["两张故事板已整理", "两段 10 秒脚本可复制", "第一版交付内容已就绪"]
+    script: singleVideo
+      ? ["完整视频脚本已生成", "全部镜头按所选时长可审核", "确认后生成一张故事板"]
+      : ["完整 20 秒脚本已生成", "全部镜头按时间顺序可审核", "确认后按两个 10 秒分段生成故事板"],
+    visual: singleVideo
+      ? ["脚本已确认", "故事板方向清晰", "准备生成一张完整故事板"]
+      : ["脚本已确认", "故事板方向清晰", "准备生成两张分段故事板"],
+    export: singleVideo
+      ? ["故事板和脚本已整理", "可生成单个广告视频", "第一版交付内容已就绪"]
+      : ["两张故事板已整理", "两段 10 秒脚本可复制", "第一版交付内容已就绪"]
   };
   const items = itemsByStatus[status] || itemsByStatus.assets;
   if (status === "visual") {
     const ratio = state.project?.marketBrief?.outputAspectRatio || "9:16";
     const entries = (state.project?.imagePackage?.image_generation || []).filter((item) =>
-      item.type === "storyboard_board" && item.aspect_ratio === ratio
+      item.type === "storyboard_board" && item.aspect_ratio === ratio && (
+        singleVideo ? item.segment_id === "full" : ["0-10s", "10-20s"].includes(item.segment_id)
+      )
     );
     const complete = entries.filter((item) => item.status === "done" && item.generated_image?.url).length;
-    items[1] = `故事板完成 ${complete}/2`;
-    items[2] = complete === 2 ? "可进入最终交付" : "成功图片保留，缺失项可继续生成";
+    const total = singleVideo ? 1 : 2;
+    items[1] = `故事板完成 ${complete}/${total}`;
+    items[2] = complete === total ? (singleVideo ? "可进入生成视频" : "可进入最终交付") : "成功图片保留，缺失项可继续生成";
   }
   el("completionList").innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
 }
@@ -479,6 +560,7 @@ function compactOptionsHtml(name, options, selectedValue, { valueAsLabel = false
 function renderReviewControls(setup) {
   const container = el("reviewControlBox");
   if (!container) return;
+  const singleVideo = isSingleVideoProject(state.project);
   const countryLabel = countryNames[setup.targetCountry] || setup.targetCountry;
   const themeLabel = labelFor(creativeThemeOptions, setup.creativeTheme);
   const toneLabel = labelFor(toneOptions, setup.tone);
@@ -519,7 +601,13 @@ function renderReviewControls(setup) {
       value: toneLabel,
       options: compactOptionsHtml("tone", toneOptions, setup.tone)
     },
-    {
+    singleVideo ? {
+      name: "videoDurationSeconds",
+      icon: "秒",
+      label: "视频时长",
+      value: `${setup.videoDurationSeconds} 秒`,
+      options: compactOptionsHtml("videoDurationSeconds", videoDurationOptions, setup.videoDurationSeconds)
+    } : {
       name: "shotsPerSegment",
       icon: "镜",
       label: "镜头",
@@ -635,6 +723,7 @@ export function fillReviewForm(analysis) {
   form.elements.creativeTheme.value = setup.creativeTheme;
   form.elements.tone.value = setup.tone;
   form.elements.shotsPerSegment.value = setup.shotsPerSegment;
+  form.elements.videoDurationSeconds.value = setup.videoDurationSeconds;
   updateAspectSummary(setup.outputAspectRatio);
   renderReviewControls(setup);
   if (form.elements.coreMessage && !form.elements.coreMessage.value) {
@@ -675,6 +764,7 @@ export function analysisFromForm() {
   const tone = form.elements.tone?.value || "energetic";
   const rawCoreMessage = form.elements.coreMessage?.value.trim() || "";
   const shotsPerSegment = Number(form.elements.shotsPerSegment?.value || 5);
+  const videoDuration = Number(form.elements.videoDurationSeconds?.value || 10);
   const toeAndLace = lines(form.elements.toe_and_lace.value);
   const sole = lines(form.elements.sole_structure.value);
   const sideAndHeel = lines(form.elements.side_and_heel.value);
@@ -684,7 +774,8 @@ export function analysisFromForm() {
     outputAspectRatio,
     creativeTheme,
     tone,
-    shotsPerSegment: [3, 4, 5].includes(shotsPerSegment) ? shotsPerSegment : 5
+    shotsPerSegment: [3, 4, 5].includes(shotsPerSegment) ? shotsPerSegment : 5,
+    videoDurationSeconds: Number.isInteger(videoDuration) && videoDuration >= 5 && videoDuration <= 15 ? videoDuration : 10
   };
   if (rawCoreMessage) preferences.coreMessage = rawCoreMessage;
   saveProjectPreferences(state.project, preferences);
@@ -743,13 +834,15 @@ export function marketBriefFromReviewForm() {
   const rawCoreMessage = form.elements.coreMessage?.value.trim() || "";
   const coreMessage = rawCoreMessage || autoCoreMessage(state.project?.visionAnalysis, audience);
   const shotsPerSegment = Number(form.elements.shotsPerSegment?.value || setup.shotsPerSegment);
+  const videoDuration = Number(form.elements.videoDurationSeconds?.value || setup.videoDurationSeconds);
   const preferences = {
     targetCountry,
     audience,
     outputAspectRatio: form.elements.output_aspect_ratio?.value || setup.outputAspectRatio,
     creativeTheme,
     tone,
-    shotsPerSegment: [3, 4, 5].includes(shotsPerSegment) ? shotsPerSegment : 5
+    shotsPerSegment: [3, 4, 5].includes(shotsPerSegment) ? shotsPerSegment : 5,
+    videoDurationSeconds: Number.isInteger(videoDuration) && videoDuration >= 5 && videoDuration <= 15 ? videoDuration : 10
   };
   if (rawCoreMessage) preferences.coreMessage = rawCoreMessage;
   saveProjectPreferences(state.project, preferences);
@@ -759,6 +852,7 @@ export function marketBriefFromReviewForm() {
     creativeTheme,
     coreMessage,
     tone,
-    outputAspectRatio: form.elements.output_aspect_ratio?.value || setup.outputAspectRatio
+    outputAspectRatio: form.elements.output_aspect_ratio?.value || setup.outputAspectRatio,
+    videoDurationSeconds: preferences.videoDurationSeconds
   };
 }

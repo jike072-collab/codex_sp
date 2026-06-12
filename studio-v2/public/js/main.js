@@ -16,7 +16,10 @@ import {
   saveMarketBrief,
   startProjectBatchDelete,
   cancelProjectBatchDelete,
+  generateVideo,
   toggleProjectSelection,
+  refreshVideoStatus,
+  retryVideo,
   uploadFiles
 } from "./projects.js";
 import {
@@ -171,7 +174,10 @@ function wireEvents() {
       },
       "confirm-and-generate-visual": () => confirmScriptAndGenerateVisual(),
       "generate-script": () => generateScript(),
-      "generate-visual": () => generateVisual()
+      "generate-visual": () => generateVisual(),
+      "generate-video": () => generateVideo(),
+      "refresh-video": () => refreshVideoStatus(),
+      "retry-video": () => retryVideo()
     };
     actions[actionButton.dataset.action]?.();
   });

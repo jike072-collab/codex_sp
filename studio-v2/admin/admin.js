@@ -8,7 +8,8 @@ const refreshModelsButton = document.querySelector("#refreshModelsButton");
 const PROVIDER_TEXT = {
   vision: { title: "商品识图", role: "商品图片分析", channel: "Gemini 通道" },
   text: { title: "广告脚本生成", role: "20 秒广告脚本生成", channel: "对话补全通道" },
-  image: { title: "故事板图片生成", role: "参考图驱动的故事板生成", channel: "Draw 绘图通道" }
+  image: { title: "故事板图片生成", role: "参考图驱动的故事板生成", channel: "Draw 绘图通道" },
+  video: { title: "视频生成", role: "单视频生成", channel: "OpenAI-video 兼容通道" }
 };
 const FIELD_LABELS = {
   apiUrl: "接口地址",
@@ -220,9 +221,13 @@ function renderProvider(provider) {
   const badge = document.createElement("span");
   badge.className = "badge";
   badge.dataset.configured = String(provider.config.configured);
-  badge.textContent = provider.id === "image" && provider.config.channels?.length
-    ? `${provider.config.configuredChannels || 0}/${provider.config.requiredChannels || 2} 通道已配置`
-    : provider.config.configured ? "已配置" : "缺少密钥";
+  if (provider.id === "image" && provider.config.channels?.length) {
+    badge.textContent = `${provider.config.configuredChannels || 0}/${provider.config.requiredChannels || 2} 通道已配置`;
+  } else if (provider.id === "video") {
+    badge.textContent = provider.config.configured ? "视频生成已配置" : "视频生成未配置";
+  } else {
+    badge.textContent = provider.config.configured ? "已配置" : "缺少密钥";
+  }
   titleRow.append(title, badge);
 
   const meta = document.createElement("div");
@@ -365,11 +370,17 @@ form.addEventListener("submit", async (event) => {
   if (!currentSchema) return;
   setSaveState("正在保存...");
   try {
+    const hasVideoChange = Boolean(
+      form.elements.videoApiUrl?.value.trim()
+      || form.elements.videoModel?.value.trim()
+      || form.elements.videoApiKey?.value.trim()
+      || form.elements.videoApiKey__clear?.checked
+    );
     await api("/api/admin/providers", {
       method: "PUT",
       body: JSON.stringify(payloadFromForm())
     });
-    setSaveState("配置已保存，正在重新同步...", "ok");
+    setSaveState(hasVideoChange ? "视频生成已配置，正在重新同步..." : "配置已保存，正在重新同步...", "ok");
     dirty = false;
     await loadProviders({ force: true });
   } catch {

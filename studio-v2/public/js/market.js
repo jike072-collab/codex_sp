@@ -45,7 +45,8 @@ function marketDefaults(project) {
     creativeTheme: clean(saved.creativeTheme) || setup.creativeTheme,
     coreMessage: clean(saved.coreMessage) || setup.coreMessage,
     tone: clean(saved.tone) || setup.tone,
-    outputAspectRatio: setup.outputAspectRatio
+    outputAspectRatio: setup.outputAspectRatio,
+    videoDurationSeconds: setup.videoDurationSeconds
   };
 }
 
@@ -68,6 +69,7 @@ export function fillMarketForm(project = state.project) {
     <div><span>国家</span><strong>${escapeHtml(countryNames[brief.targetCountry] || brief.targetCountry)}</strong></div>
     <div><span>人群</span><strong>${escapeHtml(brief.audience)}</strong></div>
     <div><span>尺寸</span><strong>${escapeHtml(brief.outputAspectRatio)}</strong></div>
+    <div><span>时长</span><strong>${escapeHtml(brief.videoDurationSeconds)} 秒</strong></div>
     <div><span>主题</span><strong>${escapeHtml(labelFor(creativeThemeOptions, brief.creativeTheme))}</strong></div>
     <div><span>语气</span><strong>${escapeHtml(labelFor(toneOptions, brief.tone))}</strong></div>
   `;
@@ -82,7 +84,9 @@ export function marketBriefFromForm() {
     audience: clean(setup.audience),
     creativeTheme: clean(setup.creativeTheme),
     coreMessage: clean(form.elements.coreMessage.value),
-    tone: clean(setup.tone)
+    tone: clean(setup.tone),
+    outputAspectRatio: clean(setup.outputAspectRatio),
+    videoDurationSeconds: setup.videoDurationSeconds
   };
 }
 
@@ -92,6 +96,11 @@ export function validateMarketBrief(marketBrief) {
   }
   if (!CREATIVE_THEMES[marketBrief.creativeTheme]) return "请选择有效的创意主题。";
   if (!TONES[marketBrief.tone]) return "请选择有效的语气。";
+  if (!Number.isInteger(Number(marketBrief.videoDurationSeconds))
+    || Number(marketBrief.videoDurationSeconds) < 5
+    || Number(marketBrief.videoDurationSeconds) > 15) {
+    return "请选择 5 到 15 秒之间的视频时长。";
+  }
   return "";
 }
 
