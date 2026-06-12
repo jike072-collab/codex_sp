@@ -4820,18 +4820,34 @@ body.ui-v2 .stage-visual-stats span {
 body.ui-v2 .asset-readiness-chart,
 body.ui-v2 .storyboard-mini-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 5px;
 }
-body.ui-v2 .asset-readiness-chart i {
-  height: 42px;
-  background: #e1e8dc;
-  border: 1px solid #d1dcc9;
+body.ui-v2 .asset-readiness-chart > div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 7px;
+  text-align: left;
+  background: #f4f7ef;
+  border: 1px solid #d7e0d2;
   border-radius: 4px;
 }
-body.ui-v2 .asset-readiness-chart i[data-ready="true"] {
-  background: #dff3aa;
-  border-color: #b9d568;
+body.ui-v2 .asset-readiness-chart > div[data-ready="true"] {
+  background: #eef7dd;
+  border-color: #c4db8b;
+}
+body.ui-v2 .asset-readiness-chart span {
+  color: #72816b;
+  font-size: 8px;
+  font-weight: 800;
+}
+body.ui-v2 .asset-readiness-chart strong {
+  overflow: hidden;
+  color: #25331c;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 body.ui-v2 .storyboard-mini-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4866,11 +4882,72 @@ body.ui-v2 .panel-completion {
 body.ui-v2 .panel-completion h3 {
   margin-bottom: 10px;
 }
+body.ui-v2 .stage-card:has(#assetsStage:not(.hidden)) {
+  min-height: auto;
+}
+body.ui-v2 #assetsStage .section-heading p,
+body.ui-v2 #assetsStage .stage-actions p {
+  font-size: 13px;
+}
+body.ui-v2 #assetsStage .drop-zone small,
+body.ui-v2 #assetsStage .suggested-angle-card small {
+  font-size: 12px;
+  line-height: 1.45;
+}
+body.ui-v2 #assetsStage .suggested-angle-card small {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+body.ui-v2 #assetsStage .suggested-angle-card strong {
+  font-size: 13px;
+}
+body.ui-v2 .stage-layout:has(#assetsStage:not(.hidden)) .panel-copy,
+body.ui-v2 .stage-layout:has(#assetsStage:not(.hidden)) .panel-progress small,
+body.ui-v2 .stage-layout:has(#assetsStage:not(.hidden)) .panel-card li {
+  font-size: 13px;
+  line-height: 1.45;
+}
+body.ui-v2 .stage-layout:has(#assetsStage:not(.hidden)) .panel-metric-grid span,
+body.ui-v2 .stage-layout:has(#assetsStage:not(.hidden)) .panel-stage-visual span {
+  font-size: 11px;
+}
+body.ui-v2 .stage-layout:has(#assetsStage:not(.hidden)) .panel-metric-grid strong,
+body.ui-v2 .stage-layout:has(#assetsStage:not(.hidden)) .panel-stage-visual strong {
+  font-size: 13px;
+}
+body.ui-v2 .stage-layout:has(#assetsStage:not(.hidden)) .asset-readiness-chart {
+  grid-template-columns: minmax(0, 1fr);
+}
+body.ui-v2 .stage-layout:has(#assetsStage:not(.hidden)) .asset-readiness-chart > div {
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+}
+body.ui-v2 .stage-layout:has(#assetsStage:not(.hidden)) .asset-readiness-chart strong {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+body.ui-v2 .stage-layout:has(#assetsStage:not(.hidden)) .stage-visual-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 
 @media (min-width: 961px) {
   body.ui-v2 .workspace,
   body.ui-v2 .workspace:has(#reviewStage:not(.hidden)) {
     grid-template-rows: 44px 48px minmax(0, 1fr);
+  }
+  body.ui-v2 .stage-card:has(#assetsStage:not(.hidden)),
+  body.ui-v2 .stage-card:has(#assetsStage:not(.hidden)) #assetsStage,
+  body.ui-v2 .stage-layout:has(#assetsStage:not(.hidden)) .context-panel,
+  body.ui-v2 .stage-layout:has(#assetsStage:not(.hidden)) .panel-card {
+    align-self: start;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  body.ui-v2 .stage-layout:has(#assetsStage:not(.hidden)) .panel-completion {
+    margin-top: 12px;
   }
   body.ui-v2 .context-panel,
   body.ui-v2 .stage-layout:has(#reviewStage:not(.hidden)) .context-panel {
