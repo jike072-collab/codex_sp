@@ -1,74 +1,47 @@
 # 任务读取与提交规范
 
-这个目录是项目任务的唯一正式入口。聊天记录只做解释，不做开工依据。
+本目录是项目任务的唯一正式入口。聊天记录和截图只用于解释，不作为开工依据。
 
-## 每次开工先读什么
+## 固定读取顺序
 
-所有 Codex 对话开工前固定读取：
+每次开工先执行 fetch，然后读取：
 
-1. `CURRENT_ASSIGNMENTS.md`
-2. `tasks/README.md`
-3. 自己角色的当前任务文件
+1. `origin/main:CURRENT_ASSIGNMENTS.md`
+2. `origin/main:tasks/README.md`
+3. 当前角色任务文件
+   - 后端：`origin/main:tasks/codex-backend-current.md`
+   - 前端：`origin/main:tasks/codex-frontend-current.md`
 
-当前任务文件只有两个：
+## 当前任务
 
-- 后端：`tasks/codex-backend-current.md`
-- 前端：`tasks/codex-frontend-current.md`
+- 后端分支：`codex/backend-single-storyboard-script-quality`
+- 前端分支：`codex/frontend-single-storyboard-script-view`
+- 前端依赖后端先冻结单故事板契约。
 
-历史任务文件只用于回看，不作为当前任务入口。
+## 发布规则
 
-## 前端电脑怎么找任务
+- 本机后端：任务文件推送 GitHub 后，协调端还要把同一任务直接发送到本地后端 Codex 对话。
+- 另一台前端：只通过 GitHub 任务文件和任务分支领取，不发送到本机前端对话。
+- 前端找不到任务时，必须 fetch 后查看 `origin/main`，不能查看本地旧分支。
 
-前端电脑只通过 GitHub 找任务：
+## 提交回报
 
-```powershell
-git fetch origin --prune
-git show origin/main:CURRENT_ASSIGNMENTS.md
-git show origin/main:tasks/README.md
-git show origin/main:tasks/codex-frontend-current.md
-```
+必须包含：
 
-然后切换到 `tasks/codex-frontend-current.md` 里写明的前端任务分支。
-
-如果 `origin/main` 的 `tasks/codex-frontend-current.md` 没有新任务，说明任务还没正式发布。不要从聊天记录、截图、本机旧文件或其它旧分支开工。
-
-## 后端电脑怎么找任务
-
-本机后端对话会收到协调端的直接任务消息，但仍必须以 GitHub 文件为准：
-
-```powershell
-git fetch origin --prune
-git show origin/main:CURRENT_ASSIGNMENTS.md
-git show origin/main:tasks/README.md
-git show origin/main:tasks/codex-backend-current.md
-```
-
-然后切换到 `tasks/codex-backend-current.md` 里写明的后端任务分支。
-
-## 协调端怎么发布任务
-
-协调端发布任何新任务必须同时做到：
-
-1. 更新 `CURRENT_ASSIGNMENTS.md`。
-2. 更新对应 `tasks/codex-backend-current.md` 或 `tasks/codex-frontend-current.md`。
-3. 必要时更新本文件。
-4. 提交并推送到 `main / v2 / ui-v2`。
-5. 创建或更新对应任务分支。
-6. 本机后端任务额外发送到本地后端对话。
-7. 前端任务只通过 GitHub 发布，不发送到本机前端对话。
-
-## 提交和回报要求
-
-任务执行端提交时必须报告：
-
-- 使用技能：`nadirclaw-model-router`、`superpowers-workflow`
-- Route
+- `Skills: nadirclaw-model-router, superpowers-workflow`
+- `Route: simple|standard|complex`
 - 分支名
 - 提交号
 - 修改文件
 - 测试或浏览器验证结果
-- 是否触碰了禁止范围
+- 是否触碰禁止范围
 
-## 当前正式任务分支
+不得提交：
 
-当前分支以 `CURRENT_ASSIGNMENTS.md` 为准。本文件只定义读取规则，不替代当前分工。
+- `.env`
+- API Key
+- `studio-v2/data/**`
+- 上传图片
+- 生成结果
+- 日志
+- PID 文件
