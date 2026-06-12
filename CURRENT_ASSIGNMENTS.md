@@ -56,9 +56,26 @@ Route: simple|standard|complex
 
 ## 当前基线
 
-- 正式基线：`fa1ca03`
+- 正式基线：`64bf753`
 - 正式分支：`main / v2 / ui-v2`
 - 协调端负责发布任务、审查、回归测试与正式分支同步。
+
+## 本轮产品目标
+
+完善功能优先：Step 05 从“导出”升级为“生成视频”，把前面生成的脚本和故事板自动带入最终视频生成流程。
+
+本轮明确不做：
+
+- 用户余额
+- 扣费
+- 支付
+- 消费记录
+- 价格计算
+- 套餐、分组、额度
+- 用量统计仪表盘
+- 主工作台价格展示
+
+价格只作为内部选型参考，不进入产品界面。
 
 ## Codex A：本机后端
 
@@ -70,20 +87,22 @@ Route: simple|standard|complex
 
 任务分支：
 
-- `codex/backend-single-image-regression`
+- `codex/backend-video-generation-provider`
 
 负责内容：
 
-- 确认并固定“上传 1 张图片即可识别”的后端契约。
-- 一张图片可以是包含正面、侧面、后跟、鞋底的四视图拼图。
-- 补单图上传、分析和删除素材的回归测试。
-- 检查识图提示是否会正确理解单张多视图拼图，不要求用户拆成 4 个文件。
+- 冻结视频生成契约。
+- 新增视频生成 provider，默认接 `clmm-mall.top` 的 `seedance2.0 720p-fast`。
+- 基于两张故事板和两段脚本生成两段视频。
+- 保存生成结果，支持状态查询、失败重试和下载。
+- 后台 provider schema 增加视频生成配置，但不做消费、余额或价格系统。
 
 允许修改：
 
 - `studio-v2/src/**`
 - `studio-v2/tests/**`
-- 必要的后端契约文档
+- `docs/contracts/**`
+- `schemas/**`
 
 禁止修改：
 
@@ -92,7 +111,7 @@ Route: simple|standard|complex
 
 ## Codex B：另一台电脑前端
 
-状态：READY - START NOW
+状态：READY - WAIT FOR BACKEND CONTRACT, THEN START
 
 任务入口：
 
@@ -100,33 +119,32 @@ Route: simple|standard|complex
 
 任务分支：
 
-- `codex/frontend-step1-single-image`
+- `codex/frontend-video-generation-step`
 
 负责内容：
 
-- Step 01 改为上传至少 1 张图片即可点击“识别并锁定产品”。
-- 单张四视图拼图视为完整可识别素材；4-8 张只保留为建议，不得作为门槛。
-- 修复素材卡片删除按钮无法点击，必须在真实浏览器中完成删除闭环。
-- 清除所有 `1/4`、还需 3 张、第四张检查点等硬门槛显示。
-- 放大正文、按钮、提示和右侧状态区字号，改善对比度。
-- 去掉第一步大块无意义空白，让面板高度随实际内容收缩。
+- Step 05 改为“生成视频”界面。
+- 消费后端视频契约，显示两段视频状态、播放、下载和重试。
+- Admin 页面增加“视频生成配置”卡片。
+- 不做消费、余额、支付、价格展示。
 
 允许修改：
 
 - `studio-v2/public/**`
+- `studio-v2/admin/**`
 
 禁止修改：
 
 - `studio-v2/src/**`
 - `studio-v2/tests/**`
-- `studio-v2/admin/**`
-- 后端契约文件
+- `docs/contracts/**`
+- `schemas/**`
 
 ## 固定产品规则
 
 - 生图只能 img2img，不允许 prompt-only fallback。
 - 两张故事板必须同时发起；成功图保留，重试只补缺失。
-- 最终交付只保留两张故事板图片和两段脚本/复制控件。
-- 不恢复 JSON / ZIP / CSV / Flow Omni 下载按钮。
+- Step 05 视频生成必须保留 partial success：成功视频保留，重试只补失败段。
+- 最终视频功能优先，不恢复 JSON / ZIP / CSV / Flow Omni 下载按钮。
 - 外层 storyboard sheet 不强行套视频比例；内部 shot frames 才按第二步比例构图。
 - Step 01 最少 1 个图片文件即可识别；单个文件允许包含多角度拼图。

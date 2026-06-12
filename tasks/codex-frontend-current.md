@@ -1,16 +1,18 @@
 # Codex B Current Frontend Task
 
-Status: READY - START NOW
+Status: READY - WAIT FOR BACKEND CONTRACT, THEN START
 
 Target: 另一台前端电脑
 
-Published: 2026-06-11 Asia/Shanghai
+Published: 2026-06-12 Asia/Shanghai
 
 Route: complex
 
-Branch: `codex/frontend-step1-single-image`
+Branch: `codex/frontend-video-generation-step`
 
-Start from: latest `origin/main`
+Start from: latest `origin/main` at or after `64bf753`
+
+Backend dependency branch: `codex/backend-video-generation-provider`
 
 ## Required Skills
 
@@ -23,68 +25,110 @@ Route: complex
 
 ## Goal
 
-重做 Step 01 的可用性：上传一张四视图拼图即可开始识别，删除按钮真正可用，字号清楚，页面不再留下大块空白。
+把 Step 05 从“导出”重新设计为“生成视频”。前面生成的两段脚本和两张故事板进入最后一步后，用户能生成两段视频，查看状态，播放结果，下载视频，并对失败段单独重试。
 
-## P0 Functional Work
+本轮是功能完善，不接消费系统。
 
-1. 最小上传门槛从 4 个文件改为 1 个文件：
-   - 上传 1 张后立即启用“识别并锁定产品”。
-   - `analyze()` 不得再用 `< 4` 阻止调用。
-   - 单张图片包含多个角度时，视为可直接识别的四视图拼图。
-2. 删除所有硬编码的四张门槛：
-   - `1/4`
-   - “还需 3 张”
-   - “第四张检查点”
-   - “需要 4 张参考图”
-   - 任何因不足 4 张而禁用下一步的判断
-3. “建议 4-8 张”可以保留为弱提示，但必须明确是可选建议，不能影响按钮状态或流程。
-4. 修复图片卡片右上角删除按钮：
-   - 点击区域至少 32x32 CSS 像素。
-   - 检查 `z-index`、`pointer-events`、父层覆盖和事件委托顺序。
-   - 点击后真实发送 DELETE 请求。
-   - 请求成功后卡片消失，素材数量、状态提示和进度立即更新。
-   - 删除期间防重复点击；失败时显示中文错误并恢复按钮。
-   - 不允许只改样式而不做浏览器点击验证。
+## Frontend Work
 
-## Visual Work
+1. Stepper 和文案：
+   - Step 05 名称改为“生成视频”。
+   - 副标题改为“最终广告视频”或同等中文。
+   - 工作台不再把 Step 05 叫“导出”。
+2. Step 05 页面结构：
+   - 顶部显示最终视频总状态。
+   - 中间显示两段视频卡片：
+     - `0-10s`
+     - `10-20s`
+   - 每张卡片显示：
+     - 段落标题
+     - 对应故事板缩略图
+     - 脚本摘要
+     - 当前状态
+     - 生成按钮或重试按钮
+     - 视频播放器
+     - 下载按钮
+   - 底部显示最终合成视频区域；如果后端未合并，显示“两段视频已完成，可分别下载”。
+3. 状态展示：
+   - `waiting`：等待生成
+   - `submitting`：正在提交任务
+   - `queued`：排队中
+   - `generating`：生成中
+   - `downloading`：正在取回视频
+   - `done`：生成完成
+   - `failed`：生成失败
+4. API 消费：
+   - 以后端 `docs/contracts/video-generation-api.md` 为准。
+   - 支持开始生成、查询状态、失败段重试、单段下载、最终视频下载。
+   - partial success 必须可见：一段成功、一段失败时，成功段仍能播放和下载。
+5. Admin 页面：
+   - 增加“视频生成”配置卡片。
+   - 支持 API URL、Model、API Key。
+   - 模型可从后端 schema 或模型接口读取。
+   - 只显示 masked key preview，不显示完整 key。
+6. 视觉要求：
+   - 保持和当前主工作台风格统一。
+   - 中文界面。
+   - 不显示技术错误堆栈。
+   - 不横向滚动，不裁切右侧。
+   - 视频卡片尺寸稳定，播放器不挤压文字。
 
-1. Step 01 主面板高度随内容收缩，移除截图中图片下方的大块空白。
-2. 放大过小文字：
-   - 正文和状态说明建议不低于 13px。
-   - 主要按钮、上传提示和步骤名称建议 14-16px。
-   - 辅助文字也要清晰，不要使用 9-10px 作为主要信息。
-3. 右侧状态区不再显示以 4 张为分母的伪进度；改成“已上传 N 张 / 可以识别”以及可选补图建议。
-4. 保持页面无横向滚动、右侧不裁切，图片完整显示。
-5. 不要破坏 Step 02-05、管理后台或现有故事板功能。
+## Explicitly Out Of Scope
+
+本轮不要做：
+
+- 用户余额
+- 扣费
+- 支付
+- 消费记录
+- 价格计算
+- 套餐、分组、额度
+- 用量统计仪表盘
+- 主工作台显示单次价格
+- Flow 网页登录自动化
+- Gemini Omni 网页自动化
+- sub2api 集成
+- JSON / ZIP / CSV / Flow Omni 下载按钮
 
 ## Scope
 
 Allowed:
 
 - `studio-v2/public/**`
+- `studio-v2/admin/**`
 
 Do not edit:
 
 - `studio-v2/src/**`
 - `studio-v2/tests/**`
-- `studio-v2/admin/**`
+- `docs/contracts/**`
+- `schemas/**`
 - root coordination files
 - `.env`、API Key、运行数据、上传图片、生成结果、日志或 PID 文件
 
+## Coordination
+
+- 前端先等待后端契约提交到 `codex/backend-video-generation-provider`。
+- 契约冻结后，从后端分支或主线读取 `docs/contracts/video-generation-api.md`。
+- 如果后端接口字段不清楚，停止并要求协调端冻结契约，不要猜字段。
+
 ## Required Verification
 
-1. 对所有 `studio-v2/public/js/*.js` 执行语法检查。
-2. 在真实浏览器中使用一个新项目验证：
-   - 上传 1 张四视图拼图。
-   - “识别并锁定产品”立即可点击。
-   - 点击删除按钮，图片卡片确实消失且计数归零。
-   - 再上传同一张图片，可以正常开始识别并进入下一步。
-3. 检查常用桌面宽度和窄屏：无大块空白、无文字过小、无右侧裁切。
-4. 提供 Step 01 修改后的截图和删除成功后的截图。
+1. 对所有 `studio-v2/public/js/*.js` 和 `studio-v2/admin/*.js` 执行语法检查。
+2. 浏览器验证 Step 05：
+   - 两张故事板完成后进入“生成视频”。
+   - 点击开始生成后两段卡片分别显示状态。
+   - mock 或真实接口下，一段失败、一段成功时，成功段仍可播放/下载。
+   - 失败段可单独重试。
+3. 浏览器验证 Admin：
+   - 能看到“视频生成”配置卡片。
+   - 能保存 API URL、Model、API Key。
+   - Key 只显示 masked preview。
+4. 提供 Step 05 和 Admin 视频配置截图。
 
 ## Delivery
 
-Push `codex/frontend-step1-single-image` and report:
+Push `codex/frontend-video-generation-step` and report:
 
 - Skills and route
 - Commit hash
@@ -92,4 +136,4 @@ Push `codex/frontend-step1-single-image` and report:
 - JS checks
 - Browser verification results
 - Screenshots
-- Confirmation that no backend/Admin files or secrets were changed
+- Confirmation that no backend files or secrets were changed
