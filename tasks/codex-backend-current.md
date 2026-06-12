@@ -16,57 +16,79 @@ Start from: latest `origin/main` containing this task
 
 ## Goal
 
-解决两个 P0 问题：
+实现两个可切换的正式功能模式，并修复脚本重复：
 
-1. Step 03 模型返回的多个镜头内容几乎完全重复，但当前后端只校验非空和时间连续，导致重复套话被当成合法脚本。
-2. 20 秒旧项目仍按 `0-10s / 10-20s` 创建两张故事板和两次生图请求。当前产品要求只生成一张完整 `0-20s` 故事板，并且 provider 只调用一次。
+1. `single_video`：单段 `5-15` 秒，一条脚本、一张 `full` 故事板、一次生图、一个视频。
+2. `legacy_multi_segment`：产品 UI 名称为“双段 20 秒”，固定两个 10 秒脚本段、两张故事板、两次并发生图、两段视频能力。
+3. Step 03 模型返回的多个镜头内容几乎完全重复，但当前后端只校验非空和时间连续。两个模式都必须拒绝重复套话。
 
-当前可变时长 `single_video` 项目继续生成一张 `full` 故事板，其显示范围为 `0-{videoDurationSeconds}s`。
-
-旧双段能力不能删除，作为 future/legacy 数据兼容能力保留；但当前故事板生成入口不得再触发两张图片。
+`legacy_multi_segment` 只是现有持久化兼容值，任何用户可见 schema 文案和错误信息都不得显示“legacy/旧版”。
 
 ## Required Backend Work
 
-### A. 冻结单故事板契约
+### A. 冻结模式切换契约
 
 - 更新：
   - `docs/contracts/demo-loop-api.md`
   - `docs/contracts/provider-integration.md`
-  - 必要时更新 `docs/contracts/video-generation-api.md`
+  - `docs/contracts/video-generation-api.md`
   - `schemas/studio-project.schema.json`
-- 当前故事板交付形态必须是一个 item：
+- `project.workflowMode` 继续使用：
+  - `single_video`
+  - `legacy_multi_segment`
+- 新项目默认 `single_video`。
+- 增加稳定的模式切换 API，建议：
+  - `PUT /api/projects/:id/workflow-mode`
+  - body: `{ "workflowMode": "...", "confirmReset": false }`
+- 如果项目还没有脚本结果，模式可直接切换并保存。
+- 如果已有 `planningPackage`、`imagePackage` 或 `videoPackage`：
+  - 未提供 `confirmReset: true` 时返回 `409 WORKFLOW_MODE_RESET_REQUIRED`
+  - 返回安全中文提示和将被清除的阶段
+  - 确认后原子切换并清除脚本、故事板、视频及其时间戳/失败状态
+  - 保留上传素材、识图结果、产品锁定和可复用的市场设置
+  - 项目回到 `script` 阶段
+- 不允许静默清空生成结果。
+- 模式切换后不得残留旧模式故事板计数或视频任务。
+
+### B. 单段模式
+
+- Step 02 使用 `videoDurationSeconds`，整数 `5-15`，默认 `10`。
+- 脚本使用 `script_video.segment_full`，时间线完整覆盖选择时长。
+- visual package 只创建一个：
   - `segment_id: "full"`
   - `type: "storyboard_board"`
-  - `duration_sec`: 当前完整脚本总时长
-  - 20 秒旧脚本对应 `0-20s`
-  - 可变时长项目对应 `0-{videoDurationSeconds}s`
-- `storyboard_plan.total_images` 必须为 `1`。
-- 当前 readiness / export / retry 判断必须按一张图计算。
-- 不删除 schema 对旧 `0-10s / 10-20s` 数据的读取兼容。
+  - `duration_sec`: 选择时长
+- `storyboard_plan.total_images === 1`。
+- image provider 调用次数严格为 `1`。
+- 当前单图明确使用绘图通道 A；不得随机轮换，也不得同时调用通道 B。
+- 失败和重试只处理该 `full` item。
+- Step 05 只创建一个视频任务。
 
-### B. 合并旧 20 秒脚本用于当前完整故事板
+### C. 双段 20 秒模式
 
-- 如果项目仍保存：
+- 固定总时长 `20` 秒。
+- 脚本继续保存：
   - `script_20s.segment_a_0_10s`
   - `script_20s.segment_b_10_20s`
-- 在故事板生成边界构造一个完整 `full` segment：
-  - 时间线从 `0` 连续覆盖到 `20`
-  - 保留镜头原始时间和顺序
-  - 不丢失画面、动作、镜头、卖点、口播/字幕、音效、转场
-- 不要求破坏性迁移或删除原始 `script_20s`。
-- 已存在的两张旧故事板数据可以保留为历史兼容数据，但不能再被当前生成状态、完成数量或当前交付选中。
+- visual package 创建两个 item：
+  - `0-10s`
+  - `10-20s`
+- `storyboard_plan.total_images === 2`。
+- 两个缺失故事板必须同时发起：
+  - `0-10s` 固定绘图通道 A
+  - `10-20s` 固定绘图通道 B
+- partial success 保留成功图片。
+- 重试只补失败或缺失段。
+- Step 05 保留两段视频任务及现有兼容能力。
 
-### C. 故事板 provider 只调用一次
+### D. 两种模式共同规则
 
-- `generateVisualPackage` 当前路径只创建一个 `full` storyboard item。
-- `generateProjectImages` 或等价执行链只向 provider 发起一次 img2img 请求。
-- 请求必须继续携带全部已上传商品参考图。
+- 所有故事板请求都必须携带全部已上传商品参考图。
 - 不允许 prompt-only fallback。
-- 失败后重试只重试这一张 `full` 故事板。
-- 诊断继续记录安全摘要，但不得包含完整 key、prompt、base64、图片内容或 provider 响应体。
-- 双 key / 双通道实现保留在代码中，但当前单故事板只选择一个明确通道。必须在契约中写清当前通道选择规则，不能随机轮换。
+- 外层 storyboard sheet 不强套视频比例；内部 shot frame 使用 Step 02 比例。
+- 诊断不得包含完整 key、prompt、base64、图片内容或 provider 响应体。
 
-### D. 修复脚本镜头重复
+### E. 修复脚本镜头重复
 
 - 修改真实文本模型 prompt，明确要求每个镜头承担不同叙事阶段，例如：
   - 开场识别
@@ -83,27 +105,27 @@ Start from: latest `origin/main` containing this task
 - 返回中文可理解错误，例如“模型返回的镜头内容重复，请重新生成脚本”。
 - 不做静默付费重试；本轮保持用户手动重新生成。
 - demo 模式也必须产生有明显阶段差异的镜头，镜头数超过模板数时不能复制最后一条填满。
-
-### E. 兼容与下游
-
-- 当前视频生成读取一张 `full` 故事板。
-- 不允许因为旧项目脚本仍是 `script_20s` 就再次要求两张故事板。
-- 旧双段底层函数、旧数据解析和历史测试保留，但必须与“当前生成策略”分开，避免旧数据自动切回双故事板 UI。
+- 单段和双段模式都执行相同重复检测。
 
 ## Required Tests
 
-- 20 秒 `script_20s` 生成 visual package 后只有一个 `full` storyboard item。
-- 单故事板 prompt 覆盖完整 `0-20s` 镜头。
-- image provider 在当前 20 秒项目中调用次数严格等于 `1`。
+- 新项目默认 `single_video`。
+- 未生成脚本时切换模式可直接保存。
+- 已有脚本/故事板/视频时，未确认切换返回 `409 WORKFLOW_MODE_RESET_REQUIRED`。
+- 确认切换后只清除脚本及其下游，保留素材、识图、锁定和共同市场设置。
+- 单段模式 visual package 只有一个 `full` item。
+- 单段模式 image provider 调用次数严格等于 `1`，且只走通道 A。
+- 双段模式 visual package 有两个 item。
+- 双段模式两个 provider 请求并发，分别走通道 A/B。
 - 请求仍携带商品参考图。
-- 单图失败只产生一个失败项；重试只调用一次并补该图。
-- 已存在旧双故事板不会被计入当前 `1/1` readiness。
-- 可变时长项目仍产生一个 `full` storyboard，duration 正确。
+- 单段失败重试只调用一次。
+- 双段 partial success 保留成功图，重试只补失败段。
+- 模式切换后 readiness、storyboard 数量和 video task 数量正确。
 - 完全重复镜头被后端拒绝。
 - 高重复度镜头被后端拒绝。
 - 合法、内容不同且时间连续的镜头通过。
 - demo 脚本镜头不重复。
-- 旧双段数据仍可读取，旧能力代码未删除。
+- 已有 `legacy_multi_segment` 项目自动作为“双段 20 秒”功能读取。
 - 全部后端测试通过。
 - 所有修改的 MJS 执行 `node --check`。
 - `git diff --check` 通过。
@@ -115,7 +137,7 @@ Start from: latest `origin/main` containing this task
 - Skills 和 Route
 - 提交号
 - 契约变化
-- 单次 provider 调用的测试证据
+- 单段一次调用、双段两次并发调用的测试证据
 - 脚本重复检测规则
 - 修改文件
 - 完整测试数

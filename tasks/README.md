@@ -16,7 +16,7 @@
 
 - 后端分支：`codex/backend-single-storyboard-script-quality`
 - 前端分支：`codex/frontend-single-storyboard-script-view`
-- 前端依赖后端先冻结单故事板契约。
+- 前端依赖后端先冻结“单段 5-15 秒 / 双段 20 秒”模式切换契约。
 
 ## 发布规则
 
