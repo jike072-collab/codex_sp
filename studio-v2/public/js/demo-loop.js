@@ -3,8 +3,10 @@ import {
   el,
   escapeHtml,
   formatTime,
+  isSingleVideoProject,
   projectSetup,
-  state
+  state,
+  videoDurationSeconds
 } from "./core.js";
 
 const SHOT_FIELDS = [
@@ -21,6 +23,9 @@ const SEGMENTS = [
   ["segment_a_0_10s", "0-10s"],
   ["segment_b_10_20s", "10-20s"]
 ];
+
+const SINGLE_SEGMENT_KEY = "segment_full";
+const SINGLE_SEGMENT_ID = "full";
 
 const THEME_LABELS = {
   "city-motion": "城市动线",
@@ -161,10 +166,25 @@ function segmentCopy(segment) {
 }
 
 function scriptSegmentById(project, segmentId) {
+  if (segmentId === SINGLE_SEGMENT_ID) {
+    return project.planningPackage?.script_video?.segment_full;
+  }
   const script = project.planningPackage?.script_20s || {};
   return segmentId === "0-10s"
     ? script.segment_a_0_10s
     : script.segment_b_10_20s;
+}
+
+function storyboardSegmentIds(project) {
+  return isSingleVideoProject(project) ? [SINGLE_SEGMENT_ID] : ["0-10s", "10-20s"];
+}
+
+function targetStoryboardCount(project) {
+  return storyboardSegmentIds(project).length;
+}
+
+function singleVideoScript(project) {
+  return project.planningPackage?.script_video || {};
 }
 
 function renderTimelineRow(segmentKey, segmentLabel, shot, shotIndex, timelineIndex) {
@@ -188,6 +208,44 @@ function renderTimelineRow(segmentKey, segmentLabel, shot, shotIndex, timelineIn
         </td>
       `).join("")}
     </tr>
+  `;
+}
+
+function renderSingleScriptTimeline(scriptVideo) {
+  const segment = scriptVideo?.segment_full || {};
+  const shots = Array.isArray(segment.shots) ? segment.shots : [];
+  return `
+    <section class="script-timeline-card single-script-timeline">
+      <div hidden>
+        <input type="hidden" data-segment="${SINGLE_SEGMENT_KEY}" data-field="theme"
+          value="${escapeHtml(segment.theme || "")}">
+      </div>
+      <div class="script-timeline-table-wrap">
+        <table class="script-timeline-table">
+          <colgroup>
+            <col class="timeline-col-time">
+            <col class="timeline-col-visual">
+            <col class="timeline-col-action">
+            <col class="timeline-col-camera">
+            <col class="timeline-col-selling">
+            <col class="timeline-col-caption">
+            <col class="timeline-col-sound">
+            <col class="timeline-col-transition">
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col">时间</th>
+              ${SHOT_FIELDS.map(([, label]) => `<th scope="col">${escapeHtml(label)}</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${shots.map((shot, shotIndex) =>
+              renderTimelineRow(SINGLE_SEGMENT_KEY, "完整视频", shot, shotIndex, shotIndex)
+            ).join("")}
+          </tbody>
+        </table>
+      </div>
+    </section>
   `;
 }
 
@@ -238,12 +296,15 @@ function renderScriptTimeline(script) {
 }
 
 function renderGenerateScript(project) {
-  const shotsPerSegment = projectSetup(project).shotsPerSegment;
+  const setup = projectSetup(project);
+  const singleVideo = isSingleVideoProject(project);
   return `
     <div class="future-content script-start-panel">
       <p class="section-index">STEP 03</p>
       <h2>市场创意已确认</h2>
-      <p>将使用第二步选择的每段 ${escapeHtml(shotsPerSegment)} 个镜头生成 20 秒脚本。后续会按两个 10 秒段落分别生成故事板。</p>
+      <p>${singleVideo
+        ? `将生成一条完整 ${escapeHtml(setup.videoDurationSeconds)} 秒广告脚本，镜头数量由时长自动决定。`
+        : `将使用第二步选择的每段 ${escapeHtml(setup.shotsPerSegment)} 个镜头生成 20 秒脚本。后续会按两个 10 秒段落分别生成故事板。`}</p>
       <div class="confirmed-card">
         <span>✓</span>
         <div>
@@ -258,7 +319,7 @@ function renderGenerateScript(project) {
       </div>
       <div class="button-row">
         <button class="ghost-button" type="button" data-action="edit-market">返回第二步调整</button>
-        <button class="primary-button" id="generateScriptButton" type="button" data-action="generate-script">生成演示脚本</button>
+        <button class="primary-button" id="generateScriptButton" type="button" data-action="generate-script">生成脚本</button>
       </div>
     </div>
   `;
@@ -266,21 +327,26 @@ function renderGenerateScript(project) {
 
 function renderScriptEditor(project) {
   const planning = project.planningPackage || {};
+  const singleVideo = isSingleVideoProject(project);
   const script = planning.script_20s || {};
+  const scriptVideo = singleVideoScript(project);
+  const duration = scriptVideo.total_duration_sec || videoDurationSeconds(project);
   return `
     <div class="section-heading">
       <div>
         <p class="section-index">STEP 03</p>
-        <h2>审核 20 秒中文脚本</h2>
-        <p>这里显示中文审核稿；确认后仍使用原始目标语言生成两张故事板与两段交付脚本。</p>
+        <h2>${singleVideo ? `${escapeHtml(duration)} 秒广告脚本` : "审核 20 秒中文脚本"}</h2>
+        <p>${singleVideo
+          ? "这里显示完整中文审核稿；确认后使用原始目标语言生成一张故事板和一个视频。"
+          : "这里显示中文审核稿；确认后仍使用原始目标语言生成两张故事板与两段交付脚本。"}</p>
       </div>
-      <span class="requirement">20 秒</span>
+      <span class="requirement">${singleVideo ? `${escapeHtml(duration)} 秒` : "20 秒"}</span>
     </div>
     <form id="scriptForm" novalidate>
       <div class="script-action-bar">
         <button class="ghost-button" type="button" data-action="edit-market">返回第二步调整</button>
         <div class="action-cluster">
-          <p id="scriptHint">确认后生成两个分段故事板。</p>
+          <p id="scriptHint">${singleVideo ? "确认后生成一张完整故事板。" : "确认后生成两个分段故事板。"}</p>
           <button class="primary-button" id="confirmAndGenerateButton" type="button"
             data-action="confirm-and-generate-visual">确认脚本并生成故事板图片</button>
         </div>
@@ -292,7 +358,7 @@ function renderScriptEditor(project) {
         </div>
         <p>${escapeHtml(project.marketBrief?.coreMessage || "")}</p>
       </div>
-      ${renderScriptTimeline(script)}
+      ${singleVideo ? renderSingleScriptTimeline(scriptVideo) : renderScriptTimeline(script)}
     </form>
   `;
 }
@@ -307,6 +373,24 @@ export function renderScriptStage(project = state.project) {
 
 export function planningPackageFromForm(project = state.project) {
   const planning = structuredClone(project.planningPackage || {});
+  if (isSingleVideoProject(project)) {
+    const scriptVideo = planning.script_video || {};
+    const segment = scriptVideo.segment_full;
+    if (!segment) return planning;
+    const themeInput = document.querySelector(`[data-segment="${SINGLE_SEGMENT_KEY}"][data-field="theme"]`);
+    segment.theme = clean(themeInput?.value);
+    segment.shots = (segment.shots || []).map((shot, shotIndex) => {
+      const nextShot = { ...shot };
+      for (const [field] of SHOT_FIELDS) {
+        const fieldInput = document.querySelector(
+          `[data-segment="${SINGLE_SEGMENT_KEY}"][data-shot-index="${shotIndex}"][data-shot-field="${field}"]`
+        );
+        nextShot[field] = clean(fieldInput?.value);
+      }
+      return nextShot;
+    });
+    return planning;
+  }
   const script = planning.script_20s || {};
   for (const [segmentKey] of SEGMENTS) {
     const segment = script[segmentKey];
@@ -328,6 +412,24 @@ export function planningPackageFromForm(project = state.project) {
 }
 
 export function validatePlanningPackage(planning) {
+  if (planning?.workflow_mode === "single_video" || planning?.script_video?.segment_full) {
+    const segment = planning?.script_video?.segment_full;
+    const duration = Number(planning?.script_video?.total_duration_sec || segment?.duration_sec || 10);
+    if (!clean(segment?.theme)) return "请填写完整视频脚本主题。";
+    const shots = Array.isArray(segment?.shots) ? segment.shots : [];
+    if (!shots.length) return "完整视频脚本至少需要一个镜头。";
+    let cursor = 0;
+    for (const [shotIndex, shot] of shots.entries()) {
+      if (Number(shot.start_sec) !== cursor) return `镜头 ${shotIndex + 1} 的开始时间需要从 ${cursor}s 接上。`;
+      if (Number(shot.end_sec) <= Number(shot.start_sec)) return `镜头 ${shotIndex + 1} 的结束时间必须晚于开始时间。`;
+      cursor = Number(shot.end_sec);
+      for (const [field, label] of SHOT_FIELDS) {
+        if (!clean(shot[field])) return `请填写镜头 ${shotIndex + 1} 的${label}。`;
+      }
+    }
+    if (cursor !== duration) return `脚本时间线需要完整覆盖 0-${duration}s。`;
+    return "";
+  }
   const script = planning?.script_20s || {};
   for (const [segmentKey, segmentLabel] of SEGMENTS) {
     const segment = script[segmentKey];
@@ -348,8 +450,11 @@ export function renderVisualStage(project = state.project) {
   if (!container || !project) return;
   const completedItems = completedStoryboardItems(project);
   const entries = storyboardEntries(project);
+  const segmentIds = storyboardSegmentIds(project);
+  const total = targetStoryboardCount(project);
+  const singleVideo = isSingleVideoProject(project);
   const failure = project.visualGenerationFailure;
-  const needsRealImages = project.status === "export" && completedItems.length < 2;
+  const needsRealImages = project.status === "export" && completedItems.length < total;
   const progress = state.workflowProgress?.active && state.workflowProgress.stage === "visual"
     ? state.workflowProgress
     : null;
@@ -359,9 +464,9 @@ export function renderVisualStage(project = state.project) {
         <div>
           <p class="section-index">STEP 04</p>
           <h2>正在生成故事板</h2>
-          <p>两张图片由后端并发执行。每张都使用已上传商品图进行 img2img，完成项会立即保留。</p>
+          <p>${singleVideo ? "正在生成一张完整故事板，使用已上传商品图进行 img2img。" : "两张图片由后端并发执行。每张都使用已上传商品图进行 img2img，完成项会立即保留。"}</p>
         </div>
-        <span class="requirement" id="visualProgressCount">${completedItems.length}/2</span>
+        <span class="requirement" id="visualProgressCount">${completedItems.length}/${total}</span>
       </div>
       <div class="script-progress active storyboard-progress" id="visualProgress">
         <span><i class="workflow-progress-fill" style="width:${progress.percent}%"></i></span>
@@ -369,7 +474,7 @@ export function renderVisualStage(project = state.project) {
         <p class="workflow-progress-message">${escapeHtml(progress.message)}</p>
       </div>
       <div class="storyboard-grid">
-        ${["0-10s", "10-20s"].map((segmentId) => renderStoryboardStateCard(project, segmentId, entries.find((item) => item.segment_id === segmentId), true)).join("")}
+        ${segmentIds.map((segmentId) => renderStoryboardStateCard(project, segmentId, entries.find((item) => item.segment_id === segmentId), true)).join("")}
       </div>
     `;
     return;
@@ -380,40 +485,42 @@ export function renderVisualStage(project = state.project) {
         <div>
           <p class="section-index">STEP 04</p>
           <h2>故事板生成未完成</h2>
-          <p>已完成 ${completedItems.length}/2 张。已成功的图片会保留，继续生成时只处理缺失或已失效的图片。</p>
+          <p>已完成 ${completedItems.length}/${total} 张。已成功的图片会保留，继续生成时只处理缺失或已失效的图片。</p>
         </div>
-        <span class="requirement">${completedItems.length}/2</span>
+        <span class="requirement">${completedItems.length}/${total}</span>
       </div>
       <div class="storyboard-grid partial-deliverable-grid">
-        ${["0-10s", "10-20s"].map((segmentId) => renderStoryboardStateCard(project, segmentId, entries.find((item) => item.segment_id === segmentId))).join("")}
+        ${segmentIds.map((segmentId) => renderStoryboardStateCard(project, segmentId, entries.find((item) => item.segment_id === segmentId))).join("")}
       </div>
       <div class="visual-error-card">
         <p class="error-message">${escapeHtml(failure?.message || state.visualGenerationError || (needsRealImages
-          ? "当前项目还没有两张可交付的真实故事板图片。请确认图片供应商已就绪后继续生成。"
+          ? singleVideo
+            ? "当前项目还没有可交付的真实故事板图片。请确认图片供应商已就绪后继续生成。"
+            : "当前项目还没有两张可交付的真实故事板图片。请确认图片供应商已就绪后继续生成。"
           : "图片生成失败。"))}</p>
         <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">
-          继续生成缺失图片
+          ${singleVideo ? "重新生成故事板" : "继续生成缺失图片"}
         </button>
       </div>
     `;
     return;
   }
-  if (completedItems.length === 2) {
+  if (completedItems.length === total) {
     container.innerHTML = `
       <div class="section-heading compact-stage-heading">
         <div>
           <p class="section-index">STEP 04</p>
           <h2>故事板生成完成</h2>
-          <p>两张分段故事板已保存。可预览或下载图片，完整对应脚本保留在导出页。</p>
+          <p>${singleVideo ? "完整故事板已保存。下一步使用这张故事板生成最终广告视频。" : "两张分段故事板已保存。可预览或下载图片，完整对应脚本保留在导出页。"}</p>
         </div>
-        <span class="requirement">2/2 已完成</span>
+        <span class="requirement">${total}/${total} 已完成</span>
       </div>
       <div class="storyboard-grid">
-        ${["0-10s", "10-20s"].map((segmentId) => renderStoryboardCard(project, completedItems.find((item) => item.segment_id === segmentId))).join("")}
+        ${segmentIds.map((segmentId) => renderStoryboardCard(project, completedItems.find((item) => item.segment_id === segmentId))).join("")}
       </div>
       <div class="stage-actions compact-stage-actions">
-        <p>故事板只展示图片与必要信息，避免重复堆叠完整脚本。</p>
-        <button class="primary-button" type="button" data-action="view-export">进入最终交付</button>
+        <p>${singleVideo ? "故事板、脚本和视频时长已准备好。" : "故事板只展示图片与必要信息，避免重复堆叠完整脚本。"}</p>
+        <button class="primary-button" type="button" data-action="view-export">${singleVideo ? "进入生成视频" : "进入最终交付"}</button>
       </div>
     `;
     return;
@@ -422,7 +529,7 @@ export function renderVisualStage(project = state.project) {
     <div class="future-content">
       <p class="section-index">STEP 04</p>
       <h2>故事板图片</h2>
-      <p>此步骤生成两个分段故事板，并在这里展示 0/2、1/2、2/2、失败与重试状态。只有两张完成后才能进入最终交付。</p>
+      <p>${singleVideo ? "此步骤生成一张完整故事板，并作为最终视频生成参考。" : "此步骤生成两个分段故事板，并在这里展示 0/2、1/2、2/2、失败与重试状态。只有两张完成后才能进入最终交付。"}</p>
       <div class="confirmed-card">
         <span>✓</span>
         <div>
@@ -438,7 +545,7 @@ export function renderVisualStage(project = state.project) {
 function selectedStoryboardItems(project) {
   const selectedRatio = project.marketBrief?.outputAspectRatio || "9:16";
   const items = project.imagePackage?.image_generation || [];
-  return ["0-10s", "10-20s"]
+  return storyboardSegmentIds(project)
     .map((segmentId) => [...items].reverse().find((item) =>
       item.segment_id === segmentId &&
       item.type === "storyboard_board" &&
@@ -456,7 +563,7 @@ function completedStoryboardItems(project) {
 }
 
 export function hasReadyStoryboards(project = state.project) {
-  return completedStoryboardItems(project).length === 2;
+  return completedStoryboardItems(project).length === targetStoryboardCount(project);
 }
 
 function renderStoryboardImage(item) {
@@ -476,18 +583,19 @@ function renderStoryboardCard(project, item) {
   if (!item) return "";
   const segment = scriptSegmentById(project, item.segment_id) || {};
   const shotCount = Array.isArray(segment.shots) ? segment.shots.length : 0;
+  const duration = item.duration_sec || segment.duration_sec || (item.segment_id === SINGLE_SEGMENT_ID ? videoDurationSeconds(project) : 10);
   return `
     <article class="storyboard-card">
       <div class="storyboard-card-heading">
         <div>
-          <p class="section-index">${escapeHtml(item.segment_id)}</p>
-          <h3>${escapeHtml(segment.theme || `${item.segment_id} 故事板`)}</h3>
+          <p class="section-index">${escapeHtml(item.segment_id === SINGLE_SEGMENT_ID ? "完整视频" : item.segment_id)}</p>
+          <h3>${escapeHtml(segment.theme || (item.segment_id === SINGLE_SEGMENT_ID ? "完整视频故事板" : `${item.segment_id} 故事板`))}</h3>
         </div>
         <span class="storyboard-status">已保存</span>
       </div>
       ${renderStoryboardImage(item)}
       <div class="storyboard-meta">
-        <span>时长 10s</span>
+        <span>时长 ${escapeHtml(duration)}s</span>
         <span>分镜比例 ${escapeHtml(item.aspect_ratio || "")}</span>
         <span>镜头 ${escapeHtml(shotCount)} 个</span>
       </div>
@@ -503,17 +611,51 @@ function renderStoryboardStateCard(project, segmentId, item, generating = false)
   if (item?.status === "done" && item.generated_image?.url) return renderStoryboardCard(project, item);
   const segment = scriptSegmentById(project, segmentId) || {};
   const failed = item?.status === "failed";
+  const duration = item?.duration_sec || segment.duration_sec || (segmentId === SINGLE_SEGMENT_ID ? videoDurationSeconds(project) : 10);
   return `
     <article class="storyboard-card storyboard-state-card ${failed ? "failed" : "pending"}">
       <div class="storyboard-card-heading">
-        <div><p class="section-index">${escapeHtml(segmentId)}</p><h3>${escapeHtml(segment.theme || `${segmentId} 故事板`)}</h3></div>
+        <div><p class="section-index">${escapeHtml(segmentId === SINGLE_SEGMENT_ID ? "完整视频" : segmentId)}</p><h3>${escapeHtml(segment.theme || (segmentId === SINGLE_SEGMENT_ID ? "完整视频故事板" : `${segmentId} 故事板`))}</h3></div>
         <span class="storyboard-status">${failed ? "生成失败" : generating ? "生成中" : "等待生成"}</span>
       </div>
-      <div class="storyboard-skeleton ${generating ? "active" : ""}"><i></i><span>${failed ? "该分段尚无图片，重试只会补这一张。" : "正在准备 img2img 故事板画面"}</span></div>
-      <div class="storyboard-meta"><span>时长 10s</span><span>分镜比例 ${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")}</span><span>镜头 ${escapeHtml(segment.shots?.length || 0)} 个</span></div>
+      <div class="storyboard-skeleton ${generating ? "active" : ""}"><i></i><span>${failed ? "该故事板尚无图片，重试只会补这一张。" : "正在准备 img2img 故事板画面"}</span></div>
+      <div class="storyboard-meta"><span>时长 ${escapeHtml(duration)}s</span><span>分镜比例 ${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")}</span><span>镜头 ${escapeHtml(segment.shots?.length || 0)} 个</span></div>
       ${failed && item.error?.message ? `<p class="storyboard-item-error">${escapeHtml(item.error.message)}</p>` : ""}
     </article>
   `;
+}
+
+function videoStatusLabel(status) {
+  return {
+    waiting: "等待生成",
+    submitting: "正在提交任务",
+    queued: "排队中",
+    generating: "生成中",
+    downloading: "正在取回视频",
+    done: "生成完成",
+    failed: "生成失败"
+  }[status] || "等待生成";
+}
+
+function currentVideoTask(project) {
+  const workflow = project?.videoPackage?.workflow_mode || project?.workflowMode || (isSingleVideoProject(project) ? "single_video" : "legacy_multi_segment");
+  const items = project?.videoPackage?.video_generation || [];
+  if (workflow === "single_video") {
+    return items.find((item) => item.segment_id === SINGLE_SEGMENT_ID) || null;
+  }
+  return items.find((item) => item.segment_id === "0-10s") || items[0] || null;
+}
+
+function videoSummary(project) {
+  const setup = projectSetup(project);
+  const item = currentVideoTask(project);
+  const storyboard = storyboardEntries(project).find((entry) => entry.segment_id === (isSingleVideoProject(project) ? SINGLE_SEGMENT_ID : (item?.segment_id || "0-10s")));
+  return {
+    duration: isSingleVideoProject(project) ? setup.videoDurationSeconds : 10,
+    storyboard,
+    item,
+    status: item?.status || "waiting"
+  };
 }
 
 function renderDeliverable(project, item, index) {
@@ -539,12 +681,89 @@ export function renderExportStage(project = state.project) {
   const container = el("exportStageContent");
   if (!container || !project) return;
 
+  const singleVideo = isSingleVideoProject(project);
+  const summary = videoSummary(project);
   const imageItems = completedStoryboardItems(project);
+  if (singleVideo) {
+    const item = summary.item;
+    const storyboard = summary.storyboard;
+    const storyboardTitle = storyboard?.segment_id === SINGLE_SEGMENT_ID ? "完整视频故事板" : "故事板";
+    if (!storyboard) {
+      container.innerHTML = `
+        <div class="future-content script-start-panel visual-error-card">
+          <p class="section-index">STEP 05</p>
+          <h2>生成视频尚未就绪</h2>
+          <p>请先完成 Step 04 的一张完整故事板。</p>
+          <button class="primary-button" type="button" data-action="view-visual">返回故事板</button>
+        </div>
+      `;
+      return;
+    }
+    const videoUrl = item?.generated_video?.url || "";
+    const script = project.planningPackage?.script_video?.segment_full || {};
+    const status = item?.status || "waiting";
+    container.innerHTML = `
+      <div class="section-heading">
+        <div>
+          <p class="section-index">STEP 05</p>
+          <h2>生成视频</h2>
+          <p>这里只展示一个视频任务。视频时长、脚本和故事板都跟随 Step 02 选择的时长。</p>
+        </div>
+        <span class="requirement">${escapeHtml(summary.duration)} 秒 · ${videoStatusLabel(status)}</span>
+      </div>
+      <div class="video-workflow-card" data-status="${escapeHtml(status)}">
+        <div class="video-workflow-summary">
+          <div>
+            <span>视频时长</span>
+            <strong>${escapeHtml(summary.duration)} 秒</strong>
+          </div>
+          <div>
+            <span>输出比例</span>
+            <strong>${escapeHtml(project.marketBrief?.outputAspectRatio || storyboard.aspect_ratio || "")}</strong>
+          </div>
+          <div>
+            <span>镜头数量</span>
+            <strong>${escapeHtml(Array.isArray(script.shots) ? script.shots.length : 0)} 个</strong>
+          </div>
+          <div>
+            <span>任务状态</span>
+            <strong>${escapeHtml(videoStatusLabel(status))}</strong>
+          </div>
+        </div>
+        <div class="video-workflow-main">
+          <article class="video-preview-card">
+            ${storyboard.generated_image?.url ? `
+              <img src="${escapeHtml(storyboard.generated_image.url)}" alt="${escapeHtml(storyboardTitle)}">
+            ` : `<div class="video-preview-placeholder">尚无故事板</div>`}
+          </article>
+          <div class="video-copy-card">
+            <strong>脚本摘要</strong>
+            <p>${escapeHtml((script.shots || []).map((shot, index) =>
+              `${shot.start_sec}-${shot.end_sec}s 镜头 ${index + 1}`
+            ).slice(0, 4).join("；") || "脚本已生成。")}</p>
+            <p class="video-task-note">${escapeHtml(item?.error?.message || project.videoGenerationFailure?.message || "视频生成完成后可播放和下载。")}</p>
+          </div>
+        </div>
+        <div class="video-workflow-actions">
+          ${status === "done" && videoUrl ? `
+            <video controls playsinline src="${escapeHtml(videoUrl)}"></video>
+            <a class="primary-button" href="${escapeHtml(videoUrl)}" download>下载视频</a>
+          ` : `
+            <button class="primary-button" type="button" data-action="generate-video" ${state.busy ? "disabled" : ""}>${status === "failed" ? "重新生成视频" : "开始生成视频"}</button>
+          `}
+          ${status === "failed" ? `<button class="ghost-button" type="button" data-action="refresh-video" ${state.busy ? "disabled" : ""}>刷新状态</button>` : ""}
+          ${item?.segment_id ? `<button class="ghost-button" type="button" data-action="retry-video" ${state.busy ? "disabled" : ""}>重试当前任务</button>` : ""}
+        </div>
+      </div>
+    `;
+    return;
+  }
+
   if (imageItems.length !== 2) {
     container.innerHTML = `
       <div class="future-content script-start-panel visual-error-card">
         <p class="section-index">STEP 05</p>
-        <h2>最终交付尚未就绪</h2>
+        <h2>生成视频尚未就绪</h2>
         <p>Step 5 只展示完整交付。请回到 Step 4 完成两张真实故事板图片。</p>
         <button class="primary-button" type="button" data-action="view-visual">返回故事板</button>
       </div>
@@ -555,7 +774,7 @@ export function renderExportStage(project = state.project) {
     <div class="section-heading">
       <div>
         <p class="section-index">STEP 05</p>
-        <h2>最终交付</h2>
+        <h2>生成视频</h2>
         <p>这里只保留你拿去生成视频需要的内容：两张故事板图片，以及各自对应的 10 秒脚本。</p>
       </div>
       <span class="requirement">${escapeHtml(imageItems.length)} 张故事板 · 分镜 ${escapeHtml(project.marketBrief?.outputAspectRatio || imageItems[0]?.aspect_ratio || "")}</span>

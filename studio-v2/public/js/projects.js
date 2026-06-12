@@ -4,6 +4,7 @@ import {
   creativeThemeOptions,
   el,
   escapeHtml,
+  isSingleVideoProject,
   projectSetup,
   setBusy,
   showToast,
@@ -344,22 +345,25 @@ export async function saveMarketBrief(event) {
 
 export async function generateScript() {
   el("briefSummaryDialog")?.close();
-  const shotsPerSegment = projectSetup(state.project).shotsPerSegment;
+  const setup = projectSetup(state.project);
   const progressStartedAt = Date.now();
   setWorkflowBusy(true, "generateScriptButton", "正在生成脚本...", "生成演示脚本");
   setScriptProgress(true);
   try {
+    const body = isSingleVideoProject(state.project)
+      ? { videoDurationSeconds: setup.videoDurationSeconds }
+      : { shotsPerSegment: setup.shotsPerSegment };
     const data = await api(`/api/projects/${encodeURIComponent(state.project.id)}/script/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ shotsPerSegment })
+      body: JSON.stringify(body)
     });
     await waitForMinimumFeedback(progressStartedAt);
     state.project = data.project;
     state.viewStatus = data.project.status;
     renderWorkspace();
     await loadProjects();
-    showToast("演示脚本已生成。");
+    showToast(isSingleVideoProject(state.project) ? "单视频脚本已生成。" : "演示脚本已生成。");
   } catch (error) {
     showToast(error.message);
   } finally {
@@ -392,6 +396,7 @@ function setScriptProgress(active) {
     label.textContent = "0%";
     return;
   }
+  const singleVideo = isSingleVideoProject(state.project);
   let percent = 12;
   const message = progress.querySelector(".workflow-progress-message");
   const fill = progress.querySelector(".workflow-progress-fill");
@@ -404,8 +409,12 @@ function setScriptProgress(active) {
     const status = percent < 42
       ? "正在整理市场语言与产品锁定..."
       : percent < 72
-        ? "正在生成两个 10 秒镜头序列..."
-        : "正在校验 20 秒时间线与字段完整性...";
+        ? singleVideo
+          ? "正在生成单条视频镜头时间线..."
+          : "正在生成两个 10 秒镜头序列..."
+        : singleVideo
+          ? "正在校验所选时长内的完整时间线..."
+          : "正在校验 20 秒时间线与字段完整性...";
     state.workflowProgress = { active: true, stage: "script", percent, message: status };
     updateProductionProgressDom(state.workflowProgress);
     label.textContent = `${percent}%`;
@@ -416,8 +425,10 @@ function setScriptProgress(active) {
 
 function visualCompletedCount(project = state.project) {
   const ratio = project?.marketBrief?.outputAspectRatio || "9:16";
+  const singleVideo = isSingleVideoProject(project);
   return (project?.imagePackage?.image_generation || []).filter((item) =>
     item.type === "storyboard_board" && item.aspect_ratio === ratio &&
+    (singleVideo ? item.segment_id === "full" : ["0-10s", "10-20s"].includes(item.segment_id)) &&
     item.status === "done" && item.generated_image?.url
   ).length;
 }
@@ -425,6 +436,7 @@ function visualCompletedCount(project = state.project) {
 function updateVisualProgressDom() {
   const progress = state.workflowProgress;
   if (!progress?.active || progress.stage !== "visual") return;
+  const total = isSingleVideoProject(state.project) ? 1 : 2;
   const root = el("visualProgress");
   const fill = root?.querySelector(".workflow-progress-fill");
   const label = root?.querySelector("strong");
@@ -432,7 +444,7 @@ function updateVisualProgressDom() {
   if (fill) fill.style.width = `${progress.percent}%`;
   if (label) label.textContent = `${progress.percent}%`;
   if (message) message.textContent = progress.message;
-  if (el("visualProgressCount")) el("visualProgressCount").textContent = `${progress.completed}/2`;
+  if (el("visualProgressCount")) el("visualProgressCount").textContent = `${progress.completed}/${total}`;
   if (el("panelProgressBar")) el("panelProgressBar").style.width = `${progress.percent}%`;
   if (el("panelProgressText")) el("panelProgressText").textContent = progress.message;
   updateProductionProgressDom(progress);
@@ -442,19 +454,31 @@ function startVisualProgress() {
   window.clearInterval(startVisualProgress.timer);
   let percent = 8;
   let ticks = 0;
+  const singleVideo = isSingleVideoProject(state.project);
+  const total = singleVideo ? 1 : 2;
   state.workflowProgress = {
     active: true,
     stage: "visual",
     percent,
     completed: visualCompletedCount(),
-    message: "0/2 · 正在提交两张 img2img 故事板任务..."
+    message: singleVideo
+      ? "0/1 · 正在提交一张 img2img 故事板任务..."
+      : "0/2 · 正在提交两张 img2img 故事板任务..."
   };
   startVisualProgress.timer = window.setInterval(async () => {
     ticks += 1;
     const completed = visualCompletedCount();
     percent = Math.min(94, Math.max(percent + Math.ceil((96 - percent) / 18), completed === 1 ? 58 : 0));
-    const message = completed === 1
-      ? "1/2 · 已保留完成图片，继续等待另一张..."
+    const message = singleVideo
+      ? (completed === 1
+        ? "1/1 · 已保留完成图片，继续等待生成结果..."
+        : percent < 35
+          ? "0/1 · 正在提交一张 img2img 故事板任务..."
+          : percent < 70
+            ? "0/1 · 图片供应商正在生成，请保持页面开启..."
+            : "0/1 · 正在等待供应商返回并保存本地图片...")
+      : completed === 1
+        ? "1/2 · 已保留完成图片，继续等待另一张..."
       : percent < 35
         ? "0/2 · 正在提交两张 img2img 故事板任务..."
         : percent < 70
@@ -539,8 +563,8 @@ export async function confirmScriptAndGenerateVisual() {
   setWorkflowBusy(
     true,
     "confirmAndGenerateButton",
-    "正在生成故事版图片...",
-    "确认脚本并生成故事版图片"
+    "正在生成故事板图片...",
+    "确认脚本并生成故事板图片"
   );
   let scriptConfirmed = false;
   let visualStartedAt = 0;
@@ -589,8 +613,8 @@ export async function confirmScriptAndGenerateVisual() {
     setWorkflowBusy(
       false,
       "confirmAndGenerateButton",
-      "正在生成故事版图片...",
-      "确认脚本并生成故事版图片"
+      "正在生成故事板图片...",
+      "确认脚本并生成故事板图片"
     );
     renderWorkspace();
   }
@@ -598,7 +622,7 @@ export async function confirmScriptAndGenerateVisual() {
 
 export async function generateVisual() {
   const progressStartedAt = Date.now();
-  setWorkflowBusy(true, "generateVisualButton", "正在生成故事版图片...", "生成故事版图片");
+  setWorkflowBusy(true, "generateVisualButton", "正在生成故事板图片...", "生成故事板图片");
   try {
     state.visualGenerationError = "";
     state.viewStatus = "visual";
@@ -627,7 +651,74 @@ export async function generateVisual() {
     renderWorkspace();
     showToast(error.message);
   } finally {
-    setWorkflowBusy(false, "generateVisualButton", "正在生成故事版图片...", "生成故事版图片");
+    setWorkflowBusy(false, "generateVisualButton", "正在生成故事板图片...", "生成故事板图片");
+    renderWorkspace();
+  }
+}
+
+function currentVideoSegmentId(project = state.project) {
+  if (!project) return "full";
+  if (isSingleVideoProject(project)) return "full";
+  return project.videoPackage?.video_generation?.find((item) => item.status === "failed")?.segment_id
+    || project.videoPackage?.video_generation?.find((item) => item.status !== "done")?.segment_id
+    || project.videoPackage?.video_generation?.[0]?.segment_id
+    || "full";
+}
+
+export async function generateVideo() {
+  if (!state.project) return;
+  setBusy(true, "正在生成视频...");
+  try {
+    const data = await api(`/api/projects/${encodeURIComponent(state.project.id)}/videos/generate`, {
+      method: "POST"
+    });
+    state.project = data.project;
+    state.viewStatus = "export";
+    renderWorkspace();
+    await loadProjects();
+    showToast("视频任务已提交。");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    setBusy(false);
+    renderWorkspace();
+  }
+}
+
+export async function refreshVideoStatus() {
+  if (!state.project) return;
+  setBusy(true, "正在刷新视频状态...");
+  try {
+    const data = await api(`/api/projects/${encodeURIComponent(state.project.id)}/videos/status`);
+    state.project = data.project;
+    state.viewStatus = "export";
+    renderWorkspace();
+    await loadProjects();
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    setBusy(false);
+    renderWorkspace();
+  }
+}
+
+export async function retryVideo() {
+  if (!state.project) return;
+  const segmentId = currentVideoSegmentId(state.project);
+  setBusy(true, "正在重试视频...");
+  try {
+    const data = await api(`/api/projects/${encodeURIComponent(state.project.id)}/videos/${encodeURIComponent(segmentId)}/retry`, {
+      method: "POST"
+    });
+    state.project = data.project;
+    state.viewStatus = "export";
+    renderWorkspace();
+    await loadProjects();
+    showToast("已重新提交视频任务。");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    setBusy(false);
     renderWorkspace();
   }
 }
