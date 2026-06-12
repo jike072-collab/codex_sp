@@ -128,23 +128,144 @@ Do not edit:
 - 契约冻结后，从后端分支或主线读取 `docs/contracts/video-generation-api.md`。
 - 如果后端接口字段不清楚，停止并要求协调端冻结契约，不要猜字段。
 
+## Do Not Start Until
+
+前端在看到以下条件全部满足前，不得开始改代码：
+
+1. 后端 `codex/backend-video-generation-provider` 已推送新提交，且不是旧的 `c930526` 两段视频版本。
+2. 后端交付说明明确写了：
+   - `workflowMode` 或等价字段如何表示 `single_video`。
+   - `videoDurationSeconds` 存在位置、默认值和允许范围。
+   - 单脚本数据结构。
+   - 单故事板数据结构。
+   - 单视频任务数据结构。
+   - Admin `video` provider 字段名和保存 payload。
+3. `docs/contracts/video-generation-api.md` 已更新为单视频默认契约。
+4. 协调端确认后端测试通过，并允许前端开工。
+
+如果任何一项不满足，前端只允许回报“等待后端契约”，不要基于旧接口猜实现。
+
+## Detailed Implementation Checklist
+
+开工后按下面清单逐项完成，不能只改 Step 05：
+
+### A. Contract Intake
+
+- 读取 `docs/contracts/video-generation-api.md`。
+- 读取后端 `/api/admin/providers` 的 `video` provider schema。
+- 读取后端 `/api/admin/providers/models` 的 video 模型返回。
+- 在前端 API helper 中集中封装视频接口，不要把 URL 字符串散在多个渲染函数里。
+- 如果字段名和本任务不同，以后端契约为准，并在交付说明里写出映射。
+
+### B. Step 02 Duration Control
+
+- 在产品设定/创意设置区域加入“视频时长”。
+- 控件必须是 5-15 秒的有限选择，不允许用户输入任意文本。
+- 默认 10 秒。
+- 变更后即时更新摘要区域和右侧状态。
+- 提交 review / market brief 时必须带上 `videoDurationSeconds`。
+- 用户回到 Step 02 时要能看到已保存的时长。
+- 不再显示当前模式的“每段镜头数”选择；legacy 项目可保留旧显示。
+
+### C. Step 03 Single Script View
+
+- 当前 `single_video` 模式只显示一条脚本时间线。
+- 标题、状态面板和操作按钮都使用所选时长，例如“12 秒广告脚本”。
+- 镜头表格按时间顺序展示，不拆成 A/B 两段。
+- 表格列建议包括：时间、镜头、画面、动作、旁白/字幕、转场。
+- 如果脚本可编辑，编辑后仍要校验时间线完整覆盖所选时长。
+- legacy 双段项目继续走旧的双段展示。
+
+### D. Step 04 Single Storyboard View
+
+- 当前 `single_video` 模式只显示一个故事板生成卡片。
+- 卡片显示：故事板标题、时长、比例、镜头数、状态、缩略图/占位。
+- 生成中只出现一个任务状态，不显示 1/2 或 2/2。
+- 失败后只重试这一张故事板。
+- legacy 双故事板项目继续走旧的两张卡片显示。
+
+### E. Step 05 Single Video View
+
+- Stepper 文案改成“生成视频 / 最终广告视频”。
+- 页面只展示一个视频生成任务。
+- 生成前显示输入摘要：
+  - 视频时长
+  - 输出比例
+  - 故事板缩略图
+  - 脚本摘要
+- 生成状态必须映射为中文：
+  - `waiting`：等待生成
+  - `submitting`：正在提交任务
+  - `queued`：排队中
+  - `generating`：生成中
+  - `downloading`：正在取回视频
+  - `done`：生成完成
+  - `failed`：生成失败
+- 完成后展示 `<video controls>` 播放器。
+- 下载按钮下载当前单视频。
+- 失败时显示中文原因和“重新生成视频”按钮。
+- 不显示“两段视频”“最终合成”“0-10s”“10-20s”等旧文案。
+- legacy 双段项目可保留旧双段视频状态显示，但不要影响新项目默认体验。
+
+### F. Admin Video Provider
+
+- Admin 增加“视频生成”配置卡片。
+- 字段包括：
+  - API URL
+  - Model
+  - API Key
+  - 当前 Key 脱敏预览
+  - 清除已保存 Key
+- API Key 是 `VIDEO_MODEL_API_KEY`，不能复用其他 provider Key。
+- 未输入新 Key 保存时，应保留旧 Key。
+- 输入新 Key 保存后，预览应刷新。
+- 勾选清除 Key 保存后，状态变为未配置。
+- 模型下拉/选择器读取后端 video 模型列表；模型接口失败时要有中文提示。
+
+### G. Empty / Loading / Error States
+
+- 未生成脚本时，Step 04 / Step 05 要给出中文阻断说明。
+- 未生成故事板时，Step 05 要提示先完成故事板。
+- 视频 provider 未配置时，Step 05 要提示去后台配置视频生成 Key。
+- 生成中使用稳定尺寸的 loading / skeleton，不要假百分比乱跳。
+- 所有错误都显示中文人话，不展示堆栈、JSON 或 provider 原始响应。
+
+### H. Compatibility
+
+- 不删除 legacy 双段渲染函数。
+- 不删除旧项目读取能力。
+- 新项目默认走 `single_video`。
+- 如果项目没有 `workflowMode` 但已有两个故事板或两个脚本段，按 legacy 显示。
+- 如果项目没有 `videoDurationSeconds`，默认显示 10 秒，但保存时补齐。
+
 ## Required Verification
 
 1. 对所有 `studio-v2/public/js/*.js` 和 `studio-v2/admin/*.js` 执行语法检查。
-2. 浏览器验证 Step 05：
+2. 浏览器验证新项目单视频流程：
    - Step 02 可选择 `5`、`10`、`15` 秒并正确保存。
    - Step 03 只显示一条符合所选时长的脚本。
    - Step 04 只显示一张故事板。
    - 一张故事板完成后进入“生成视频”。
    - 点击开始生成后显示单个视频状态。
    - 失败后可重试，成功后可播放和下载。
+3. 浏览器验证 legacy 兼容：
    - 打开 legacy 双段项目时，旧脚本和故事板仍能查看。
-3. 浏览器验证 Admin：
+   - legacy 项目不被强制改成单视频。
+4. 浏览器验证 Admin：
    - 能看到“视频生成”配置卡片。
    - 能保存 API URL、Model、API Key。
    - Key 只显示 masked preview。
    - 替换 Key 后 masked preview 更新；清除后状态变为未配置。
-4. 提供 Step 05 和 Admin 视频配置截图。
+5. 视口检查：
+   - 桌面宽屏无横向滚动。
+   - 常见笔记本宽度右侧不裁切。
+   - 视频播放器、按钮、状态文案不重叠。
+6. 提供截图：
+   - Step 02 视频时长控件。
+   - Step 03 单脚本。
+   - Step 04 单故事板。
+   - Step 05 单视频生成/完成状态。
+   - Admin 视频配置卡片。
 
 ## Delivery
 
