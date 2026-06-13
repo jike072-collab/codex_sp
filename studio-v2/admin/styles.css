@@ -386,6 +386,41 @@ button,
   border-radius: 8px;
 }
 
+.secret-input-shell {
+  position: relative;
+  display: grid;
+}
+
+.secret-input-shell input {
+  padding-right: 42px;
+}
+
+.secret-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: inline-grid;
+  place-items: center;
+  min-width: 30px;
+  width: 30px;
+  min-height: 30px;
+  height: 30px;
+  padding: 0;
+  color: #a9b8cc;
+  font-size: 14px;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  transform: translateY(-50%);
+}
+
+.secret-toggle:hover,
+.secret-toggle.active {
+  color: #f3f8ff;
+  background: rgba(120, 151, 190, 0.18);
+  border: 0;
+}
+
 .provider-table .field .preset-select {
   color: #bfe7ff;
   background: #11243a;

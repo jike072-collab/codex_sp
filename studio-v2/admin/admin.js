@@ -119,6 +119,19 @@ function ensureOption(select, value, label = value) {
   }
 }
 
+function renderSecretInput(input, wrapper) {
+  const shell = document.createElement("div");
+  shell.className = "secret-input-shell";
+  const toggle = document.createElement("button");
+  toggle.className = "secret-toggle";
+  toggle.type = "button";
+  toggle.dataset.secretToggleFor = input.name;
+  toggle.setAttribute("aria-label", "显示 API 密钥");
+  toggle.textContent = "👁";
+  shell.append(input, toggle);
+  wrapper.append(shell);
+}
+
 function maskedKeyPreview(provider, field) {
   const preview = String(fieldConfig(provider, field)?.keyPreview || "").trim();
   if (!preview) return "当前未保存可用密钥";
@@ -223,7 +236,8 @@ function renderInputField(provider, field, wrapper) {
   input.dataset.fieldType = field.type;
   input.placeholder = field.type === "secret" ? "留空表示保持当前密钥" : "";
   if (field.type !== "secret") input.required = true;
-  wrapper.append(input);
+  if (field.type === "secret") renderSecretInput(input, wrapper);
+  else wrapper.append(input);
 
   const help = document.createElement("small");
   help.className = field.type === "secret" ? "key-preview" : "";
@@ -682,6 +696,17 @@ refreshModelsButton.addEventListener("click", () => {
     return;
   }
   loadModels({ refresh: true });
+});
+form.addEventListener("click", (event) => {
+  const toggle = event.target.closest("[data-secret-toggle-for]");
+  if (!toggle) return;
+  const input = form.elements[toggle.dataset.secretToggleFor];
+  if (!input) return;
+  const visible = input.type === "text";
+  input.type = visible ? "password" : "text";
+  toggle.classList.toggle("active", !visible);
+  toggle.setAttribute("aria-label", visible ? "显示 API 密钥" : "隐藏 API 密钥");
+  toggle.textContent = visible ? "👁" : "🙈";
 });
 window.addEventListener("focus", () => loadProviders());
 setInterval(() => loadProviders(), 30000);
