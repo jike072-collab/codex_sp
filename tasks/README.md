@@ -4,9 +4,9 @@
 
 ## GitHub 上传范围
 
-GitHub 当前任务只用于另一台前端电脑领取任务。
-
-本机 Codex 和 DeepSeek 的任务由协调端直接发布，不需要上传为 GitHub 当前任务文件。
+- 本机 Codex 任务由协调端直接发送到本地 Codex 对话。
+- DeepSeek 任务通过独立 GitHub 任务分支发布。
+- 另一台电脑前端任务只通过 GitHub 正式任务入口发布。
 
 ## 前端电脑每次开工先读什么
 
@@ -21,9 +21,17 @@ GitHub 当前任务只用于另一台前端电脑领取任务。
 ## 本地执行者怎么拿任务
 
 - 本机 Codex：由协调端直接发送任务到本地 Codex 对话。
-- DeepSeek：由用户手动粘贴协调端给出的任务文本，或在本机直接发布。
+- DeepSeek：fetch 后读取指定任务分支的 `CURRENT_ASSIGNMENTS.md` 和 `tasks/codex-deepseek-current.md`。
 
-本地执行者可以按要求提交代码分支并回传提交号，但它们的任务说明不作为 GitHub 当前任务上传。
+DeepSeek 没有识图能力，只能根据代码、测试和文字验收标准工作。
+
+当前 DeepSeek 任务读取方式：
+
+```powershell
+git fetch origin --prune
+git show origin/codex/deepseek-admin-provider-key-review:CURRENT_ASSIGNMENTS.md
+git show origin/codex/deepseek-admin-provider-key-review:tasks/codex-deepseek-current.md
+```
 
 ## 前端任务发布方式
 

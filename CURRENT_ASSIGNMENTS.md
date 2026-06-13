@@ -21,6 +21,7 @@ Route: complex
 3. 当前角色任务文件
    - 后端：`origin/main:tasks/codex-backend-current.md`
    - 前端：`origin/main:tasks/codex-frontend-current.md`
+   - DeepSeek：`origin/codex/deepseek-admin-provider-key-review:tasks/codex-deepseek-current.md`
 
 聊天记录、截图、旧分支和本地旧任务文件都不是开工依据。
 
@@ -117,11 +118,44 @@ Route: complex
 
 前端模式切换实现已审核并合入正式分支。
 
+## DeepSeek：代码编辑审核
+
+状态：READY - CODE REVIEW / SMALL PATCH ONLY
+
+任务文件：
+
+- `tasks/codex-deepseek-current.md`
+
+任务分支：
+
+- `codex/deepseek-admin-provider-key-review`
+
+负责内容：
+
+- 审核后台供应商配置页的接口方案切换、masked Key preview、模型即时同步和静态资源版本一致性。
+- 只做代码审核和最小补丁；DeepSeek 没有识图能力，不得基于截图推断。
+- 不修改 `.env`，不打印、不提交、不上传完整 Key。
+
+允许修改：
+
+- `studio-v2/admin/**`
+- `studio-v2/src/storage/provider-settings.mjs`
+- `studio-v2/src/ai-providers/provider-models.mjs`
+- `studio-v2/src/local-api/**`
+- `studio-v2/tests/**`
+
+禁止修改：
+
+- `studio-v2/public/**`
+- `.env`
+- `studio-v2/data/**`
+- 上传、生成、日志和 PID 文件
+
 ## 本地执行者发布规则
 
 - 本机 Codex 任务由协调端直接发送到本地对话，不作为 GitHub 当前任务上传。
-- DeepSeek 任务由用户手动粘贴任务文本或本地直接发布，不作为 GitHub 当前任务上传。
-- GitHub 当前任务只用于另一台前端电脑领取；正式上传时只更新前端任务入口和前端任务分支。
+- DeepSeek 任务通过 GitHub 任务分支发布，但只能做代码编辑/审核，不接触图片识别或完整 Key。
+- 前端任务只通过 GitHub 发布；本轮后台供应商配置问题暂不发布给前端。
 
 ## 固定产品规则
 
