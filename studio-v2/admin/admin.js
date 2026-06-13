@@ -277,6 +277,45 @@ function syncPresetSelection(presetSelect) {
       modelSelect.value = profile.model;
     }
   }
+
+  refreshPresetModelStatus(provider, field, row);
+}
+
+async function refreshPresetModelStatus(provider, field, row) {
+  const modelStatusEl = row?.querySelector(".model-status");
+  if (!modelStatusEl) return;
+
+  const profile = profileForSelection(provider, field, form.elements[field.valueKey]?.value || "");
+  if (!profile?.keyPreview) {
+    modelStatusEl.textContent = "模型：未配置 API Key";
+    modelStatusEl.dataset.status = "error";
+    return;
+  }
+
+  modelStatusEl.textContent = "模型：正在同步...";
+  modelStatusEl.dataset.status = "loading";
+
+  try {
+    const data = await api("/api/admin/providers/models?refresh=1");
+    const providerModels = data.providers?.[provider.id];
+    if (!providerModels) throw new Error("No provider models");
+
+    const state = field.channelId
+      ? providerModels.channels?.find((c) => c.id === field.channelId)
+      : providerModels;
+    if (state) {
+      modelProviders[provider.id] = providerModels;
+      modelStatusEl.textContent = state.message
+        ? `模型：${state.message}`
+        : `模型：${MODEL_STATUS_TEXT[state.status] || "读取失败"}`;
+      modelStatusEl.dataset.status = state.status || "error";
+    }
+  } catch {
+    if (modelStatusEl.dataset.status === "loading") {
+      modelStatusEl.textContent = "模型：同步失败，保存后重试";
+      modelStatusEl.dataset.status = "error";
+    }
+  }
 }
 
 function renderImageChannel(provider, channel) {

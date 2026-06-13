@@ -38,7 +38,7 @@ export function createRequestHandler() {
         const relativeAdminPath = url.pathname === "/admin/"
           ? "index.html"
           : url.pathname.slice("/admin/".length);
-        return serveFile(response, adminRoot, relativeAdminPath);
+        return serveFile(response, adminRoot, relativeAdminPath, { cacheControl: "no-store" });
       }
       const relativePath = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
       return serveFile(response, publicRoot, relativePath);
