@@ -170,15 +170,28 @@ test("provider model preview uses preset-local keys for unsaved endpoint switche
         assert.equal(options.headers["x-goog-api-key"], undefined);
         return jsonResponse({
           data: [
+            { id: "gemini-2.0-flash" },
             { id: "gemini-2.5-flash" },
-            { id: "gemini-2.5-pro" }
+            { id: "gemini-2.5-flash-image" },
+            { id: "gemini-2.5-pro" },
+            { id: "gemini-3-flash-preview" },
+            { id: "gemini-3-pro-preview" },
+            { id: "gemini-3.1-flash-image" },
+            { id: "gemini-3.1-pro-preview" },
+            { id: "gemini-3.5-flash" }
           ]
         });
       }
     });
 
     assert.equal(result.providers.vision.status, "ok");
-    assert.ok(result.providers.vision.models.some((model) => model.id === "gemini-2.5-pro"));
+    assert.deepEqual(result.providers.vision.models.map((model) => model.id), [
+      "gemini-2.5-flash",
+      "gemini-2.5-pro",
+      "gemini-3-flash-preview",
+      "gemini-3-pro-preview",
+      "gemini-3.1-pro-preview"
+    ]);
   });
 });
 

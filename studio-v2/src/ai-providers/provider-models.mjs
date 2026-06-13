@@ -11,6 +11,12 @@ import {
 } from "../storage/provider-settings.mjs";
 
 const MODEL_DISCOVERY_CACHE_MS = 5 * 60 * 1000;
+const SUB2API_UNAVAILABLE_MODELS = new Set([
+  "gemini-2.0-flash",
+  "gemini-3.5-flash",
+  "gemini-2.5-flash-image",
+  "gemini-3.1-flash-image"
+]);
 const discoveryCache = new Map();
 
 function field(provider, name, channelId) {
@@ -123,6 +129,17 @@ function usesOpenAiCompatibleVisionUrl(apiUrl) {
   return /\/chat\/completions\/?$/i.test(pathname) || (/\/v1\/models\/?$/i.test(pathname) && !/\/v1beta\//i.test(pathname));
 }
 
+function isSub2ApiLocalChatEndpoint(apiUrl) {
+  try {
+    const parsed = new URL(apiUrl);
+    return ["127.0.0.1", "localhost"].includes(parsed.hostname)
+      && parsed.port === "8080"
+      && /\/v1\/chat\/completions\/?$/i.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
+
 function authHeadersForUrl(providerId, apiUrl, apiKey) {
   if (providerId === "vision" && usesOpenAiCompatibleVisionUrl(apiUrl)) {
     return { Authorization: `Bearer ${apiKey}` };
@@ -197,7 +214,10 @@ async function fetchModelList(providerId, { apiUrl, apiKey, currentModel, fetchI
     return fallback(currentModel, "error", "模型发现返回了无效 JSON。");
   }
 
-  const models = parseModels(payload);
+  const models = parseModels(payload).filter((model) => (
+    !isSub2ApiLocalChatEndpoint(apiUrl)
+    || !SUB2API_UNAVAILABLE_MODELS.has(model.id)
+  ));
   if (!models.length) {
     return fallback(currentModel, "error", "供应商返回了空模型列表。");
   }
