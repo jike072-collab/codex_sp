@@ -88,6 +88,12 @@ function wireEvents() {
   });
 
   el("workspace").addEventListener("click", (event) => {
+    const modeSegment = event.target.closest("[data-workflow-mode]");
+    if (modeSegment) {
+      switchWorkflowMode(modeSegment.dataset.workflowMode);
+      return;
+    }
+
     const menuButton = event.target.closest("[data-review-menu]");
     if (menuButton) {
       const name = menuButton.dataset.reviewMenu;

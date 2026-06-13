@@ -147,6 +147,23 @@ export function videoDurationSeconds(project = state.project) {
   return projectSetup(project).videoDurationSeconds;
 }
 
+export const WORKFLOW_MODE_LABEL = {
+  single_video: "单段 5-15 秒",
+  legacy_multi_segment: "双段 20 秒"
+};
+
+export const workflowModeOptions = [
+  ["single_video", "单段 5-15 秒"],
+  ["legacy_multi_segment", "双段 20 秒"]
+];
+
+export function workflowModeLabel(modeOrProject) {
+  const mode = typeof modeOrProject === "string"
+    ? modeOrProject
+    : workflowMode(modeOrProject);
+  return WORKFLOW_MODE_LABEL[mode] || "双段 20 秒";
+}
+
 export async function api(url, options = {}) {
   const response = await fetch(url, options);
   const payload = await response.json().catch(() => ({}));
