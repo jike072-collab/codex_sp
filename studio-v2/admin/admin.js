@@ -8,7 +8,8 @@ const refreshModelsButton = document.querySelector("#refreshModelsButton");
 const PROVIDER_TEXT = {
   vision: { title: "商品识图", role: "商品图片分析", channel: "Gemini 通道" },
   text: { title: "广告脚本生成", role: "20 秒广告脚本生成", channel: "对话补全通道" },
-  image: { title: "故事板图片生成", role: "参考图驱动的故事板生成", channel: "Draw 绘图通道" }
+  image: { title: "故事板图片生成", role: "参考图驱动的故事板生成", channel: "Draw 绘图通道" },
+  video: { title: "视频生成", role: "单视频生成", channel: "OpenAI-video 兼容通道" }
 };
 const FIELD_LABELS = {
   apiUrl: "接口地址",
@@ -26,7 +27,7 @@ let currentSchema = null;
 let modelProviders = {};
 let dirty = false;
 const profileUiCache = new Map();
-const draftModelSyncTokens = new Map();
+let modelPreviewRequestId = 0;
 
 function setStatus(message, tone = "") {
   statusEl.textContent = message;
@@ -147,6 +148,139 @@ function renderSecretInput(input, wrapper) {
   wrapper.append(shell);
 }
 
+function maskedKeyPreview(provider, field) {
+  const preview = String(fieldConfig(provider, field)?.keyPreview || "").trim();
+  if (!preview) return "当前未保存可用密钥";
+  const suffix = preview.match(/([a-z0-9]{4})\s*$/i)?.[1];
+  return suffix ? `当前密钥：•••• ${suffix}` : `当前密钥：${preview}`;
+}
+
+function modelState(provider, field = {}) {
+  const discovery = modelProviders[provider.id];
+  if (!discovery) return { status: "loading", models: [] };
+  if (field.channelId) {
+    return discovery.channels?.find((channel) => channel.id === field.channelId)
+      || { status: discovery.status || "error", models: [] };
+  }
+  return discovery;
+}
+
+function modelOptions(provider, field) {
+  const discovery = modelState(provider, field);
+  const current = discovery.currentModel || fieldConfig(provider, field)?.model || "";
+  const options = discovery.models || [];
+  const unique = new Map(options.filter((option) => option?.id).map((option) => [
+    option.id,
+    { id: option.id, label: option.label || option.id }
+  ]));
+  if (current && !unique.has(current)) unique.set(current, { id: current, label: current });
+  return [...unique.values()];
+}
+
+function renderModelField(provider, field, wrapper) {
+  const select = document.createElement("select");
+  select.id = field.valueKey;
+  select.name = field.valueKey;
+  select.required = true;
+  select.dataset.fieldType = "select";
+  const discovery = modelState(provider, field);
+  const currentModel = discovery.currentModel || fieldConfig(provider, field)?.model || "";
+  for (const optionData of modelOptions(provider, field)) {
+    const option = document.createElement("option");
+    option.value = optionData.id;
+    option.textContent = optionData.label;
+    option.selected = optionData.id === currentModel;
+    select.append(option);
+  }
+  wrapper.append(select);
+
+  const help = document.createElement("small");
+  help.className = "model-status";
+  help.dataset.status = discovery.status || "error";
+  help.textContent = discovery.message
+    ? `模型列表：${discovery.message}`
+    : `模型列表：${MODEL_STATUS_TEXT[discovery.status] || "读取失败"}`;
+  wrapper.append(help);
+}
+
+function updateModelField(provider, field, row, discovery) {
+  const wrapper = row?.querySelector(`[data-value-key="${CSS.escape(field.valueKey)}"]`);
+  const select = wrapper?.querySelector("select");
+  const help = wrapper?.querySelector(".model-status");
+  if (!select || !help) return;
+
+  const currentModel = discovery.currentModel || select.value || fieldConfig(provider, field)?.model || "";
+  const options = new Map((discovery.models || [])
+    .filter((option) => option?.id)
+    .map((option) => [option.id, option.label || option.id]));
+  if (currentModel && !options.has(currentModel)) options.set(currentModel, currentModel);
+  select.replaceChildren(...[...options].map(([value, label]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    option.selected = value === currentModel;
+    return option;
+  }));
+  help.dataset.status = discovery.status || "error";
+  help.textContent = discovery.message
+    ? `模型列表：${discovery.message}`
+    : `模型列表：${MODEL_STATUS_TEXT[discovery.status] || "读取失败"}`;
+}
+
+function selectedModelState(data, providerId, channelId = "") {
+  const provider = data.providers?.[providerId];
+  if (!provider) return null;
+  if (providerId !== "image") return provider;
+  return provider.channels?.find((channel) => channel.id === channelId) || null;
+}
+
+async function loadModelPreview(provider, urlField, apiUrl, row) {
+  const modelField = providerFieldByName(provider, "model", urlField.channelId || "");
+  const keyField = providerFieldByName(provider, "apiKey", urlField.channelId || "");
+  if (!modelField || !row || !apiUrl) return;
+
+  const requestId = String(++modelPreviewRequestId);
+  row.dataset.modelPreviewRequestId = requestId;
+  updateModelField(provider, modelField, row, {
+    status: "loading",
+    currentModel: row.querySelector(`[data-value-key="${CSS.escape(modelField.valueKey)}"] select`)?.value || "",
+    models: []
+  });
+
+  try {
+    const modelSelect = row.querySelector(
+      `[data-value-key="${CSS.escape(modelField.valueKey)}"] select`
+    );
+    const keyInput = keyField
+      ? row.querySelector(
+          `[data-value-key="${CSS.escape(keyField.valueKey)}"] input[type="password"], `
+          + `[data-value-key="${CSS.escape(keyField.valueKey)}"] input[type="text"]`
+        )
+      : null;
+    const data = await api("/api/admin/providers/models/preview", {
+      method: "POST",
+      body: JSON.stringify({
+        providerId: provider.id,
+        channelId: urlField.channelId || "",
+        apiUrl,
+        model: modelSelect?.value || "",
+        apiKey: keyInput?.value?.trim() || ""
+      })
+    });
+    if (row.dataset.modelPreviewRequestId !== requestId) return;
+    const discovery = selectedModelState(data, provider.id, urlField.channelId || "");
+    if (discovery) updateModelField(provider, modelField, row, discovery);
+  } catch {
+    if (row.dataset.modelPreviewRequestId !== requestId) return;
+    updateModelField(provider, modelField, row, {
+      status: "error",
+      currentModel: row.querySelector(`[data-value-key="${CSS.escape(modelField.valueKey)}"] select`)?.value || "",
+      models: [],
+      message: "模型同步失败，请检查当前方案配置"
+    });
+  }
+}
+
 function renderPresetSelect(field, currentValue, wrapper) {
   if (!Array.isArray(field.presets) || !field.presets.length) return;
 
@@ -181,65 +315,6 @@ function renderPresetSelect(field, currentValue, wrapper) {
     hint.textContent = hintText;
     wrapper.append(hint);
   }
-}
-
-function maskedKeyPreview(provider, field) {
-  const preview = String(fieldConfig(provider, field)?.keyPreview || "").trim();
-  if (!preview) return "当前未保存可用密钥";
-  const suffix = preview.match(/([a-z0-9]{4})\s*$/i)?.[1];
-  return suffix ? `当前密钥：•••• ${suffix}` : `当前密钥：${preview}`;
-}
-
-function modelState(provider, field = {}) {
-  const discovery = modelProviders[provider.id];
-  if (!discovery) return { status: "loading", models: [] };
-  if (field.channelId) {
-    return discovery.channels?.find((channel) => channel.id === field.channelId)
-      || { status: discovery.status || "error", models: [] };
-  }
-  return discovery;
-}
-
-function modelOptions(provider, field) {
-  const discovery = modelState(provider, field);
-  const current = discovery.currentModel || fieldConfig(provider, field)?.model || "";
-  const options = discovery.models || [];
-  const unique = new Map(options.filter((option) => option?.id).map((option) => [
-    option.id,
-    { id: option.id, label: option.label || option.id }
-  ]));
-  if (current && !unique.has(current)) unique.set(current, { id: current, label: current });
-  return [...unique.values()];
-}
-
-function modelStatusText(discovery) {
-  return discovery.message
-    ? `模型列表：${discovery.message}`
-    : `模型列表：${MODEL_STATUS_TEXT[discovery.status] || "读取失败"}`;
-}
-
-function renderModelField(provider, field, wrapper) {
-  const select = document.createElement("select");
-  select.id = field.valueKey;
-  select.name = field.valueKey;
-  select.required = true;
-  select.dataset.fieldType = "select";
-  const discovery = modelState(provider, field);
-  const currentModel = discovery.currentModel || fieldConfig(provider, field)?.model || "";
-  for (const optionData of modelOptions(provider, field)) {
-    const option = document.createElement("option");
-    option.value = optionData.id;
-    option.textContent = optionData.label;
-    option.selected = optionData.id === currentModel;
-    select.append(option);
-  }
-  wrapper.append(select);
-
-  const help = document.createElement("small");
-  help.className = "model-status";
-  help.dataset.status = discovery.status || "error";
-  help.textContent = modelStatusText(discovery);
-  wrapper.append(help);
 }
 
 function renderInputField(provider, field, wrapper) {
@@ -306,7 +381,7 @@ function syncPresetSelection(presetSelect) {
   if (!match) return;
 
   const { provider, field } = match;
-  const row = presetSelect.closest("tr") || presetSelect.closest(".channel-card") || presetSelect.closest(".provider-table");
+  const row = presetSelect.closest("tr");
   const previousValue = presetSelect.dataset.currentPresetValue || fieldConfig(provider, field)?.apiUrl || "";
   const previousProfile = cachedProfileForSelection(provider, field, previousValue);
   const keyField = providerFieldByName(provider, "apiKey", field.channelId || "");
@@ -343,6 +418,11 @@ function syncPresetSelection(presetSelect) {
         ? "当前已输入 Key，保存后生效"
         : previewTextFromKeyPreview(profile?.keyPreview);
     }
+    const badge = row.querySelector(".provider-status-cell .badge");
+    if (badge) {
+      badge.dataset.configured = String(Boolean(profile?.configured));
+      badge.textContent = profile?.configured ? "已配置" : "缺少密钥";
+    }
   }
 
   if (modelField && row && profile?.model) {
@@ -353,188 +433,141 @@ function syncPresetSelection(presetSelect) {
       modelSelect.value = profile.model;
     }
   }
+  loadModelPreview(provider, field, presetSelect.value, row);
 }
 
-function mergeModelPreview(providerId, channelId, previewProviders) {
-  const preview = previewProviders?.[providerId];
-  if (!preview) return null;
-  if (providerId !== "image" || !channelId) {
-    modelProviders[providerId] = preview;
-    return preview;
-  }
-  const channelPreview = preview.channels?.find((channel) => channel.id === channelId);
-  if (!channelPreview) return null;
-  const current = modelProviders.image || { status: preview.status || "loading", channels: [] };
-  const channels = [...(current.channels || [])];
-  const index = channels.findIndex((channel) => channel.id === channelId);
-  if (index >= 0) channels[index] = channelPreview;
-  else channels.push(channelPreview);
-  modelProviders.image = {
-    ...current,
-    status: preview.status || current.status || channelPreview.status,
-    source: preview.source || current.source || channelPreview.source,
-    channels
+function fieldByName(provider, name, channelId = "") {
+  return provider.fields.find((field) => field.name === name && (channelId ? field.channelId === channelId : !field.channelId));
+}
+
+function tableField(provider, field) {
+  const wrapper = renderField(provider, field);
+  wrapper.classList.add("table-field");
+  const label = wrapper.querySelector(":scope > label");
+  if (label) label.classList.add("sr-only");
+  return wrapper;
+}
+
+function rowConfig(provider, channel) {
+  return channel ? channelConfig(provider, channel.id) || {} : provider.config || {};
+}
+
+function rowModelState(provider, field) {
+  const state = modelState(provider, field || {});
+  return {
+    status: state.status || "error",
+    message: state.message || MODEL_STATUS_TEXT[state.status] || "读取失败"
   };
-  return channelPreview;
 }
 
-function updateModelField(row, modelField, discovery) {
-  if (!row || !modelField || !discovery) return;
-  const wrapper = row.querySelector(`[data-value-key="${CSS.escape(modelField.valueKey)}"]`);
-  const select = wrapper?.querySelector("select");
-  const help = wrapper?.querySelector(".model-status");
-  if (select) {
-    const selected = discovery.currentModel || select.value || "";
-    select.replaceChildren();
-    for (const optionData of discovery.models || []) {
-      const option = document.createElement("option");
-      option.value = optionData.id;
-      option.textContent = optionData.label || optionData.id;
-      option.selected = optionData.id === selected;
-      select.append(option);
-    }
-    ensureOption(select, selected);
-    select.value = selected;
-  }
-  if (help) {
-    help.dataset.status = discovery.status || "error";
-    help.textContent = modelStatusText(discovery);
-  }
-}
-
-async function syncDraftModelsForPreset(presetSelect) {
-  const valueKey = presetSelect?.dataset?.presetFor;
-  if (!valueKey) return;
-  const match = findFieldByValueKey(valueKey);
-  if (!match) return;
-  const { provider, field } = match;
-  const channelId = field.channelId || "";
-  const row = presetSelect.closest("tr") || presetSelect.closest(".channel-card") || presetSelect.closest(".provider-card");
-  const modelField = providerFieldByName(provider, "model", channelId);
-  const keyField = providerFieldByName(provider, "apiKey", channelId);
-  const modelSelect = modelField ? form.elements[modelField.valueKey] : null;
-  const keyInput = keyField ? form.elements[keyField.valueKey] : null;
-  const tokenKey = `${provider.id}:${channelId || "default"}`;
-  const token = (draftModelSyncTokens.get(tokenKey) || 0) + 1;
-  draftModelSyncTokens.set(tokenKey, token);
-  if (modelField) {
-    updateModelField(row, modelField, {
-      status: "loading",
-      currentModel: modelSelect?.value || "",
-      models: [],
-      message: "正在同步当前接口方案的模型..."
-    });
-  }
-  try {
-    const data = await api("/api/admin/providers/models/preview", {
-      method: "POST",
-      body: JSON.stringify({
-        providerId: provider.id,
-        channelId,
-        apiUrl: presetSelect.value,
-        model: modelSelect?.value || "",
-        apiKey: keyInput?.value?.trim() || ""
-      })
-    });
-    if (draftModelSyncTokens.get(tokenKey) !== token) return;
-    const discovery = mergeModelPreview(provider.id, channelId, data.providers);
-    updateModelField(row, modelField, discovery);
-  } catch {
-    if (draftModelSyncTokens.get(tokenKey) !== token) return;
-    updateModelField(row, modelField, {
-      status: "error",
-      currentModel: modelSelect?.value || "",
-      models: modelSelect?.value ? [{ id: modelSelect.value, label: modelSelect.value }] : [],
-      message: "模型同步失败，请检查接口地址或 Key。"
-    });
-  }
-}
-
-function renderImageChannel(provider, channel) {
-  const config = channelConfig(provider, channel.id) || {};
-  const section = document.createElement("section");
-  section.className = "channel-card";
-  section.dataset.channelId = channel.id;
-
-  const header = document.createElement("div");
-  header.className = "channel-header";
-  const titleBlock = document.createElement("div");
-  const title = document.createElement("h3");
-  title.textContent = channel.title;
-  const description = document.createElement("p");
-  description.textContent = channel.description;
-  titleBlock.append(title, description);
-
-  const segment = document.createElement("span");
-  segment.className = "channel-segment";
-  segment.textContent = channel.segmentId;
-  header.append(titleBlock, segment);
-
-  const fields = document.createElement("div");
-  fields.className = "field-list channel-fields";
-  for (const field of provider.fields.filter((item) => item.channelId === channel.id)) {
-    fields.append(renderField(provider, field));
-  }
-
-  const state = document.createElement("div");
-  state.className = "channel-state";
-  state.dataset.configured = String(Boolean(config.configured));
-  state.textContent = config.configured ? "通道已配置" : "通道缺少密钥";
-
-  section.append(header, fields, state);
-  return section;
-}
-
-function renderProvider(provider) {
+function renderProviderNameCell(provider, channel) {
   const text = providerText(provider);
-  const card = document.createElement("section");
-  card.className = "provider-card";
+  const cell = document.createElement("td");
+  cell.className = "provider-name-cell";
+  const title = document.createElement("strong");
+  title.textContent = channel ? channel.title : text.title;
+  const meta = document.createElement("span");
+  meta.textContent = channel ? `${provider.provider} / ${channel.segmentId}` : provider.provider;
+  cell.append(title, meta);
+  return cell;
+}
 
-  const header = document.createElement("div");
-  header.className = "card-header";
-  const titleRow = document.createElement("div");
-  titleRow.className = "card-title-row";
-  const title = document.createElement("h2");
-  title.textContent = text.title;
+function renderRoleCell(provider, channel) {
+  const text = providerText(provider);
+  const cell = document.createElement("td");
+  cell.className = "provider-role-cell";
+  const role = document.createElement("span");
+  role.textContent = channel ? channel.description : text.role;
+  const channelText = document.createElement("small");
+  channelText.textContent = text.channel;
+  cell.append(role, channelText);
+  return cell;
+}
+
+function renderStatusCell(provider, channel, modelField) {
+  const config = rowConfig(provider, channel);
+  const model = rowModelState(provider, modelField);
+  const cell = document.createElement("td");
+  cell.className = "provider-status-cell";
+
   const badge = document.createElement("span");
   badge.className = "badge";
-  badge.dataset.configured = String(provider.config.configured);
-  badge.textContent = provider.id === "image" && provider.config.channels?.length
-    ? `${provider.config.configuredChannels || 0}/${provider.config.requiredChannels || 2} 通道已配置`
-    : provider.config.configured ? "已配置" : "缺少密钥";
-  titleRow.append(title, badge);
+  badge.dataset.configured = String(Boolean(config.configured));
+  badge.textContent = config.configured ? "已配置" : "缺少密钥";
 
-  const meta = document.createElement("div");
-  meta.className = "meta";
-  for (const line of [
-    `供应商：${provider.provider}`,
-    `用途：${text.role}`,
-    `通道：${text.channel}`
-  ]) {
-    const item = document.createElement("span");
-    item.textContent = line;
-    meta.append(item);
+  const modelBadge = document.createElement("small");
+  modelBadge.className = "model-status";
+  modelBadge.dataset.status = model.status;
+  modelBadge.textContent = `模型：${model.message}`;
+  cell.append(badge, modelBadge);
+  return cell;
+}
+
+function renderOperationCell(keyField) {
+  const cell = document.createElement("td");
+  cell.className = "provider-operation-cell";
+  const hint = document.createElement("span");
+  hint.textContent = keyField?.clearable ? "留空保持密钥，勾选清除后保存生效" : "保存后生效";
+  const saveHint = document.createElement("small");
+  saveHint.textContent = "统一点击底部保存配置";
+  cell.append(hint, saveHint);
+  return cell;
+}
+
+function renderProviderRow(provider, channel = null) {
+  const channelId = channel?.id || "";
+  const urlField = fieldByName(provider, "apiUrl", channelId);
+  const modelField = fieldByName(provider, "model", channelId);
+  const keyField = fieldByName(provider, "apiKey", channelId);
+  const row = document.createElement("tr");
+  row.dataset.providerId = provider.id;
+  if (channelId) row.dataset.channelId = channelId;
+
+  row.append(renderProviderNameCell(provider, channel));
+  for (const field of [urlField, modelField, keyField]) {
+    const cell = document.createElement("td");
+    cell.className = "provider-control-cell";
+    if (field) cell.append(tableField(provider, field));
+    row.append(cell);
   }
-  header.append(titleRow, meta);
+  row.append(renderRoleCell(provider, channel));
+  row.append(renderStatusCell(provider, channel, modelField));
+  row.append(renderOperationCell(keyField));
+  return row;
+}
 
+function providerRows(provider) {
   if (provider.id === "image" && provider.channels?.length) {
-    card.classList.add("provider-card-wide");
-    const channels = document.createElement("div");
-    channels.className = "channel-list";
-    for (const channel of provider.channels) channels.append(renderImageChannel(provider, channel));
-    card.append(header, channels);
-  } else {
-    const fields = document.createElement("div");
-    fields.className = "field-list";
-    for (const field of provider.fields) fields.append(renderField(provider, field));
-    card.append(header, fields);
+    return provider.channels.map((channel) => renderProviderRow(provider, channel));
   }
-  return card;
+  return [renderProviderRow(provider)];
+}
+
+function renderProviderTable() {
+  const table = document.createElement("table");
+  table.className = "provider-table";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>名称</th>
+        <th>接口地址</th>
+        <th>模型</th>
+        <th>API 密钥</th>
+        <th>分组 / 用途</th>
+        <th>状态</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+  `;
+  const body = document.createElement("tbody");
+  body.append(...currentSchema.providers.flatMap(providerRows));
+  table.append(body);
+  return table;
 }
 
 function renderProviders() {
   if (!currentSchema) return;
-  providerGrid.replaceChildren(...currentSchema.providers.map(renderProvider));
+  providerGrid.replaceChildren(renderProviderTable());
 }
 
 function render(data) {
@@ -630,6 +663,18 @@ form.addEventListener("input", () => {
   setSaveState("有尚未保存的修改。");
 });
 
+form.addEventListener("click", (event) => {
+  const toggle = event.target.closest("[data-secret-toggle-for]");
+  if (!toggle) return;
+  const input = form.elements[toggle.dataset.secretToggleFor];
+  if (!input) return;
+  const visible = input.type === "text";
+  input.type = visible ? "password" : "text";
+  toggle.classList.toggle("active", !visible);
+  toggle.setAttribute("aria-label", visible ? "显示 API 密钥" : "隐藏 API 密钥");
+  toggle.innerHTML = secretToggleSvg(!visible);
+});
+
 form.addEventListener("change", (event) => {
   const preset = event.target.closest("[data-preset-for]");
   if (preset) {
@@ -637,9 +682,18 @@ form.addEventListener("change", (event) => {
     if (target && preset.value) {
       target.value = preset.value;
       syncPresetSelection(preset);
-      syncDraftModelsForPreset(preset);
       dirty = true;
       setSaveState("已切换接口地址，保存后生效。");
+    }
+    return;
+  }
+
+  const urlInput = event.target.closest('[data-field-type="url"]');
+  if (urlInput) {
+    const match = findFieldByValueKey(urlInput.name);
+    const row = urlInput.closest("tr");
+    if (match && row && urlInput.value.trim()) {
+      loadModelPreview(match.provider, match.field, urlInput.value.trim(), row);
     }
     return;
   }
@@ -658,11 +712,17 @@ form.addEventListener("submit", async (event) => {
   if (!currentSchema) return;
   setSaveState("正在保存...");
   try {
+    const hasVideoChange = Boolean(
+      form.elements.videoApiUrl?.value.trim()
+      || form.elements.videoModel?.value.trim()
+      || form.elements.videoApiKey?.value.trim()
+      || form.elements.videoApiKey__clear?.checked
+    );
     await api("/api/admin/providers", {
       method: "PUT",
       body: JSON.stringify(payloadFromForm())
     });
-    setSaveState("配置已保存，正在重新同步...", "ok");
+    setSaveState(hasVideoChange ? "视频生成已配置，正在重新同步..." : "配置已保存，正在重新同步...", "ok");
     dirty = false;
     await loadProviders({ force: true });
   } catch {
@@ -680,17 +740,6 @@ refreshModelsButton.addEventListener("click", () => {
     return;
   }
   loadModels({ refresh: true });
-});
-form.addEventListener("click", (event) => {
-  const toggle = event.target.closest("[data-secret-toggle-for]");
-  if (!toggle) return;
-  const input = form.elements[toggle.dataset.secretToggleFor];
-  if (!input) return;
-  const visible = input.type === "text";
-  input.type = visible ? "password" : "text";
-  toggle.classList.toggle("active", !visible);
-  toggle.setAttribute("aria-label", visible ? "显示 API 密钥" : "隐藏 API 密钥");
-  toggle.innerHTML = secretToggleSvg(!visible);
 });
 window.addEventListener("focus", () => loadProviders());
 setInterval(() => loadProviders(), 30000);

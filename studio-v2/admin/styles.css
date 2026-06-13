@@ -129,6 +129,19 @@ button:disabled { cursor: wait; opacity: .62; }
   border: 1px solid #cbd5c5;
   border-radius: 6px;
 }
+.field .preset-select {
+  color: #213019;
+  background: #f2f7ea;
+  border-color: #b9d794;
+}
+.preset-hint {
+  display: block;
+  padding: 8px 10px;
+  color: #516146 !important;
+  background: #eef6e6;
+  border: 1px solid #d4e8c4;
+  border-radius: 6px;
+}
 .field input:focus,
 .field select:focus {
   outline: 0;

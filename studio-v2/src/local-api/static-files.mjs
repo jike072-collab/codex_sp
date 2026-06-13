@@ -15,7 +15,9 @@ const contentTypes = {
   ".svg": "image/svg+xml"
 };
 
-export async function serveFile(response, root, relativePath) {
+export async function serveFile(response, root, relativePath, {
+  cacheControl = ""
+} = {}) {
   const resolvedRoot = resolve(root);
   const target = resolve(join(resolvedRoot, relativePath));
   const pathFromRoot = relative(resolvedRoot, target);
@@ -24,10 +26,12 @@ export async function serveFile(response, root, relativePath) {
   }
   try {
     const bytes = await readFile(target);
-    response.writeHead(200, {
+    const headers = {
       "Content-Type": contentTypes[extname(target).toLowerCase()] || "application/octet-stream",
       "Content-Length": bytes.length
-    });
+    };
+    if (cacheControl) headers["Cache-Control"] = cacheControl;
+    response.writeHead(200, headers);
     response.end(bytes);
   } catch (error) {
     if (error.code === "ENOENT") return sendText(response, 404, "Not found");
