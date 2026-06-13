@@ -173,7 +173,19 @@ test("provider model discovery supports Sub2API OpenAI-compatible vision endpoin
         if (String(url) === "http://127.0.0.1:8080/v1/models") {
           assert.equal(options.headers.Authorization, "Bearer sub2api-client-key");
           assert.equal("x-goog-api-key" in options.headers, false);
-          return jsonResponse({ data: [{ id: "gpt-4o" }, { id: "gemini-2.5-flash" }] });
+          return jsonResponse({
+            data: [
+              { id: "gemini-2.0-flash" },
+              { id: "gemini-2.5-flash" },
+              { id: "gemini-2.5-flash-image" },
+              { id: "gemini-2.5-pro" },
+              { id: "gemini-3-flash-preview" },
+              { id: "gemini-3-pro-preview" },
+              { id: "gemini-3.1-flash-image" },
+              { id: "gemini-3.1-pro-preview" },
+              { id: "gemini-3.5-flash" }
+            ]
+          });
         }
         if (String(url).includes("text.example.test/models")) {
           return jsonResponse({ data: [{ id: "deepseek-v4-pro" }] });
@@ -192,7 +204,14 @@ test("provider model discovery supports Sub2API OpenAI-compatible vision endpoin
     });
 
     assert.equal(result.providers.vision.status, "ok");
-    assert.ok(result.providers.vision.models.some((model) => model.id === "gemini-2.5-flash"));
+    assert.deepEqual(result.providers.vision.models.map((model) => model.id), [
+      "gpt-4o",
+      "gemini-2.5-flash",
+      "gemini-2.5-pro",
+      "gemini-3-flash-preview",
+      "gemini-3-pro-preview",
+      "gemini-3.1-pro-preview"
+    ]);
   });
 });
 
