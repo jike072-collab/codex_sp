@@ -566,6 +566,17 @@ refreshModelsButton.addEventListener("click", () => {
   }
   loadModels({ refresh: true });
 });
+form.addEventListener("click", (event) => {
+  const toggle = event.target.closest("[data-secret-toggle-for]");
+  if (!toggle) return;
+  const input = form.elements[toggle.dataset.secretToggleFor];
+  if (!input) return;
+  const visible = input.type === "text";
+  input.type = visible ? "password" : "text";
+  toggle.classList.toggle("active", !visible);
+  toggle.setAttribute("aria-label", visible ? "显示 API 密钥" : "隐藏 API 密钥");
+  toggle.textContent = visible ? "👁" : "🙈";
+});
 window.addEventListener("focus", () => loadProviders());
 setInterval(() => loadProviders(), 30000);
 
