@@ -298,9 +298,138 @@ function renderProvider(provider) {
   return card;
 }
 
+function fieldByName(provider, name, channelId = "") {
+  return provider.fields.find((field) => field.name === name && (channelId ? field.channelId === channelId : !field.channelId));
+}
+
+function tableField(provider, field) {
+  const wrapper = renderField(provider, field);
+  wrapper.classList.add("table-field");
+  const label = wrapper.querySelector(":scope > label");
+  if (label) label.classList.add("sr-only");
+  return wrapper;
+}
+
+function rowConfig(provider, channel) {
+  return channel ? channelConfig(provider, channel.id) || {} : provider.config || {};
+}
+
+function rowModelState(provider, field) {
+  const state = modelState(provider, field || {});
+  return {
+    status: state.status || "error",
+    message: state.message || MODEL_STATUS_TEXT[state.status] || "读取失败"
+  };
+}
+
+function renderProviderNameCell(provider, channel) {
+  const text = providerText(provider);
+  const cell = document.createElement("td");
+  cell.className = "provider-name-cell";
+  const title = document.createElement("strong");
+  title.textContent = channel ? channel.title : text.title;
+  const meta = document.createElement("span");
+  meta.textContent = channel ? `${provider.provider} / ${channel.segmentId}` : provider.provider;
+  cell.append(title, meta);
+  return cell;
+}
+
+function renderRoleCell(provider, channel) {
+  const text = providerText(provider);
+  const cell = document.createElement("td");
+  cell.className = "provider-role-cell";
+  const role = document.createElement("span");
+  role.textContent = channel ? channel.description : text.role;
+  const channelText = document.createElement("small");
+  channelText.textContent = text.channel;
+  cell.append(role, channelText);
+  return cell;
+}
+
+function renderStatusCell(provider, channel, modelField) {
+  const config = rowConfig(provider, channel);
+  const model = rowModelState(provider, modelField);
+  const cell = document.createElement("td");
+  cell.className = "provider-status-cell";
+
+  const badge = document.createElement("span");
+  badge.className = "badge";
+  badge.dataset.configured = String(Boolean(config.configured));
+  badge.textContent = config.configured ? "活跃" : "缺少密钥";
+
+  const modelBadge = document.createElement("small");
+  modelBadge.className = "model-status";
+  modelBadge.dataset.status = model.status;
+  modelBadge.textContent = `模型：${model.message}`;
+  cell.append(badge, modelBadge);
+  return cell;
+}
+
+function renderOperationCell(keyField) {
+  const cell = document.createElement("td");
+  cell.className = "provider-operation-cell";
+  const hint = document.createElement("span");
+  hint.textContent = keyField?.clearable ? "留空保持密钥，勾选清除后保存生效" : "保存后生效";
+  const saveHint = document.createElement("small");
+  saveHint.textContent = "统一点击底部保存配置";
+  cell.append(hint, saveHint);
+  return cell;
+}
+
+function renderProviderRow(provider, channel = null) {
+  const channelId = channel?.id || "";
+  const urlField = fieldByName(provider, "apiUrl", channelId);
+  const modelField = fieldByName(provider, "model", channelId);
+  const keyField = fieldByName(provider, "apiKey", channelId);
+  const row = document.createElement("tr");
+  row.dataset.providerId = provider.id;
+  if (channelId) row.dataset.channelId = channelId;
+
+  row.append(renderProviderNameCell(provider, channel));
+  for (const field of [urlField, modelField, keyField]) {
+    const cell = document.createElement("td");
+    cell.className = "provider-control-cell";
+    if (field) cell.append(tableField(provider, field));
+    row.append(cell);
+  }
+  row.append(renderRoleCell(provider, channel));
+  row.append(renderStatusCell(provider, channel, modelField));
+  row.append(renderOperationCell(keyField));
+  return row;
+}
+
+function providerRows(provider) {
+  if (provider.id === "image" && provider.channels?.length) {
+    return provider.channels.map((channel) => renderProviderRow(provider, channel));
+  }
+  return [renderProviderRow(provider)];
+}
+
+function renderProviderTable() {
+  const table = document.createElement("table");
+  table.className = "provider-table";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>名称</th>
+        <th>接口地址</th>
+        <th>模型</th>
+        <th>API 密钥</th>
+        <th>分组 / 用途</th>
+        <th>状态</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+  `;
+  const body = document.createElement("tbody");
+  body.append(...currentSchema.providers.flatMap(providerRows));
+  table.append(body);
+  return table;
+}
+
 function renderProviders() {
   if (!currentSchema) return;
-  providerGrid.replaceChildren(...currentSchema.providers.map(renderProvider));
+  providerGrid.replaceChildren(renderProviderTable());
 }
 
 function render(data) {
