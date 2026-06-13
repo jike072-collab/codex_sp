@@ -94,7 +94,7 @@ Response:
 
 ```json
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "providers": [
     {
       "id": "vision",
@@ -135,7 +135,7 @@ Response:
     {
       "id": "image",
       "title": "故事板图片模型",
-      "provider": "Right Code",
+      "provider": "CodesOnline",
       "role": "img2img 故事板生成",
       "channel": "双绘图通道",
       "channels": [
@@ -180,7 +180,7 @@ Response:
             "title": "绘图通道 A",
             "segmentId": "0-10s",
             "model": "gpt-image-2",
-            "apiUrl": "https://www.right.codes/draw/v1/images/generations",
+            "apiUrl": "https://image.codesonline.dev/v1/images/edits",
             "configured": true,
             "keyPreview": "•••• 1111"
           },
@@ -189,7 +189,7 @@ Response:
             "title": "绘图通道 B",
             "segmentId": "10-20s",
             "model": "gpt-image-2",
-            "apiUrl": "https://www.right.codes/draw/v1/images/generations",
+            "apiUrl": "https://image.codesonline.dev/v1/images/edits",
             "configured": false,
             "keyPreview": ""
           }
@@ -239,11 +239,12 @@ Response:
 `keyPreview` is empty when no usable key is configured. Otherwise it is masked
 as `•••• <last4>` and never contains the full API key.
 
-Schema version 5 also returns admin-only `config.profiles` arrays for preset
+Schema version 6 also returns admin-only `config.profiles` arrays for preset
 API URL choices. Each profile contains only `{ id, value, label, configured,
 keyPreview, model }`; full keys are never returned. These profiles let the
-Admin page switch between saved preset keys/models, for example Right Code and
-Sub2API, without copying one provider key into another provider profile.
+Admin page switch between saved preset keys/models. Image channels expose
+CodesOnline as the default profile and retain Right Code Draw and Sub2API as
+separate profiles; a saved key is never copied into another profile.
 
 ## Admin Provider Model Discovery
 
@@ -347,10 +348,10 @@ Request fields are optional and independent:
   "textApiUrl": "https://api.deepseek.com/chat/completions",
   "textModel": "deepseek-v4-pro",
   "deepSeekApiKey": "official-deepseek-key",
-  "imageApiUrl": "https://www.right.codes/draw/v1/images/generations",
+  "imageApiUrl": "https://image.codesonline.dev/v1/images/edits",
   "imageModel": "gpt-image-2",
   "imageApiKey": "right-code-image-key-a",
-  "imageSecondaryApiUrl": "https://www.right.codes/draw/v1/images/generations",
+  "imageSecondaryApiUrl": "https://image.codesonline.dev/v1/images/edits",
   "imageSecondaryModel": "gpt-image-2",
   "imageSecondaryApiKey": "right-code-image-key-b",
   "videoApiUrl": "https://clmm-mall.top/v1/videos/generations",

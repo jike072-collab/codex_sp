@@ -12,21 +12,60 @@ import {
 import {
   hasUsableApiKey,
   positiveInteger,
+  postProviderFormData,
   postProviderJson,
   ProviderError
 } from "./provider-utils.mjs";
+
+const MAX_REFERENCE_IMAGES = 10;
+const MAX_REFERENCE_BYTES = 100 * 1024 * 1024;
+const IMAGE_EXTENSION_BY_MIME = Object.freeze({
+  "image/png": ".png",
+  "image/jpeg": ".jpg",
+  "image/webp": ".webp"
+});
+
+function safeReferenceFilename(asset, index, mimeType) {
+  const source = String(asset.name || asset.storedName || `reference-${index + 1}`);
+  const stem = source
+    .replace(/\.[^.]+$/, "")
+    .replace(/[^a-z0-9._-]+/gi, "-")
+    .replace(/^[.-]+|[.-]+$/g, "")
+    .slice(0, 80) || `reference-${index + 1}`;
+  return `${stem}${IMAGE_EXTENSION_BY_MIME[mimeType]}`;
+}
 
 async function referenceImages(
   project,
   { readFileImpl = readFile, uploadsRootPath = uploadsRoot } = {}
 ) {
-  return Promise.all((project.assets || []).map(async (asset) => {
+  const assets = project.assets || [];
+  if (assets.length > MAX_REFERENCE_IMAGES) {
+    throw new ProviderError(`图片生成供应商最多支持 ${MAX_REFERENCE_IMAGES} 张参考图。`, {
+      code: "IMAGE_REFERENCE_LIMIT"
+    });
+  }
+  const images = await Promise.all(assets.map(async (asset, index) => {
     const bytes = await readFileImpl(join(uploadsRootPath, project.id, asset.storedName));
+    const mimeType = detectedImageType(bytes, asset.mimeType);
+    if (!mimeType) {
+      throw new ProviderError("参考图必须是 PNG、JPEG 或 WebP 格式。", {
+        code: "IMAGE_REFERENCE_INVALID"
+      });
+    }
     return {
-      base64: bytes.toString("base64"),
-      byteLength: bytes.length
+      bytes,
+      byteLength: bytes.length,
+      mimeType,
+      fileName: safeReferenceFilename(asset, index, mimeType)
     };
   }));
+  if (referenceTotalBytes(images) > MAX_REFERENCE_BYTES) {
+    throw new ProviderError("图片生成供应商的参考图总大小不能超过 100MB。", {
+      code: "IMAGE_REFERENCE_LIMIT"
+    });
+  }
+  return images;
 }
 
 function sizeFor(item, env) {
@@ -57,6 +96,18 @@ function safeEndpointMeta(apiUrl) {
   }
 }
 
+function usesMultipartImageEdits(apiUrl) {
+  try {
+    return /\/images\/edits\/?$/i.test(new URL(apiUrl).pathname);
+  } catch {
+    return false;
+  }
+}
+
+function generatedImageProvider(apiUrl) {
+  return usesMultipartImageEdits(apiUrl) ? "codesonline" : "image_provider";
+}
+
 async function requestGeneratedImage({
   channel,
   timeoutMs,
@@ -66,21 +117,49 @@ async function requestGeneratedImage({
   env
 }) {
   const prompt = `${item.prompt}\nAvoid: ${item.negative_prompt}`;
-  return postProviderJson({
+  if (!usesMultipartImageEdits(channel.apiUrl)) {
+    return postProviderJson({
+      url: channel.apiUrl,
+      apiKey: channel.apiKey,
+      timeoutMs,
+      providerLabel: `图片生成供应商（${channel.title}）`,
+      errorCode: "IMAGE_PROVIDER_ERROR",
+      includeProviderDetail: false,
+      fetchImpl,
+      body: {
+        model: channel.model,
+        prompt,
+        image: images.map((image) => image.bytes.toString("base64")),
+        size: sizeFor(item, env),
+        response_format: "url"
+      }
+    });
+  }
+
+  const form = new FormData();
+  form.append("model", channel.model);
+  form.append("prompt", prompt);
+  images.forEach((image, index) => {
+    form.append(
+      index === 0 ? "image" : "image[]",
+      new Blob([image.bytes], { type: image.mimeType }),
+      image.fileName
+    );
+  });
+  form.append("n", "1");
+  form.append("size", sizeFor(item, env));
+  form.append("quality", "high");
+  form.append("response_format", "url");
+
+  return postProviderFormData({
     url: channel.apiUrl,
     apiKey: channel.apiKey,
     timeoutMs,
-    providerLabel: `Right Code 图片模型（${channel.title}）`,
+    providerLabel: `图片生成供应商（${channel.title}）`,
     errorCode: "IMAGE_PROVIDER_ERROR",
     includeProviderDetail: false,
     fetchImpl,
-    body: {
-      model: channel.model,
-      prompt,
-      image: images.map((image) => image.base64),
-      size: sizeFor(item, env),
-      response_format: "url"
-    }
+    body: form
   });
 }
 
@@ -274,7 +353,7 @@ async function generateStoryboardItem({
 
     const result = imageResult(payload);
     if (!result) {
-      throw new ProviderError("Right Code 图片模型返回了不可识别的图片结果。", {
+      throw new ProviderError("图片生成供应商返回了不可识别的图片结果。", {
         code: "IMAGE_PROVIDER_INVALID_OUTPUT",
         providerStatus: 200,
         possiblyBilled: true
@@ -287,7 +366,7 @@ async function generateStoryboardItem({
       timeoutMs
     });
     item.generated_image = {
-      provider: "right_codes",
+      provider: generatedImageProvider(channel.apiUrl),
       model: channel.model,
       ...stored,
       ...(result.url && !result.url.startsWith("data:") ? { sourceUrl: result.url } : {}),
@@ -298,7 +377,7 @@ async function generateStoryboardItem({
   } catch (error) {
     const providerError = error instanceof ProviderError
       ? error
-      : new ProviderError(`Right Code 图片已生成，但保存到本地失败：${error.message}`, {
+      : new ProviderError(`供应商图片可能已生成，但保存到本地失败：${error.message}`, {
         code: "IMAGE_PROVIDER_DOWNLOAD_ERROR",
         providerStatus: 200,
         possiblyBilled: true,
@@ -324,7 +403,7 @@ export async function generateProjectVisuals(
   generateVisualPackage(project, generatedAt);
 
   const env = await loadEnv();
-  const provider = String(env.IMAGE_MODEL_PROVIDER || "right_codes").trim().toLowerCase();
+  const provider = String(env.IMAGE_MODEL_PROVIDER || "codesonline").trim().toLowerCase();
   if (provider === "manual") {
     throw new ProviderError("故事板必须使用已配置的双绘图通道生成，请先配置图片模型。", {
       code: "IMAGE_PROVIDER_NOT_CONFIGURED"

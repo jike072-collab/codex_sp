@@ -216,6 +216,36 @@ test("provider model preview does not reuse another preset key", async () => {
   });
 });
 
+test("CodesOnline image model preview derives the v1 models endpoint", async () => {
+  await withProviderEnv({
+    IMAGE_MODEL_API_KEY: "codesonline-key",
+    IMAGE_API_URL: "https://image.codesonline.dev/v1/images/edits",
+    IMAGE_MODEL: "gpt-image-2"
+  }, async () => {
+    const result = await discoverAdminProviderModelPreview({
+      providerId: "image",
+      channelId: "primary",
+      apiUrl: "https://image.codesonline.dev/v1/images/edits",
+      model: "gpt-image-2",
+      apiKey: "codesonline-key"
+    }, {
+      fetchImpl: async (url, options) => {
+        assert.equal(String(url), "https://image.codesonline.dev/v1/models");
+        assert.equal(options.headers.Authorization, "Bearer codesonline-key");
+        return jsonResponse({
+          data: [{ id: "gpt-image-2" }, { id: "gpt-image-3" }]
+        });
+      }
+    });
+
+    assert.equal(result.providers.image.status, "ok");
+    assert.deepEqual(
+      result.providers.image.channels[0].models.map((model) => model.id),
+      ["gpt-image-2", "gpt-image-3"]
+    );
+  });
+});
+
 test("provider model discovery degrades safely for unsupported and error responses", async () => {
   await withProviderEnv({
     VISION_MODEL_API_KEY: "vision-key",

@@ -1,10 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import http from "node:http";
 
 import { analyzeProject } from "../src/ai-providers/vision-provider.mjs";
 import { generateProjectScript } from "../src/ai-providers/text-provider.mjs";
 import { generateProjectVisuals } from "../src/ai-providers/image-provider.mjs";
-import { postProviderJson } from "../src/ai-providers/provider-utils.mjs";
+import {
+  postProviderFormData,
+  postProviderJson
+} from "../src/ai-providers/provider-utils.mjs";
 import {
   generateDemoPlanningPackage,
   generateProjectDemoScript
@@ -117,14 +121,41 @@ function reviewedProject() {
 
 function dualImageEnv(overrides = {}) {
   return {
-    IMAGE_MODEL_API_KEY: "test-right-code-key-1111",
-    IMAGE_API_URL: "https://example.test/draw-a/v1/images/generations",
+    IMAGE_MODEL_API_KEY: "test-codesonline-key-1111",
+    IMAGE_API_URL: "https://image-a.example.test/v1/images/edits",
     IMAGE_MODEL: "gpt-image-2",
-    IMAGE_SECONDARY_API_KEY: "test-right-code-key-2222",
-    IMAGE_SECONDARY_API_URL: "https://example.test/draw-b/v1/images/generations",
+    IMAGE_SECONDARY_API_KEY: "test-codesonline-key-2222",
+    IMAGE_SECONDARY_API_URL: "https://image-b.example.test/v1/images/edits",
     IMAGE_SECONDARY_MODEL: "gpt-image-2",
-    IMAGE_MODEL_PROVIDER: "right_codes",
+    IMAGE_MODEL_PROVIDER: "codesonline",
     ...overrides
+  };
+}
+
+async function inspectImageFormRequest(url, options) {
+  assert.equal(options.body instanceof FormData, true);
+  assert.equal(options.headers["Content-Type"], undefined);
+  assert.equal(options.headers["content-type"], undefined);
+  const form = options.body;
+  const references = [form.get("image"), ...form.getAll("image[]")];
+  return {
+    url,
+    authorization: options.headers.Authorization,
+    body: {
+      model: form.get("model"),
+      prompt: form.get("prompt"),
+      n: form.get("n"),
+      size: form.get("size"),
+      quality: form.get("quality"),
+      response_format: form.get("response_format"),
+      primaryReferenceCount: form.getAll("image").length,
+      additionalReferenceCount: form.getAll("image[]").length,
+      references: await Promise.all(references.map(async (reference) => ({
+        name: reference.name,
+        type: reference.type,
+        bytes: Buffer.from(await reference.arrayBuffer())
+      })))
+    }
   };
 }
 
@@ -256,6 +287,48 @@ test("provider HTTP 524 is classified as a possibly billed timeout", async () =>
   );
 });
 
+test("multipart provider requests let fetch add the boundary content type", async () => {
+  let receivedContentType = "";
+  let receivedBody = "";
+  const server = http.createServer((request, response) => {
+    receivedContentType = request.headers["content-type"] || "";
+    request.setEncoding("latin1");
+    request.on("data", (chunk) => {
+      receivedBody += chunk;
+    });
+    request.on("end", () => {
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(JSON.stringify({ data: [{ url: "https://images.test/one.png" }] }));
+    });
+  });
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+
+  try {
+    const address = server.address();
+    const form = new FormData();
+    form.append("model", "gpt-image-2");
+    form.append("prompt", "safe test prompt");
+    form.append("image", new Blob([Buffer.from("reference")], { type: "image/png" }), "shoe.png");
+    await postProviderFormData({
+      url: `http://127.0.0.1:${address.port}/v1/images/edits`,
+      apiKey: "test-key",
+      body: form,
+      timeoutMs: 1000,
+      providerLabel: "图片生成供应商",
+      errorCode: "IMAGE_PROVIDER_ERROR"
+    });
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+
+  assert.match(receivedContentType, /^multipart\/form-data;\s*boundary=/i);
+  assert.match(receivedBody, /name="image"; filename="shoe\.png"/);
+  assert.doesNotMatch(receivedContentType, /application\/json/i);
+});
+
 test("provider excessive system load is classified as retryable overload", async () => {
   await assert.rejects(
     postProviderJson({
@@ -338,14 +411,15 @@ test("DeepSeek adapter requests JSON and validates the generated 20-second scrip
   });
 });
 
-test("Right Code image adapter generates two referenced storyboard requests", async () => {
+test("CodesOnline image adapter sends two concurrent multipart storyboard requests", async () => {
   await withProviderEnv(dualImageEnv(), async () => {
     const project = reviewedProject();
     project.marketBrief.outputAspectRatio = "4:5";
-    project.assets = [{
-      storedName: "shoe.png",
-      mimeType: "image/png"
-    }];
+    project.assets = [
+      { name: "../Shoe Front.PNG", storedName: "shoe-front.png", mimeType: "image/png" },
+      { name: "side shot.jpeg", storedName: "shoe-side.jpg", mimeType: "image/jpeg" },
+      { name: "heel.webp", storedName: "shoe-heel.webp", mimeType: "image/webp" }
+    ];
     generateProjectDemoScript(project, "2026-06-06T01:00:00.000Z");
     confirmPlanningPackage(
       project,
@@ -357,20 +431,20 @@ test("Right Code image adapter generates two referenced storyboard requests", as
     let storedImages = 0;
     let activeRequests = 0;
     let maxActiveRequests = 0;
-    const referenceBytes = Buffer.from("synthetic-shoe-reference");
+    const referenceBytes = new Map([
+      ["shoe-front.png", Buffer.from("synthetic-png-reference")],
+      ["shoe-side.jpg", Buffer.from("synthetic-jpeg-reference")],
+      ["shoe-heel.webp", Buffer.from("synthetic-webp-reference")]
+    ]);
     await generateProjectVisuals(project, "2026-06-06T01:20:00.000Z", {
       uploadsRootPath: "C:\\synthetic-uploads",
       readFileImpl: async (path) => {
-        assert.match(path, /provider-project[\\/]shoe\.png$/);
-        return referenceBytes;
+        const storedName = path.split(/[\\/]/).at(-1);
+        assert.equal(referenceBytes.has(storedName), true);
+        return referenceBytes.get(storedName);
       },
       fetchImpl: async (url, options) => {
-        assert.equal(options.headers["Content-Type"], "application/json");
-        requests.push({
-          url,
-          authorization: options.headers.Authorization,
-          body: JSON.parse(options.body)
-        });
+        requests.push(await inspectImageFormRequest(url, options));
         const requestNumber = requests.length;
         activeRequests += 1;
         maxActiveRequests = Math.max(maxActiveRequests, activeRequests);
@@ -398,17 +472,32 @@ test("Right Code image adapter generates two referenced storyboard requests", as
     const secondSegmentRequest = requests.find((request) => /ONLY the 10-20s shoe ad segment/.test(request.body.prompt));
     assert.ok(firstSegmentRequest);
     assert.ok(secondSegmentRequest);
-    assert.equal(firstSegmentRequest.url, "https://example.test/draw-a/v1/images/generations");
-    assert.equal(secondSegmentRequest.url, "https://example.test/draw-b/v1/images/generations");
-    assert.equal(firstSegmentRequest.authorization, "Bearer test-right-code-key-1111");
-    assert.equal(secondSegmentRequest.authorization, "Bearer test-right-code-key-2222");
+    assert.equal(firstSegmentRequest.url, "https://image-a.example.test/v1/images/edits");
+    assert.equal(secondSegmentRequest.url, "https://image-b.example.test/v1/images/edits");
+    assert.equal(firstSegmentRequest.authorization, "Bearer test-codesonline-key-1111");
+    assert.equal(secondSegmentRequest.authorization, "Bearer test-codesonline-key-2222");
     assert.equal(firstSegmentRequest.body.model, "gpt-image-2");
     assert.equal(secondSegmentRequest.body.model, "gpt-image-2");
     assert.equal(typeof firstSegmentRequest.body.prompt, "string");
-    assert.deepEqual(firstSegmentRequest.body.image, [referenceBytes.toString("base64")]);
-    assert.equal(firstSegmentRequest.body.image[0].startsWith("data:image/"), false);
+    assert.deepEqual(
+      firstSegmentRequest.body.references.map(({ name, type }) => ({ name, type })),
+      [
+        { name: "Shoe-Front.png", type: "image/png" },
+        { name: "side-shot.jpg", type: "image/jpeg" },
+        { name: "heel.webp", type: "image/webp" }
+      ]
+    );
+    assert.deepEqual(
+      firstSegmentRequest.body.references.map(({ bytes }) => bytes),
+      [...referenceBytes.values()]
+    );
+    assert.equal(firstSegmentRequest.body.primaryReferenceCount, 1);
+    assert.equal(firstSegmentRequest.body.additionalReferenceCount, 2);
+    assert.equal(firstSegmentRequest.body.n, "1");
+    assert.equal(secondSegmentRequest.body.n, "1");
     assert.equal(firstSegmentRequest.body.size, "1536x1024");
     assert.equal(secondSegmentRequest.body.size, "1536x1024");
+    assert.equal(firstSegmentRequest.body.quality, "high");
     assert.match(firstSegmentRequest.body.prompt, /internal shot thumbnail\/panel must be composed as a 4:5 video frame/);
     assert.doesNotMatch(firstSegmentRequest.body.prompt, /Create one 4:5 commercial storyboard board/);
     assert.equal(firstSegmentRequest.body.response_format, "url");
@@ -424,7 +513,100 @@ test("Right Code image adapter generates two referenced storyboard requests", as
   });
 });
 
-test("Right Code image adapter starts both missing storyboard requests before either response resolves", async () => {
+test("single-video CodesOnline generation uses channel A once and ignores extra data results", async () => {
+  await withProviderEnv(dualImageEnv(), async () => {
+    const project = reviewedProject();
+    project.workflowMode = "single_video";
+    project.marketBrief.videoDurationSeconds = 10;
+    project.assets = [{ name: "shoe.png", storedName: "shoe.png", mimeType: "image/png" }];
+    generateProjectDemoScript(project, "2026-06-06T01:00:00.000Z");
+    confirmPlanningPackage(
+      project,
+      structuredClone(project.planningPackage),
+      "2026-06-06T01:10:00.000Z"
+    );
+
+    const providerRequests = [];
+    const downloadedUrls = [];
+    await generateProjectVisuals(project, "2026-06-06T01:20:00.000Z", {
+      readFileImpl: async () => Buffer.from("synthetic-shoe-reference"),
+      fetchImpl: async (url, options) => {
+        providerRequests.push(await inspectImageFormRequest(url, options));
+        return new Response(JSON.stringify({
+          data: [
+            { url: "https://images.test/full-first.png" },
+            { url: "https://images.test/must-be-ignored.png" }
+          ]
+        }), { status: 200 });
+      },
+      downloadFetchImpl: async (url) => {
+        downloadedUrls.push(url);
+        return new Response(tinyPngBytes, {
+          status: 200,
+          headers: { "Content-Type": "image/png" }
+        });
+      },
+      storeGeneratedImageImpl: async (projectId, bytes, mimeType) => ({
+        url: `/uploads/${projectId}/full.png`,
+        storedName: "full.png",
+        mimeType,
+        size: bytes.length
+      })
+    });
+
+    assert.equal(providerRequests.length, 1);
+    assert.equal(providerRequests[0].url, "https://image-a.example.test/v1/images/edits");
+    assert.equal(providerRequests[0].authorization, "Bearer test-codesonline-key-1111");
+    assert.equal(providerRequests[0].body.n, "1");
+    assert.deepEqual(downloadedUrls, ["https://images.test/full-first.png"]);
+    assert.equal(project.imagePackage.image_generation.length, 1);
+    assert.equal(project.imagePackage.image_generation[0].segment_id, "full");
+    assert.equal(project.imagePackage.image_generation[0].generated_image.provider, "codesonline");
+  });
+});
+
+test("legacy image profiles keep their existing JSON transport", async () => {
+  await withProviderEnv(dualImageEnv({
+    IMAGE_API_URL: "https://legacy-image.example.test/v1/images/generations"
+  }), async () => {
+    const project = reviewedProject();
+    project.workflowMode = "single_video";
+    project.marketBrief.videoDurationSeconds = 10;
+    project.assets = [{ name: "shoe.png", storedName: "shoe.png", mimeType: "image/png" }];
+    generateProjectDemoScript(project, "2026-06-06T01:00:00.000Z");
+    confirmPlanningPackage(
+      project,
+      structuredClone(project.planningPackage),
+      "2026-06-06T01:10:00.000Z"
+    );
+
+    await generateProjectVisuals(project, "2026-06-06T01:20:00.000Z", {
+      readFileImpl: async () => Buffer.from("legacy-reference"),
+      fetchImpl: async (url, options) => {
+        assert.equal(url, "https://legacy-image.example.test/v1/images/generations");
+        assert.equal(options.headers["Content-Type"], "application/json");
+        const body = JSON.parse(options.body);
+        assert.deepEqual(body.image, [Buffer.from("legacy-reference").toString("base64")]);
+        return new Response(JSON.stringify({
+          data: [{ b64_json: tinyPngBytes.toString("base64") }]
+        }), { status: 200 });
+      },
+      storeGeneratedImageImpl: async (projectId, bytes, mimeType) => ({
+        url: `/uploads/${projectId}/legacy.png`,
+        storedName: "legacy.png",
+        mimeType,
+        size: bytes.length
+      })
+    });
+
+    assert.equal(
+      project.imagePackage.image_generation[0].generated_image.provider,
+      "image_provider"
+    );
+  });
+});
+
+test("CodesOnline image adapter starts both missing storyboard requests before either response resolves", async () => {
   await withProviderEnv(dualImageEnv(), async () => {
     const project = reviewedProject();
     project.assets = [{ storedName: "shoe.png", mimeType: "image/png" }];
@@ -445,13 +627,9 @@ test("Right Code image adapter starts both missing storyboard requests before ei
       uploadsRootPath: "C:\\synthetic-uploads",
       readFileImpl: async () => Buffer.from("synthetic-shoe-reference"),
       fetchImpl: async (url, options) => {
-        const body = JSON.parse(options.body);
-        assert.equal(body.image.length, 1);
-        requests.push({
-          url,
-          authorization: options.headers.Authorization,
-          body
-        });
+        const request = await inspectImageFormRequest(url, options);
+        assert.equal(request.body.references.length, 1);
+        requests.push(request);
         const release = deferred();
         releases.push(release);
         if (requests.length === 2) {
@@ -490,13 +668,13 @@ test("Right Code image adapter starts both missing storyboard requests before ei
     );
     assert.deepEqual(
       [...new Set(requests.map((request) => request.authorization))].sort(),
-      ["Bearer test-right-code-key-1111", "Bearer test-right-code-key-2222"]
+      ["Bearer test-codesonline-key-1111", "Bearer test-codesonline-key-2222"]
     );
     assert.deepEqual(
       [...new Set(requests.map((request) => request.url))].sort(),
       [
-        "https://example.test/draw-a/v1/images/generations",
-        "https://example.test/draw-b/v1/images/generations"
+        "https://image-a.example.test/v1/images/edits",
+        "https://image-b.example.test/v1/images/edits"
       ]
     );
 
@@ -510,7 +688,7 @@ test("Right Code image adapter starts both missing storyboard requests before ei
   });
 });
 
-test("Right Code image adapter does not fall back when references are forbidden", async () => {
+test("CodesOnline image adapter does not fall back when references are forbidden", async () => {
   await withProviderEnv(dualImageEnv(), async () => {
     const project = reviewedProject();
     project.assets = [{ storedName: "shoe.png", mimeType: "image/png" }];
@@ -527,9 +705,9 @@ test("Right Code image adapter does not fall back when references are forbidden"
         uploadsRootPath: "C:\\synthetic-uploads",
         readFileImpl: async () => Buffer.from("synthetic-shoe-reference"),
         fetchImpl: async (_url, options) => {
-          const request = JSON.parse(options.body);
+          const request = await inspectImageFormRequest(_url, options);
           requests.push(request);
-          assert.equal(request.image.length, 1);
+          assert.equal(request.body.references.length, 1);
           return new Response(JSON.stringify({
             error: "API Key 不允许访问该渠道，请前往令牌管理界面修改令牌权限"
           }), { status: 403 });
@@ -550,7 +728,7 @@ test("Right Code image adapter does not fall back when references are forbidden"
   });
 });
 
-test("Right Code image adapter stores base64 image responses locally", async () => {
+test("CodesOnline image adapter stores base64 image responses locally", async () => {
   await withProviderEnv(dualImageEnv(), async () => {
     const project = reviewedProject();
     project.assets = [{ storedName: "shoe.png", mimeType: "image/png" }];
@@ -591,6 +769,42 @@ test("Right Code image adapter stores base64 image responses locally", async () 
   });
 });
 
+test("CodesOnline URL download failures preserve the explicit failure contract", async () => {
+  await withProviderEnv(dualImageEnv(), async () => {
+    const project = reviewedProject();
+    project.workflowMode = "single_video";
+    project.marketBrief.videoDurationSeconds = 10;
+    project.assets = [{ storedName: "shoe.png", mimeType: "image/png" }];
+    generateProjectDemoScript(project, "2026-06-06T01:00:00.000Z");
+    confirmPlanningPackage(
+      project,
+      structuredClone(project.planningPackage),
+      "2026-06-06T01:10:00.000Z"
+    );
+
+    await assert.rejects(
+      generateProjectVisuals(project, "2026-06-06T01:20:00.000Z", {
+        readFileImpl: async () => Buffer.from("synthetic-shoe-reference"),
+        fetchImpl: async () => new Response(JSON.stringify({
+          data: [{ url: "https://images.test/expired.png" }]
+        }), { status: 200 }),
+        downloadFetchImpl: async () => new Response("", { status: 410 })
+      }),
+      (error) => {
+        assert.equal(error.code, "IMAGE_PROVIDER_DOWNLOAD_ERROR");
+        assert.equal(error.providerStatus, 200);
+        assert.equal(error.possiblyBilled, true);
+        return true;
+      }
+    );
+    assert.equal(project.imagePackage.image_generation[0].status, "failed");
+    assert.equal(
+      project.imagePackage.image_generation[0].error.code,
+      "IMAGE_PROVIDER_DOWNLOAD_ERROR"
+    );
+  });
+});
+
 test("visual retry preserves a completed local image and only generates the missing one", async () => {
   await withProviderEnv(dualImageEnv(), async () => {
     const project = reviewedProject();
@@ -607,7 +821,7 @@ test("visual retry preserves a completed local image and only generates the miss
     const dependencies = {
       fetchImpl: async (_url, options) => {
         providerRequests += 1;
-        if (options.headers.Authorization === "Bearer test-right-code-key-2222") {
+        if (options.headers.Authorization === "Bearer test-codesonline-key-2222") {
           return new Response("", {
             status: 524,
             headers: { "x-request-id": "req-2" }
@@ -668,7 +882,7 @@ test("visual retry preserves a completed local image and only generates the miss
 
     dependencies.fetchImpl = async (_url, options) => {
       providerRequests += 1;
-      assert.equal(options.headers.Authorization, "Bearer test-right-code-key-2222");
+      assert.equal(options.headers.Authorization, "Bearer test-codesonline-key-2222");
       return new Response(JSON.stringify({
         data: [{ b64_json: tinyPngBytes.toString("base64") }]
       }), { status: 200 });

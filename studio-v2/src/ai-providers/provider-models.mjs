@@ -110,7 +110,7 @@ function modelListUrl(providerId, apiUrl) {
   }
   if (providerId === "image") {
     if (/\/models\/?$/i.test(new URL(apiUrl).pathname)) return apiUrl;
-    return replaceEndpointPath(apiUrl, /\/images\/generations\/?$/i, "/models");
+    return replaceEndpointPath(apiUrl, /\/images\/(?:generations|edits)\/?$/i, "/models");
   }
   if (providerId === "video") {
     if (/\/models\/?$/i.test(new URL(apiUrl).pathname)) return apiUrl;

@@ -8,19 +8,17 @@ import {
 } from "../ai-providers/provider-utils.mjs";
 import { DomainError } from "../workflow-domain/domain-error.mjs";
 
-export const PROVIDER_SETTINGS_SCHEMA_VERSION = 5;
+export const PROVIDER_SETTINGS_SCHEMA_VERSION = 6;
 
-const DEFAULT_IMAGE_API_URL = "https://www.right.codes/draw/v1/images/generations";
+const DEFAULT_IMAGE_API_URL = "https://image.codesonline.dev/v1/images/edits";
+const RIGHT_CODE_IMAGE_API_URL = "https://www.right.codes/draw/v1/images/generations";
 const DEFAULT_IMAGE_MODEL = "gpt-image-2";
 const DEFAULT_VIDEO_API_URL = "https://clmm-mall.top/v1/videos/generations";
 const DEFAULT_VIDEO_MODEL = "seedance2.0 720p-fast";
 const SUB2API_BASE_URL = "http://127.0.0.1:8080/v1";
 
-function urlPresets(defaultPreset, sub2apiPreset = null) {
-  return [
-    defaultPreset,
-    ...(sub2apiPreset ? [sub2apiPreset] : [])
-  ];
+function urlPresets(...presets) {
+  return presets.filter(Boolean);
 }
 
 const IMAGE_CHANNEL_SPECS = Object.freeze([
@@ -63,9 +61,15 @@ function imageChannelFields() {
       defaultValue: DEFAULT_IMAGE_API_URL,
       presets: urlPresets(
         {
+          id: "codesonline-image-edits",
+          label: "CodesOnline 图生图",
+          value: DEFAULT_IMAGE_API_URL,
+          hint: "使用 CodesOnline OpenAI-compatible multipart 图生图接口。"
+        },
+        {
           id: "right-code-draw",
           label: "Right Code Draw",
-          value: DEFAULT_IMAGE_API_URL
+          value: RIGHT_CODE_IMAGE_API_URL
         },
         {
           id: "sub2api-local-images",
@@ -197,7 +201,7 @@ const PROVIDER_DEFINITIONS = Object.freeze([
   {
     id: "image",
     title: "故事板图片模型",
-    provider: "Right Code",
+    provider: "CodesOnline",
     role: "img2img 故事板生成",
     channel: "双绘图通道",
     channels: IMAGE_CHANNEL_SPECS.map(({ id, title, description, segmentId }) => ({
@@ -369,9 +373,14 @@ function imageChannelConfig(env, spec, { includeApiKey = false } = {}) {
     envKey: spec.apiUrlEnvKey,
     presets: urlPresets(
       {
+        id: "codesonline-image-edits",
+        label: "CodesOnline 图生图",
+        value: DEFAULT_IMAGE_API_URL
+      },
+      {
         id: "right-code-draw",
         label: "Right Code Draw",
-        value: DEFAULT_IMAGE_API_URL
+        value: RIGHT_CODE_IMAGE_API_URL
       },
       {
         id: "sub2api-local-images",

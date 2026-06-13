@@ -92,7 +92,7 @@ function safeProviderRequestId(headers) {
   return undefined;
 }
 
-export async function postProviderJson({
+async function postProviderRequest({
   url,
   apiKey,
   body,
@@ -101,6 +101,7 @@ export async function postProviderJson({
   errorCode,
   includeProviderDetail = true,
   headers,
+  contentType,
   fetchImpl = fetch
 }) {
   let response;
@@ -108,10 +109,10 @@ export async function postProviderJson({
     response = await fetchImpl(url, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        ...(contentType ? { "Content-Type": contentType } : {}),
         ...(headers || { Authorization: `Bearer ${apiKey}` })
       },
-      body: JSON.stringify(body),
+      body,
       signal: AbortSignal.timeout(timeoutMs)
     });
   } catch (error) {
@@ -162,4 +163,19 @@ export async function postProviderJson({
       cause: error
     });
   }
+}
+
+export async function postProviderJson(options) {
+  return postProviderRequest({
+    ...options,
+    body: JSON.stringify(options.body),
+    contentType: "application/json"
+  });
+}
+
+export async function postProviderFormData(options) {
+  if (!(options.body instanceof FormData)) {
+    throw new TypeError("postProviderFormData body must be a FormData instance.");
+  }
+  return postProviderRequest(options);
 }

@@ -41,17 +41,26 @@ Legacy `legacy_multi_segment` projects keep the old two 10-second segments.
 ## Images
 
 - Workflow route: `POST /api/projects/:projectId/visual/generate`
-- Provider: Right Code OpenAI-compatible image endpoint
+- Default provider: CodesOnline OpenAI-compatible image edit endpoint
+- Default endpoint: `https://image.codesonline.dev/v1/images/edits`
 - Draw channel A authentication: `Authorization: Bearer <IMAGE_MODEL_API_KEY>`
 - Draw channel B authentication: `Authorization: Bearer <IMAGE_SECONDARY_API_KEY>`
-- Request fields: `model`, `prompt`, `image[]`, `size`, `response_format: "url"`
+- Request format: `multipart/form-data`; the HTTP client supplies the boundary
+- Request fields: `model`, `prompt`, `image`, optional repeated `image[]`,
+  `n: 1`, `size`, `quality: "high"`, `response_format: "url"`
 - No usable key or manual provider mode: local demo package only
 - Failure code: `IMAGE_PROVIDER_ERROR`
 
 Rules:
 
 - Real image generation is always `img2img`; no prompt-only fallback.
-- Every storyboard call must include uploaded shoe reference images.
+- Every storyboard call must include uploaded shoe reference images. The first
+  reference uses multipart field `image`; later references use `image[]`.
+- PNG, JPEG, and WebP references are uploaded with safe filenames and matching
+  MIME types. A request may contain at most 10 references and 100MB total.
+- Each storyboard item is one provider request with `n = 1`. Legacy dual mode
+  keeps separate concurrent A/B requests and never collapses them into one
+  `n = 2` request.
 - Storyboard sheet outer canvas is a delivery sheet and is not forced to match
   Step 02 video ratio.
 - Internal shot panels must follow `marketBrief.outputAspectRatio`.
@@ -59,6 +68,12 @@ Rules:
 - Legacy mode keeps two storyboard items: `0-10s` and `10-20s`.
 - Successful storyboard results are preserved; retries only regenerate missing
   items.
+- Provider `data[]` responses may contain multiple results, but the current
+  storyboard item consumes only the first result. URL results are downloaded
+  immediately and saved locally; `b64_json` remains supported.
+- CodesOnline is the default image profile. Legacy Right Code Draw and local
+  Sub2API profiles remain selectable, with independent profile keys/models and
+  their existing JSON transport.
 - Safe diagnostics may include segment id, attempt id, channel id/title,
   masked key preview, model, request size, provider host/path, reference image
   counts/bytes, and safe request-id headers.
