@@ -143,7 +143,7 @@ function wireEvents() {
 
     const previewButton = event.target.closest("[data-preview-image]");
     if (previewButton) {
-      el("imagePreviewTitle").textContent = previewButton.dataset.previewTitle || "故事板预览";
+      el("imagePreviewTitle").textContent = previewButton.dataset.previewTitle || "故事版预览";
       el("imagePreviewContent").src = previewButton.dataset.previewImage;
       el("imagePreviewDialog").showModal();
       return;

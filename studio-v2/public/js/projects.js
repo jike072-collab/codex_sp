@@ -72,7 +72,7 @@ export async function switchWorkflowMode(requestedMode) {
       const confirmed = window.confirm([
         `切换到「${workflowModeLabel(requestedMode)}」需要重置后续结果。`,
         "上传素材和产品锁定会保留。",
-        "脚本、故事板和视频会清除。",
+        "脚本、故事版和视频会清除。",
         "是否确认切换？"
       ].join("\n"));
       if (!confirmed) {
@@ -511,8 +511,8 @@ function startVisualProgress() {
     percent,
     completed: visualCompletedCount(),
     message: singleVideo
-      ? "0/1 · 正在提交一张 img2img 故事板任务..."
-      : "0/2 · 正在提交两张 img2img 故事板任务..."
+      ? "0/1 · 正在提交一张故事版任务..."
+      : "0/2 · 正在提交两张故事版任务..."
   };
   startVisualProgress.timer = window.setInterval(async () => {
     ticks += 1;
@@ -520,19 +520,19 @@ function startVisualProgress() {
     percent = Math.min(94, Math.max(percent + Math.ceil((96 - percent) / 18), completed === 1 ? 58 : 0));
     const message = singleVideo
       ? (completed === 1
-        ? "1/1 · 已保留完成图片，继续等待生成结果..."
+        ? "1/1 · 已保留完成内容，继续等待生成结果..."
         : percent < 35
-          ? "0/1 · 正在提交一张 img2img 故事板任务..."
+          ? "0/1 · 正在提交一张故事版任务..."
           : percent < 70
-            ? "0/1 · 图片供应商正在生成，请保持页面开启..."
-            : "0/1 · 正在等待供应商返回并保存本地图片...")
+            ? "0/1 · 生成通道正在处理，请保持页面开启..."
+            : "0/1 · 正在等待生成结果并保存到本机...")
       : completed === 1
-        ? "1/2 · 已保留完成图片，继续等待另一张..."
+        ? "1/2 · 已保留完成内容，继续等待另一个故事版..."
       : percent < 35
-        ? "0/2 · 正在提交两张 img2img 故事板任务..."
+        ? "0/2 · 正在提交两张故事版任务..."
         : percent < 70
-          ? "0/2 · 图片供应商正在并发生成，请保持页面开启..."
-          : "0/2 · 正在等待供应商返回并保存本地图片...";
+          ? "0/2 · 生成通道正在并发处理，请保持页面开启..."
+          : "0/2 · 正在等待生成结果并保存到本机...";
     state.workflowProgress = { active: true, stage: "visual", percent, completed, message };
     updateVisualProgressDom();
     if (ticks % 3 === 0 && !startVisualProgress.polling && state.project?.id) {
@@ -612,8 +612,8 @@ export async function confirmScriptAndGenerateVisual() {
   setWorkflowBusy(
     true,
     "confirmAndGenerateButton",
-    "正在生成故事板图片...",
-    "确认脚本并生成故事板图片"
+    "正在生成故事版...",
+    "确认脚本并生成故事版"
   );
   let scriptConfirmed = false;
   let visualStartedAt = 0;
@@ -643,10 +643,10 @@ export async function confirmScriptAndGenerateVisual() {
     state.viewStatus = "visual";
     state.visualGenerationError = hasReadyStoryboards(state.project)
       ? ""
-      : "当前没有可交付的真实故事板图片。请确认图片供应商已就绪后继续生成。";
+      : "当前没有可交付的真实故事版。请确认生成通道已就绪后继续生成。";
     renderWorkspace();
     await loadProjects();
-    showToast(hasReadyStoryboards(state.project) ? "故事板图片已生成。" : state.visualGenerationError);
+    showToast(hasReadyStoryboards(state.project) ? "故事版已生成。" : state.visualGenerationError);
   } catch (error) {
     if (scriptConfirmed) {
       stopVisualProgress();
@@ -654,7 +654,7 @@ export async function confirmScriptAndGenerateVisual() {
       state.viewStatus = "visual";
       state.visualGenerationError = error.message;
       renderWorkspace();
-      showToast(`脚本已确认，图片生成失败：${error.message}`);
+      showToast(`脚本已确认，故事版生成失败：${error.message}`);
     } else {
       showToast(error.message);
     }
@@ -662,8 +662,8 @@ export async function confirmScriptAndGenerateVisual() {
     setWorkflowBusy(
       false,
       "confirmAndGenerateButton",
-      "正在生成故事板图片...",
-      "确认脚本并生成故事板图片"
+      "正在生成故事版...",
+      "确认脚本并生成故事版"
     );
     renderWorkspace();
   }
@@ -671,7 +671,7 @@ export async function confirmScriptAndGenerateVisual() {
 
 export async function generateVisual() {
   const progressStartedAt = Date.now();
-  setWorkflowBusy(true, "generateVisualButton", "正在生成故事板图片...", "生成故事板图片");
+  setWorkflowBusy(true, "generateVisualButton", "正在生成故事版...", "生成故事版");
   try {
     state.visualGenerationError = "";
     state.viewStatus = "visual";
@@ -688,10 +688,10 @@ export async function generateVisual() {
     state.viewStatus = "visual";
     state.visualGenerationError = hasReadyStoryboards(state.project)
       ? ""
-      : "当前没有可交付的真实故事板图片。请确认图片供应商已就绪后继续生成。";
+      : "当前没有可交付的真实故事版。请确认生成通道已就绪后继续生成。";
     renderWorkspace();
     await loadProjects();
-    showToast(hasReadyStoryboards(state.project) ? "故事板图片已生成。" : state.visualGenerationError);
+    showToast(hasReadyStoryboards(state.project) ? "故事版已生成。" : state.visualGenerationError);
   } catch (error) {
     stopVisualProgress();
     await restoreVisualProject();
@@ -700,7 +700,7 @@ export async function generateVisual() {
     renderWorkspace();
     showToast(error.message);
   } finally {
-    setWorkflowBusy(false, "generateVisualButton", "正在生成故事板图片...", "生成故事板图片");
+    setWorkflowBusy(false, "generateVisualButton", "正在生成故事版...", "生成故事版");
     renderWorkspace();
   }
 }

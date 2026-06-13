@@ -42,7 +42,7 @@
         <div class="empty-story empty-quickstart">
           <p class="kicker">LOCAL STUDIO</p>
           <h1>新建广告项目</h1>
-          <p class="empty-copy">创建项目后直接进入五步工作台：上传商品素材、确认产品设定、生成脚本、生成故事板、导出计划。</p>
+          <p class="empty-copy">创建项目后直接进入五步工作台：上传商品素材、确认产品设定、生成脚本、生成故事版、生成视频。</p>
           <button class="primary-button large" id="emptyCreateButton" type="button">新建广告项目</button>
         </div>
       </section>
@@ -64,8 +64,8 @@
           <li data-step="review"><span class="stepper-badge">02</span><span class="stepper-copy"><strong>产品设定</strong><small>锁定与确认</small></span></li>
           <li class="workflow-skipped-step" data-step="market" aria-hidden="true"><span>创意确认</span></li>
           <li data-step="script"><span class="stepper-badge">03</span><span class="stepper-copy"><strong>生成脚本</strong><small>完整时长脚本</small></span></li>
-          <li data-step="visual"><span class="stepper-badge">04</span><span class="stepper-copy"><strong>生成故事板</strong><small>画面预览</small></span></li>
-          <li data-step="export"><span class="stepper-badge">05</span><span class="stepper-copy"><strong>导出计划</strong><small>视频与交付</small></span></li>
+          <li data-step="visual"><span class="stepper-badge">04</span><span class="stepper-copy"><strong>生成故事版</strong><small>画面预览</small></span></li>
+          <li data-step="export"><span class="stepper-badge">05</span><span class="stepper-copy"><strong>生成视频</strong><small>预览与下载</small></span></li>
         </ol>
 
         <div class="stage-layout">
@@ -171,7 +171,7 @@
                   <input name="shotsPerSegment" type="hidden" required>
                   <input name="videoDurationSeconds" type="hidden" required>
                   <div class="review-control-box" id="reviewControlBox"></div>
-                  <p class="aspect-ratio-note">所选比例用于故事板内部镜头画幅和生成提示，不会强制改变外层故事板整张画布的比例。</p>
+                  <p class="aspect-ratio-note">所选比例用于故事版内部镜头画幅和生成提示，不会强制改变外层整张画布的比例。</p>
                   <label class="review-message-field">
                     <span>一句话主张</span>
                     <textarea class="message-box compact-message" name="coreMessage"
@@ -331,11 +331,11 @@
     <div class="image-preview-card">
       <button class="dialog-close" id="closeImagePreviewButton" type="button" aria-label="关闭">×</button>
       <div class="image-preview-heading">
-        <strong id="imagePreviewTitle">故事板预览</strong>
+        <strong id="imagePreviewTitle">故事版预览</strong>
         <small>点击右上角关闭，图片可滚动查看</small>
       </div>
       <div class="image-preview-frame">
-        <img id="imagePreviewContent" alt="故事板预览">
+        <img id="imagePreviewContent" alt="故事版预览">
       </div>
     </div>
   </dialog>

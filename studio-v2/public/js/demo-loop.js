@@ -304,7 +304,7 @@ function renderGenerateScript(project) {
       <h2>市场创意已确认</h2>
       <p>${singleVideo
         ? `将生成一条完整 ${escapeHtml(setup.videoDurationSeconds)} 秒广告脚本，镜头数量由时长自动决定。`
-        : `将使用第二步选择的每段 ${escapeHtml(setup.shotsPerSegment)} 个镜头生成 20 秒脚本。后续会按两个 10 秒段落分别生成故事板。`}</p>
+        : `将使用第二步选择的每段 ${escapeHtml(setup.shotsPerSegment)} 个镜头生成 20 秒脚本。后续会按两个 10 秒段落分别生成故事版。`}</p>
       <div class="confirmed-card">
         <span>✓</span>
         <div>
@@ -337,8 +337,8 @@ function renderScriptEditor(project) {
         <p class="section-index">STEP 03</p>
         <h2>${singleVideo ? `${escapeHtml(duration)} 秒广告脚本` : "审核 20 秒中文脚本"}</h2>
         <p>${singleVideo
-          ? "这里显示完整中文审核稿；确认后使用原始目标语言生成一张故事板和一个视频。"
-          : "这里显示中文审核稿；确认后仍使用原始目标语言生成两张故事板与两段交付脚本。"}</p>
+          ? "这里显示完整中文审核稿；确认后使用原始目标语言生成一张故事版和一个视频。"
+          : "这里显示中文审核稿；确认后仍使用原始目标语言生成两张故事版与两段脚本。"}</p>
       </div>
       <span class="requirement">${singleVideo ? `${escapeHtml(duration)} 秒` : "20 秒"}</span>
     </div>
@@ -346,9 +346,9 @@ function renderScriptEditor(project) {
       <div class="script-action-bar">
         <button class="ghost-button" type="button" data-action="edit-market">返回第二步调整</button>
         <div class="action-cluster">
-          <p id="scriptHint">${singleVideo ? "确认后生成一张完整故事板。" : "确认后生成两个分段故事板。"}</p>
+          <p id="scriptHint">${singleVideo ? "确认后生成一张完整故事版。" : "确认后生成两个分段故事版。"}</p>
           <button class="primary-button" id="confirmAndGenerateButton" type="button"
-            data-action="confirm-and-generate-visual">确认脚本并生成故事板图片</button>
+            data-action="confirm-and-generate-visual">确认脚本并生成故事版</button>
         </div>
       </div>
       <div class="workflow-panel">
@@ -463,8 +463,8 @@ export function renderVisualStage(project = state.project) {
       <div class="section-heading compact-stage-heading">
         <div>
           <p class="section-index">STEP 04</p>
-          <h2>正在生成故事板</h2>
-          <p>${singleVideo ? "正在生成一张完整故事板，使用已上传商品图进行 img2img。" : "两张图片由后端并发执行。每张都使用已上传商品图进行 img2img，完成项会立即保留。"}</p>
+          <h2>正在生成故事版</h2>
+          <p>${singleVideo ? "正在生成一张完整故事版，使用已上传商品图保持鞋款一致。" : "两张故事版由后端并发执行，完成项会立即保留。"}</p>
         </div>
         <span class="requirement" id="visualProgressCount">${completedItems.length}/${total}</span>
       </div>
@@ -484,8 +484,8 @@ export function renderVisualStage(project = state.project) {
       <div class="section-heading">
         <div>
           <p class="section-index">STEP 04</p>
-          <h2>故事板生成未完成</h2>
-          <p>已完成 ${completedItems.length}/${total} 张。已成功的图片会保留，继续生成时只处理缺失或已失效的图片。</p>
+          <h2>故事版生成未完成</h2>
+          <p>已完成 ${completedItems.length}/${total}。已成功的内容会保留，继续生成时只处理缺失或已失效的部分。</p>
         </div>
         <span class="requirement">${completedItems.length}/${total}</span>
       </div>
@@ -495,11 +495,11 @@ export function renderVisualStage(project = state.project) {
       <div class="visual-error-card">
         <p class="error-message">${escapeHtml(failure?.message || state.visualGenerationError || (needsRealImages
           ? singleVideo
-            ? "当前项目还没有可交付的真实故事板图片。请确认图片供应商已就绪后继续生成。"
-            : "当前项目还没有两张可交付的真实故事板图片。请确认图片供应商已就绪后继续生成。"
-          : "图片生成失败。"))}</p>
+            ? "当前项目还没有可交付的真实故事版。请确认生成通道已就绪后继续生成。"
+            : "当前项目还没有两张可交付的真实故事版。请确认生成通道已就绪后继续生成。"
+          : "故事版生成失败。"))}</p>
         <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">
-          ${singleVideo ? "重新生成故事板" : "继续生成缺失图片"}
+          ${singleVideo ? "重新生成故事版" : "继续生成缺失故事版"}
         </button>
       </div>
     `;
@@ -510,8 +510,8 @@ export function renderVisualStage(project = state.project) {
       <div class="section-heading compact-stage-heading">
         <div>
           <p class="section-index">STEP 04</p>
-          <h2>故事板生成完成</h2>
-          <p>${singleVideo ? "完整故事板已保存。下一步使用这张故事板生成最终广告视频。" : "两张分段故事板已保存。可预览或下载图片，完整对应脚本保留在导出页。"}</p>
+          <h2>故事版生成完成</h2>
+          <p>${singleVideo ? "完整故事版已保存。下一步使用这张故事版生成广告视频。" : "两张分段故事版已保存。下一步生成两个 10 秒视频任务。"}</p>
         </div>
         <span class="requirement">${total}/${total} 已完成</span>
       </div>
@@ -519,8 +519,8 @@ export function renderVisualStage(project = state.project) {
         ${segmentIds.map((segmentId) => renderStoryboardCard(project, completedItems.find((item) => item.segment_id === segmentId))).join("")}
       </div>
       <div class="stage-actions compact-stage-actions">
-        <p>${singleVideo ? "故事板、脚本和视频时长已准备好。" : "故事板只展示图片与必要信息，避免重复堆叠完整脚本。"}</p>
-        <button class="primary-button" type="button" data-action="view-export">${singleVideo ? "进入导出计划" : "进入最终交付"}</button>
+        <p>${singleVideo ? "故事版、脚本和视频时长已准备好。" : "故事版和脚本已准备好。"}</p>
+        <button class="primary-button" type="button" data-action="view-export">进入生成视频</button>
       </div>
     `;
     return;
@@ -528,8 +528,8 @@ export function renderVisualStage(project = state.project) {
   container.innerHTML = `
     <div class="future-content">
       <p class="section-index">STEP 04</p>
-      <h2>故事板图片</h2>
-      <p>${singleVideo ? "此步骤生成一张完整故事板，并作为最终视频生成参考。" : "此步骤生成两个分段故事板，并在这里展示 0/2、1/2、2/2、失败与重试状态。只有两张完成后才能进入最终交付。"}</p>
+      <h2>生成故事版</h2>
+      <p>${singleVideo ? "此步骤生成一张完整故事版，并作为视频生成参考。" : "此步骤生成两个分段故事版，并在这里展示 0/2、1/2、2/2、失败与重试状态。只有两张完成后才能进入生成视频。"}</p>
       <div class="confirmed-card">
         <span>✓</span>
         <div>
@@ -537,7 +537,7 @@ export function renderVisualStage(project = state.project) {
           <small>${project.scriptConfirmedAt ? `确认时间：${formatTime(project.scriptConfirmedAt)}` : "脚本已保存。"}</small>
         </div>
       </div>
-      <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">生成故事板图片</button>
+      <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">生成故事版</button>
     </div>
   `;
 }
@@ -573,7 +573,7 @@ function renderStoryboardImage(item) {
   return `
     <button class="generated-image-preview clickable-preview" type="button"
       data-preview-image="${escapeHtml(item.generated_image.url)}"
-      data-preview-title="${escapeHtml(`${item.segment_id} 故事板 · 分镜比例 ${item.aspect_ratio}`)}">
+      data-preview-title="${escapeHtml(`${item.segment_id} 故事版 · 分镜比例 ${item.aspect_ratio}`)}">
       <img src="${escapeHtml(item.generated_image.url)}" alt="${escapeHtml(item.asset_id)}">
     </button>
   `;
@@ -589,7 +589,7 @@ function renderStoryboardCard(project, item) {
       <div class="storyboard-card-heading">
         <div>
           <p class="section-index">${escapeHtml(item.segment_id === SINGLE_SEGMENT_ID ? "完整视频" : item.segment_id)}</p>
-          <h3>${escapeHtml(segment.theme || (item.segment_id === SINGLE_SEGMENT_ID ? "完整视频故事板" : `${item.segment_id} 故事板`))}</h3>
+          <h3>${escapeHtml(segment.theme || (item.segment_id === SINGLE_SEGMENT_ID ? "完整视频故事版" : `${item.segment_id} 故事版`))}</h3>
         </div>
         <span class="storyboard-status">已保存</span>
       </div>
@@ -601,7 +601,7 @@ function renderStoryboardCard(project, item) {
       </div>
       ${item.generated_image?.url ? `
         <a class="ghost-button storyboard-download" href="${escapeHtml(item.generated_image.url)}"
-          download="${escapeHtml(item.asset_id || `${item.segment_id}-storyboard`)}">下载图片</a>
+          download="${escapeHtml(item.asset_id || `${item.segment_id}-storyboard`)}">下载故事版</a>
       ` : ""}
     </article>
   `;
@@ -615,10 +615,10 @@ function renderStoryboardStateCard(project, segmentId, item, generating = false)
   return `
     <article class="storyboard-card storyboard-state-card ${failed ? "failed" : "pending"}">
       <div class="storyboard-card-heading">
-        <div><p class="section-index">${escapeHtml(segmentId === SINGLE_SEGMENT_ID ? "完整视频" : segmentId)}</p><h3>${escapeHtml(segment.theme || (segmentId === SINGLE_SEGMENT_ID ? "完整视频故事板" : `${segmentId} 故事板`))}</h3></div>
+        <div><p class="section-index">${escapeHtml(segmentId === SINGLE_SEGMENT_ID ? "完整视频" : segmentId)}</p><h3>${escapeHtml(segment.theme || (segmentId === SINGLE_SEGMENT_ID ? "完整视频故事版" : `${segmentId} 故事版`))}</h3></div>
         <span class="storyboard-status">${failed ? "生成失败" : generating ? "生成中" : "等待生成"}</span>
       </div>
-      <div class="storyboard-skeleton ${generating ? "active" : ""}"><i></i><span>${failed ? "该故事板尚无图片，重试只会补这一张。" : "正在准备 img2img 故事板画面"}</span></div>
+      <div class="storyboard-skeleton ${generating ? "active" : ""}"><i></i><span>${failed ? "该故事版尚未完成，重试只会补这一项。" : "正在准备故事版画面"}</span></div>
       <div class="storyboard-meta"><span>时长 ${escapeHtml(duration)}s</span><span>分镜比例 ${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")}</span><span>镜头 ${escapeHtml(segment.shots?.length || 0)} 个</span></div>
       ${failed && item.error?.message ? `<p class="storyboard-item-error">${escapeHtml(item.error.message)}</p>` : ""}
     </article>
@@ -674,7 +674,7 @@ function renderDeliverable(project, item, index) {
       <div class="segment-heading">
         <div>
           <p class="section-index">${escapeHtml(item.segment_id)}</p>
-          <h3>${escapeHtml(item.segment_id)} 故事板</h3>
+          <h3>${escapeHtml(item.segment_id)} 故事版</h3>
         </div>
         <button class="ghost-button small" type="button" data-copy-target="segmentScript${index}">复制脚本</button>
       </div>
@@ -703,7 +703,7 @@ function renderVideoTaskCard(project, storyboard, index) {
       </div>
       <div class="video-workflow-summary">
         <div>
-          <span>故事板输入</span>
+          <span>故事版输入</span>
           <strong>${escapeHtml(storyboard.segment_id)}</strong>
         </div>
         <div>
@@ -722,8 +722,8 @@ function renderVideoTaskCard(project, storyboard, index) {
       <div class="video-workflow-main">
         <article class="video-preview-card">
           ${storyboard.generated_image?.url ? `
-            <img src="${escapeHtml(storyboard.generated_image.url)}" alt="${escapeHtml(storyboard.segment_id)} 故事板">
-          ` : `<div class="video-preview-placeholder">尚无故事板</div>`}
+            <img src="${escapeHtml(storyboard.generated_image.url)}" alt="${escapeHtml(storyboard.segment_id)} 故事版">
+          ` : `<div class="video-preview-placeholder">尚无故事版</div>`}
         </article>
         <div class="video-copy-card">
           <strong>对应脚本</strong>
@@ -760,14 +760,14 @@ export function renderExportStage(project = state.project) {
   if (singleVideo) {
     const item = summary.item;
     const storyboard = summary.storyboard;
-    const storyboardTitle = storyboard?.segment_id === SINGLE_SEGMENT_ID ? "完整视频故事板" : "故事板";
+    const storyboardTitle = storyboard?.segment_id === SINGLE_SEGMENT_ID ? "完整视频故事版" : "故事版";
     if (!storyboard) {
       container.innerHTML = `
         <div class="future-content script-start-panel visual-error-card">
           <p class="section-index">STEP 05</p>
-          <h2>导出计划尚未就绪</h2>
-          <p>请先完成 Step 04 的一张完整故事板。</p>
-          <button class="primary-button" type="button" data-action="view-visual">返回故事板</button>
+          <h2>生成视频尚未就绪</h2>
+          <p>请先完成 Step 04 的一张完整故事版。</p>
+          <button class="primary-button" type="button" data-action="view-visual">返回故事版</button>
         </div>
       `;
       return;
@@ -779,8 +779,8 @@ export function renderExportStage(project = state.project) {
       <div class="section-heading">
         <div>
           <p class="section-index">STEP 05</p>
-          <h2>导出计划</h2>
-          <p>这里只展示一个视频任务。视频时长、脚本和故事板都跟随 Step 02 选择的时长。</p>
+          <h2>生成视频</h2>
+          <p>这里只展示一个视频任务。视频时长、脚本和故事版都跟随 Step 02 选择的时长。</p>
         </div>
         <span class="requirement">${escapeHtml(summary.duration)} 秒 · ${videoStatusLabel(status)}</span>
       </div>
@@ -807,7 +807,7 @@ export function renderExportStage(project = state.project) {
           <article class="video-preview-card">
             ${storyboard.generated_image?.url ? `
               <img src="${escapeHtml(storyboard.generated_image.url)}" alt="${escapeHtml(storyboardTitle)}">
-            ` : `<div class="video-preview-placeholder">尚无故事板</div>`}
+            ` : `<div class="video-preview-placeholder">尚无故事版</div>`}
           </article>
           <div class="video-copy-card">
             <strong>脚本摘要</strong>
@@ -839,9 +839,9 @@ export function renderExportStage(project = state.project) {
     container.innerHTML = `
       <div class="future-content script-start-panel visual-error-card">
         <p class="section-index">STEP 05</p>
-        <h2>导出计划尚未就绪</h2>
-        <p>Step 5 只展示完整交付。请回到 Step 4 完成两张真实故事板图片。</p>
-        <button class="primary-button" type="button" data-action="view-visual">返回故事板</button>
+        <h2>生成视频尚未就绪</h2>
+        <p>请回到 Step 4 完成两张真实故事版。</p>
+        <button class="primary-button" type="button" data-action="view-visual">返回故事版</button>
       </div>
     `;
     return;
@@ -852,10 +852,10 @@ export function renderExportStage(project = state.project) {
     <div class="section-heading">
       <div>
         <p class="section-index">STEP 05</p>
-        <h2>导出计划</h2>
-        <p>双段模式使用两张故事板作为输入，生成两个 10 秒视频任务；已完成的视频会保留，失败段可单独重试。</p>
+        <h2>生成视频</h2>
+        <p>双段模式使用两张故事版作为输入，生成两个 10 秒视频任务；已完成的视频会保留，失败段可单独重试。</p>
       </div>
-      <span class="requirement">${escapeHtml(completedVideos)}/2 视频 · ${escapeHtml(imageItems.length)}/2 故事板</span>
+      <span class="requirement">${escapeHtml(completedVideos)}/2 视频 · ${escapeHtml(imageItems.length)}/2 故事版</span>
     </div>
     <div class="video-task-grid">
       ${imageItems.map((item, index) => renderVideoTaskCard(project, item, index)).join("")}

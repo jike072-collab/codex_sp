@@ -202,8 +202,8 @@ export function statusLabel(status) {
     review: "产品锁定",
     market: "市场创意",
     script: "广告脚本",
-    visual: "生成故事板",
-    export: "导出计划"
+    visual: "生成故事版",
+    export: "生成视频"
   };
   return labels[status] || "商品素材";
 }

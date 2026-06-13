@@ -39,8 +39,8 @@ const STAGE_PANEL_COPY = {
   review: "检查产品身份、投放设置和创意方向，确认后进入脚本。",
   market: "把已确认的产品信息整理成脚本输入。",
   script: "检查脚本结构、镜头节奏、字幕和卖点是否完整。",
-  visual: "检查故事板生成数量、画面清晰度和重试状态。",
-  export: "汇总故事板、脚本和视频生成任务，准备最终交付。"
+  visual: "检查故事版生成数量、画面清晰度和重试状态。",
+  export: "汇总故事版、脚本和视频生成任务，准备视频交付。"
 };
 
 const STAGE_PANEL_TITLE = {
@@ -48,8 +48,8 @@ const STAGE_PANEL_TITLE = {
   review: "AI 产品检查器",
   market: "创意确认",
   script: "AI 脚本检查官",
-  visual: "AI 故事板检查",
-  export: "导出计划"
+  visual: "AI 故事版检查",
+  export: "生成视频"
 };
 
 const VISIBLE_STAGE_NUMBER = {
@@ -159,8 +159,8 @@ export function renderWorkspace() {
       ? "查看完整中文脚本，按所选时长检查镜头与文案。"
       : "查看 20 秒中文脚本，按两个 10 秒段落检查镜头与文案。",
     visual: isSingleVideoProject(project)
-      ? "生成一张完整故事板，成功后进入导出计划。"
-      : "生成两张 10 秒分段故事板，成功后进入导出计划。",
+      ? "生成一张完整故事版，成功后进入视频页。"
+      : "生成两张 10 秒分段故事版，成功后进入视频页。",
     export: isSingleVideoProject(project)
       ? "检查视频任务，完成后可播放和下载最终广告视频。"
       : "检查两个 10 秒视频任务，完成后可播放和下载。"
@@ -263,8 +263,8 @@ function renderWorkspacePanel(project, activeStatus) {
     const singleVideo = isSingleVideoProject(project);
     const dynamicCopy = {
       script: singleVideo ? "检查单条脚本的镜头、卖点、字幕和节奏。" : "按 0-10s 和 10-20s 检查脚本、镜头和文案。",
-      visual: singleVideo ? "检查完整故事板是否生成成功，失败时可重试。" : "检查两张分段故事板，成功图会保留。",
-      export: singleVideo ? "使用脚本和故事板生成最终广告视频。" : "使用两张故事板生成两个 10 秒视频任务。"
+      visual: singleVideo ? "检查完整故事版是否生成成功，失败时可重试。" : "检查两张分段故事版，成功内容会保留。",
+      export: singleVideo ? "使用脚本和故事版生成广告视频。" : "使用两张故事版生成两个 10 秒视频任务。"
     };
     panelStageCopy.textContent = dynamicCopy[activeStatus] || STAGE_PANEL_COPY[activeStatus] || "";
   }
@@ -360,7 +360,7 @@ function renderPanelStageVisual(project, activeStatus) {
       </div>
       <div class="asset-readiness-chart video-status-chart">
         <div data-ready="${generated >= 1}">
-          <span>故事板</span>
+          <span>故事版</span>
           <strong>${escapeHtml(generated)}/1</strong>
         </div>
         <div data-ready="true">
@@ -383,7 +383,7 @@ function renderPanelStageVisual(project, activeStatus) {
   if (activeStatus === "visual" || activeStatus === "export") {
     container.innerHTML = `
       <div class="stage-visual-heading">
-        <span>故事板交付</span>
+        <span>故事版进度</span>
         <strong>${escapeHtml(generated)}/${escapeHtml(singleVideo ? 1 : 2)}</strong>
       </div>
       <div class="storyboard-mini-grid">
@@ -513,14 +513,14 @@ function renderCompletionList(status) {
     review: ["目标人群和尺寸已选择", "创意方向和核心信息已整理", "产品锁定已确认"],
     market: ["目标国家已选择", "目标人群已确认", "创意主题、核心信息和语气已填写"],
     script: singleVideo
-      ? ["完整视频脚本已生成", "全部镜头按所选时长可审核", "确认后生成一张故事板"]
-      : ["完整 20 秒脚本已生成", "全部镜头按时间顺序可审核", "确认后按两个 10 秒分段生成故事板"],
+      ? ["完整视频脚本已生成", "全部镜头按所选时长可审核", "确认后生成一张故事版"]
+      : ["完整 20 秒脚本已生成", "全部镜头按时间顺序可审核", "确认后按两个 10 秒分段生成故事版"],
     visual: singleVideo
-      ? ["脚本已确认", "故事板方向清晰", "准备生成一张完整故事板"]
-      : ["脚本已确认", "故事板方向清晰", "准备生成两张分段故事板"],
+      ? ["脚本已确认", "故事版方向清晰", "准备生成一张完整故事版"]
+      : ["脚本已确认", "故事版方向清晰", "准备生成两张分段故事版"],
     export: singleVideo
-      ? ["故事板和脚本已整理", "可生成单个广告视频", "第一版交付内容已就绪"]
-      : ["两张故事板已整理", "两段 10 秒脚本可复制", "第一版交付内容已就绪"]
+      ? ["故事版和脚本已整理", "可生成单个广告视频", "第一版视频已就绪"]
+      : ["两张故事版已整理", "两段 10 秒脚本可复制", "第一版视频已就绪"]
   };
   const items = itemsByStatus[status] || itemsByStatus.assets;
   if (status === "visual") {
@@ -532,8 +532,8 @@ function renderCompletionList(status) {
     );
     const complete = entries.filter((item) => item.status === "done" && item.generated_image?.url).length;
     const total = singleVideo ? 1 : 2;
-    items[1] = `故事板完成 ${complete}/${total}`;
-    items[2] = complete === total ? (singleVideo ? "可进入生成视频" : "可进入最终交付") : "成功图片保留，缺失项可继续生成";
+    items[1] = `故事版完成 ${complete}/${total}`;
+    items[2] = complete === total ? "可进入生成视频" : "成功内容保留，缺失项可继续生成";
   }
   el("completionList").innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
 }

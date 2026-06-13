@@ -35,7 +35,7 @@ Changed:
 
 Verified:
 - 新项目默认 `single_video`。
-- 自动化测试覆盖单段一张 full 故事板、一个视频任务；双段两张故事板、两个视频任务。
+- 自动化测试覆盖单段一张 full 故事版、一个视频任务；双段两张故事版、两个视频任务。
 - 前台显示“单段 5-15 秒 / 双段 20 秒”。
 
 Issue Found:
@@ -65,14 +65,14 @@ Verified:
 - 1440x900 浏览器实测：Step 01 上传后按钮“识别并锁定产品”可用。
 - 点击识别进入 Step 02，页面显示“产品锁定与创意设置”和“确认并进入脚本”。
 - 点击确认进入 Step 03，页面显示“生成脚本”。
-- 通过本地 API 生成脚本后刷新，Step 03 显示 10 秒广告脚本和“确认脚本并生成故事板图片”。
+- 通过本地 API 生成脚本后刷新，Step 03 显示 10 秒广告脚本和“确认脚本并生成故事版”。
 - 点击确认后进入 Step 04。
-- 无图片 Key 时，页面显示“绘图通道 A 未配置可用的图片 API Key。”，并保留“重新生成故事板”按钮。
+- 无图片 Key 时，页面显示“绘图通道 A 未配置可用的图片 API Key。”，并保留“重新生成故事版”按钮。
 - 全程控制台无 error/warning，页面无横向溢出。
 
 Issue Found:
 - 浏览器里按文本定位“生成脚本”会匹配到主按钮和隐藏弹窗按钮两个元素；用户视觉上影响不大，但后续自动化测试应优先用按钮 id 或限定当前 stage。
-- 成功故事板预览/下载和 Step 05 视频下载尚未实测，因为本机未配置图片/视频 Key。
+- 成功故事版预览/下载和 Step 05 视频下载尚未实测，因为本机未配置图片/视频 Key。
 
 ## Module: 手机端基础检查
 
@@ -90,17 +90,17 @@ Issue Found:
 Changed:
 - 新增 `docs/codex-review-workbench/20260614-ui-reference-direction.md`，记录 4 张 GPT 效果图的可复用方向和未照抄项。
 - 新增 `docs/reference/gpt-ui-direction-20260614/`，保存用户提供的 4 张 UI 参考图。
-- `studio-v2/public/index.html`：五步文案统一为“商品素材 / 产品设定 / 生成脚本 / 生成故事板 / 导出计划”。
+- `studio-v2/public/index.html`：五步文案统一为“商品素材 / 产品设定 / 生成脚本 / 生成故事版 / 生成视频”。
 - `studio-v2/public/index.html`：Step 01 标题改为“上传商品素材”，上传区文案改为“拖拽图片到此处，或点击上传”。
-- `studio-v2/public/js/render.js`：右侧面板改为“AI 素材检测器 / AI 产品检查器 / AI 脚本检查官 / AI 故事板检查 / 导出计划”。
-- `studio-v2/public/js/core.js`、`studio-v2/public/js/demo-loop.js`：Step 04/05 的状态与标题口径统一为“生成故事板 / 导出计划”。
+- `studio-v2/public/js/render.js`：右侧面板改为“AI 素材检测器 / AI 产品检查器 / AI 脚本检查官 / AI 故事版检查 / 生成视频”。
+- `studio-v2/public/js/core.js`、`studio-v2/public/js/demo-loop.js`：Step 04/05 的状态与标题口径统一为“生成故事版 / 生成视频”。
 
 Verified:
 - `node --check studio-v2/public/js/core.js` 通过。
 - `node --check studio-v2/public/js/render.js` 通过。
 - `node --check studio-v2/public/js/demo-loop.js` 通过。
 - `git diff --check` 通过，仅有工作区 CRLF 提示。
-- 1440x900 内置浏览器实测 Step 05：页面显示“导出计划”，不再出现 `h2=生成视频`，控制台无 error/warning，无文档级横向溢出。
+- 1440x900 内置浏览器实测 Step 05：页面显示“生成视频”，不再出现 `导出计划` 作为主流程文案，控制台无 error/warning，无文档级横向溢出。
 - 390x844 内置浏览器基础检查：文档级无横向溢出，控制台无 error/warning。
 
 Issue Found:
@@ -110,9 +110,9 @@ Issue Found:
 ## Module: README / PRODUCT / DESIGN 口径统一
 
 Changed:
-- `README.md`：第一版流程改为创建项目、上传素材、选择单段/双段、产品锁定、脚本、故事板、导出计划、预览或下载。
+- `README.md`：第一版流程改为创建项目、上传素材、选择单段/双段、产品锁定、脚本、故事版、生成视频、预览或下载。
 - `studio-v2/README.md`：补充单段 5-15 秒和双段 20 秒的差异，说明普通前台不显示 API Key、供应商、模型、prompt 或调试信息。
-- `studio-v2/PRODUCT.md`：第一版闭环和页面流程改为当前单段/双段、故事板、导出计划口径。
+- `studio-v2/PRODUCT.md`：第一版闭环和页面流程改为当前单段/双段、故事版、生成视频口径。
 - `DESIGN.md`：设计规范更新为当前深色左侧栏、亮色工作区、荧光绿主操作和右侧检查器结构。
 - `docs/产品口径.md`、`docs/验收清单.md`：移除已过期的文档漂移提示。
 
@@ -123,6 +123,40 @@ Verified:
 Issue Found:
 - 视觉 token 虽已在 `DESIGN.md` 补到当前主要色值，但完整字体、字号、字重、行高、spacing、radius、shadow、border token 表仍需单独细化。
 
+## Module: 视觉 token 与桌面宽度复验
+
+Changed:
+- 新增 `docs/codex-review-workbench/20260614-visual-tokens.md`，按当前 `studio-v2/public/styles.css` 记录字体、字号、字重、行高、颜色、间距、圆角、阴影、边框、组件和动效基线。
+- 更新 `docs/验收清单.md`，把 1366 和 1280 桌面宽度基础复验结果写入 P1。
+
+Verified:
+- 1366x768 内置浏览器复验：`scrollWidth=1351`、`clientWidth=1366`，无文档级横向溢出；控制台 error/warn 为空；Step 05 右侧面板显示“生成视频”。
+- 1280x800 内置浏览器复验：`scrollWidth=1265`、`clientWidth=1280`，无文档级横向溢出；控制台 error/warn 为空；Step 05 右侧面板显示“生成视频”。
+
+## Module: 用户口径纠正 - Step 04/05
+
+Changed:
+- 用户明确纠正：第五步是“生成视频”，不要“最终导出”；第四步是“生成故事版”，不要出现“图片”。
+- `studio-v2/public/index.html`、`core.js`、`render.js`、`demo-loop.js`、`projects.js`、`main.js` 已同步普通前台文案。
+- `README.md`、`studio-v2/README.md`、`studio-v2/PRODUCT.md`、`DESIGN.md`、`docs/产品口径.md`、`docs/验收清单.md` 和本审查记录同步更新。
+
+Verified:
+- `node --check studio-v2/public/js/core.js` 通过。
+- `node --check studio-v2/public/js/render.js` 通过。
+- `node --check studio-v2/public/js/demo-loop.js` 通过。
+- `node --check studio-v2/public/js/projects.js` 通过。
+- `node --check studio-v2/public/js/main.js` 通过。
+- `node --test studio-v2/tests/*.test.mjs`，63/63 通过。
+- 1440x900、1366x768、1280x800 内置浏览器复验：步骤条显示“04 生成故事版 / 05 生成视频”，右侧面板标题为“生成视频”；正文不再出现“导出计划”“最终交付”“故事板图片”；控制台 error/warn 为空；无文档级横向溢出。
+
+Issue Found:
+- `docs/contracts/local-settings-api.md` 仍保留“故事板图片模型”等后台契约描述，属于技术配置/接口文档，不作为普通前台口径展示。
+- 8810 本地页面返回 HTTP 200。
+
+Issue Found:
+- 内置浏览器截图接口此前在 `Page.captureScreenshot` 超时，本轮改用 DOM 指标、控制台日志和文案检查完成基础复验；1366/1280 截图留档仍待后续单独补图。
+- 当前打开的是已有 Step 05 成功态烟测项目，`hasUpload=false` 属于项目状态差异；上传入口已在 Step 01 和此前 1440x900 闭环中验证。
+
 ## 待用户确认
 
 - 是否把“单段/双段”改成更小白的“一个视频 / 两段视频”。
@@ -130,4 +164,4 @@ Issue Found:
 
 ## Suggested Next Step
 
-下一步优先继续桌面网页端完整闭环和视觉 token 文档：新建项目 -> 上传 -> 识别 -> 确认产品 -> 生成脚本 -> 确认脚本 -> 故事板失败/重试或成功 -> Step 05 导出计划，并补齐字体、间距、圆角、阴影、边框、颜色 tokens。
+下一步优先补 1366/1280 截图留档和成功态预览/下载实测；如果仍未配置图片/视频 Key，则先保留“成功后预览/下载路径需要浏览器实测”为待确认风险。
