@@ -506,6 +506,11 @@
             "2:3"
           ]
         },
+        "duration_sec": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 20
+        },
         "storyboard_sheet": {
           "type": "object",
           "required": [
@@ -619,7 +624,26 @@
           },
           "additionalProperties": false
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "segment_id": {
+                "const": "full"
+              }
+            },
+            "required": [
+              "segment_id"
+            ]
+          },
+          "then": {
+            "required": [
+              "duration_sec"
+            ]
+          }
+        }
+      ]
     },
     "imagePackage": {
       "type": "object",

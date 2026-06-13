@@ -10,7 +10,10 @@ function errorResponseBody(error) {
     code: error.code || "INTERNAL_ERROR",
     ...(typeof error.retryable === "boolean" ? { retryable: error.retryable } : {}),
     ...(typeof error.possiblyBilled === "boolean" ? { possiblyBilled: error.possiblyBilled } : {}),
-    ...(Number.isInteger(error.providerStatus) ? { providerStatus: error.providerStatus } : {})
+    ...(Number.isInteger(error.providerStatus) ? { providerStatus: error.providerStatus } : {}),
+    ...(Array.isArray(error.resetStages) ? { resetStages: error.resetStages } : {}),
+    ...(error.currentWorkflowMode ? { currentWorkflowMode: error.currentWorkflowMode } : {}),
+    ...(error.requestedWorkflowMode ? { requestedWorkflowMode: error.requestedWorkflowMode } : {})
   };
 }
 

@@ -22,8 +22,38 @@ Newly created projects default to:
 }
 ```
 
-Legacy projects without that field remain readable as
-`legacy_multi_segment`.
+Projects without that field are inferred from their persisted script shape.
+The persisted value `legacy_multi_segment` is presented to users as
+“双段 20 秒”.
+
+## Switch Workflow Mode
+
+```http
+PUT /api/projects/:projectId/workflow-mode
+Content-Type: application/json
+
+{
+  "workflowMode": "legacy_multi_segment",
+  "confirmReset": false
+}
+```
+
+Accepted `workflowMode` values are `single_video` and
+`legacy_multi_segment`. The latter is always labeled “双段 20 秒” in
+user-facing surfaces.
+
+- With no `planningPackage`, `imagePackage`, or `videoPackage`, the mode is
+  saved immediately and returns `200`.
+- If script or downstream results exist and `confirmReset` is not `true`, the
+  route returns `409 WORKFLOW_MODE_RESET_REQUIRED`.
+- The `409` body includes `currentWorkflowMode`, `requestedWorkflowMode`, and
+  `resetStages`, whose values are drawn from `script`, `storyboard`, and
+  `video`.
+- With `confirmReset: true`, the backend switches mode in one saved update,
+  clears script/storyboard/video packages plus their generated, confirmed,
+  failure, and timing state, and returns the project to `status: "script"`.
+- Assets, vision analysis, confirmed product lock, review confirmation,
+  market brief, and market confirmation are preserved.
 
 ## Market Brief
 
@@ -60,7 +90,7 @@ POST /api/projects/:projectId/script/generate
 
 Request body is optional.
 
-Current default mode:
+Single mode:
 
 - backend produces `planningPackage.workflow_mode = "single_video"`
 - backend produces `planningPackage.script_video`
@@ -68,7 +98,7 @@ Current default mode:
 - shot count is derived from duration; it is not fixed to two 10-second
   segments
 
-Legacy projects keep:
+Dual 20-second mode keeps:
 
 - `planningPackage.workflow_mode = "legacy_multi_segment"`
 - `planningPackage.script_20s`
@@ -111,6 +141,11 @@ Rules:
 - `single_video` confirms `script_video.segment_full`
 - `legacy_multi_segment` confirms `script_20s`
 - shots must be non-empty, ordered, contiguous, and non-overlapping
+- normalized `visual + action + camera` signatures must be unique
+- a majority of shots may not reuse the same template for any two of
+  `visual`, `action`, and `camera`
+- repeated model output returns a Chinese `INVALID_SCRIPT` message and is not
+  retried automatically
 
 ## Generate Storyboards
 
@@ -126,15 +161,16 @@ Rules:
 - real generation is always `img2img`; prompt-only fallback is forbidden
 - uploaded shoe images must be included as references
 
-Current default mode:
+Single mode:
 
 - create exactly one `image_generation` item with `segment_id: "full"`
 - provider uses draw channel A
 
-Legacy mode:
+Dual 20-second mode:
 
 - create two storyboard items: `0-10s` and `10-20s`
 - missing items are started concurrently
+- `0-10s` uses draw channel A and `10-20s` uses draw channel B
 
 On provider failure:
 
@@ -152,8 +188,8 @@ Rules:
 
 - requires `status: "export"`
 - requires the current workflow mode's storyboard assets to be complete
-- current default mode exports one storyboard deliverable
-- legacy mode exports two storyboard deliverables
+- single mode exports one storyboard deliverable
+- dual 20-second mode exports two storyboard deliverables
 
 Local filesystem paths, stored filenames, hashes, prompts, and API credentials
 must not appear in the export payload.

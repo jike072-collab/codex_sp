@@ -8,8 +8,21 @@ Current default mode for newly created projects is `single_video`:
 - one storyboard sheet: `imagePackage.image_generation[0]`
 - one video task: `videoPackage.video_generation[0]`
 
-Legacy `legacy_multi_segment` projects remain readable and keep their dual
-10-second segment behavior.
+Dual 20-second projects persist as `legacy_multi_segment` and keep their two
+10-second segment behavior. User-facing surfaces call this mode “双段 20 秒”.
+
+Mode changes use:
+
+```http
+PUT /api/projects/:projectId/workflow-mode
+```
+
+with `{ "workflowMode": "...", "confirmReset": false }`. The route returns
+`200` for a direct switch when no downstream result exists, or
+`409 WORKFLOW_MODE_RESET_REQUIRED` with current/requested modes and
+`resetStages` when script, storyboard, or video state would be removed.
+Retrying with `confirmReset: true` clears those downstream packages before a
+new mode-specific video package can be created.
 
 ## Routes
 
@@ -28,7 +41,7 @@ Rules:
   - all uploaded product reference images
   - `marketBrief.outputAspectRatio`
   - `marketBrief.videoDurationSeconds`
-- `legacy_multi_segment` keeps the old two-request flow:
+- `legacy_multi_segment` keeps the dual-request flow:
   - `0-10s`
   - `10-20s`
 - Missing video tasks are submitted concurrently.
@@ -93,7 +106,7 @@ Rules:
 
 - Resets only the targeted failed task.
 - Preserves every already completed local video.
-- For legacy dual-segment projects, clears any previous merged `final_video`
+- For dual 20-second projects, clears any previous merged `final_video`
   so a later refresh can rebuild it.
 
 ### Download One Local Video
@@ -105,13 +118,13 @@ GET /api/projects/:projectId/videos/:segmentId/download
 Returns the stored local video for the target task. Returns
 `409 VIDEO_NOT_READY` when that task has not produced a local file yet.
 
-### Download Legacy Final Merge
+### Download Dual-Segment Final Merge
 
 ```http
 GET /api/projects/:projectId/videos/final/download
 ```
 
-Only applies to legacy dual-segment projects. Returns
+Only applies to dual 20-second projects. Returns
 `409 FINAL_VIDEO_NOT_READY` when no merged local file exists.
 
 ## Persisted `videoPackage`
@@ -156,7 +169,7 @@ Current default mode:
 }
 ```
 
-Legacy projects keep:
+Dual 20-second projects keep:
 
 - `workflow_mode: "legacy_multi_segment"`
 - two `video_generation[]` items for `0-10s` and `10-20s`

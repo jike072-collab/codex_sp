@@ -61,6 +61,20 @@ export const toneOptions = [
   ["bold", "大胆"]
 ];
 
+export const videoDurationOptions = Array.from({ length: 11 }, (_, index) => {
+  const value = index + 5;
+  return [value, `${value} 秒`, value === 10 ? "默认时长" : "单视频"];
+});
+
+export const workflowModeOptions = [
+  ["single_video", "单段 5-15 秒"],
+  ["legacy_multi_segment", "双段 20 秒"]
+];
+
+export function workflowModeLabel(mode) {
+  return workflowModeOptions.find(([value]) => value === mode)?.[1] || "双段 20 秒";
+}
+
 function preferenceKey(projectId) {
   return `shoe-ad-studio:${projectId}:preferences`;
 }
@@ -93,6 +107,7 @@ export function projectSetup(project = state.project) {
   const tone = saved.tone || preferences.tone || "energetic";
   const audience = saved.audience || preferences.audience || project?.audience || audienceOptions[0][1];
   const shotsPerSegment = Number(preferences.shotsPerSegment || 5);
+  const duration = Number(saved.videoDurationSeconds || preferences.videoDurationSeconds || 10);
   return {
     targetCountry: marketCountryOptions.some(([value]) => value === targetCountry)
       ? targetCountry
@@ -106,8 +121,30 @@ export function projectSetup(project = state.project) {
       ? creativeTheme
       : "city-motion",
     tone: toneOptions.some(([value]) => value === tone) ? tone : "energetic",
-    shotsPerSegment: [3, 4, 5].includes(shotsPerSegment) ? shotsPerSegment : 5
+    shotsPerSegment: [3, 4, 5].includes(shotsPerSegment) ? shotsPerSegment : 5,
+    videoDurationSeconds: Number.isInteger(duration) && duration >= 5 && duration <= 15 ? duration : 10
   };
+}
+
+export function workflowMode(project = state.project) {
+  if (project?.workflowMode) return project.workflowMode;
+  if (project?.planningPackage?.workflow_mode) return project.planningPackage.workflow_mode;
+  if (project?.imagePackage?.workflow_mode) return project.imagePackage.workflow_mode;
+  if (project?.videoPackage?.workflow_mode) return project.videoPackage.workflow_mode;
+  if (project?.planningPackage?.script_video?.segment_full) return "single_video";
+  if (project?.planningPackage?.script_20s) return "legacy_multi_segment";
+  if ((project?.imagePackage?.image_generation || []).some((item) => item.segment_id === "full")) return "single_video";
+  if ((project?.videoPackage?.video_generation || []).some((item) => item.segment_id === "full")) return "single_video";
+  if (Number.isInteger(project?.marketBrief?.videoDurationSeconds)) return "single_video";
+  return "legacy_multi_segment";
+}
+
+export function isSingleVideoProject(project = state.project) {
+  return workflowMode(project) === "single_video";
+}
+
+export function videoDurationSeconds(project = state.project) {
+  return projectSetup(project).videoDurationSeconds;
 }
 
 export async function api(url, options = {}) {
@@ -166,7 +203,7 @@ export function statusLabel(status) {
     market: "市场创意",
     script: "广告脚本",
     visual: "故事板",
-    export: "最终交付"
+    export: "生成视频"
   };
   return labels[status] || "商品素材";
 }

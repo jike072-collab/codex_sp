@@ -130,11 +130,7 @@ function fitTemplatesToCount(templates, count) {
   if (count <= templates.length) return count === templates.length
     ? templates
     : [...templates.slice(0, Math.max(1, count - 1)), templates.at(-1)];
-  const selected = [];
-  for (let index = 0; index < count; index += 1) {
-    selected.push(templates[Math.min(index, templates.length - 1)]);
-  }
-  return selected;
+  throw new Error(`Need ${count} distinct shot templates, but only ${templates.length} are defined.`);
 }
 
 function timedShots(start, end, templates, count) {
@@ -346,6 +342,33 @@ function buildSingleVideoPlanningPackage(project, locale, theme, captions, lock,
       localized_caption_or_vo: captions[2],
       sound: "Short camera click and beat lift.",
       transition: "Graphic match cut."
+    },
+    {
+      visual: "Top-down composition reveals the confirmed lace path and toe shape against a clean surface.",
+      action: "The shoe slides into a precise top-view mark and pauses for inspection.",
+      camera: "Locked overhead frame with a gentle rack focus.",
+      selling_point: sellingPoints[0].point,
+      localized_caption_or_vo: captions[1],
+      sound: "Soft slide and focus click.",
+      transition: "Shape match."
+    },
+    {
+      visual: "Low rear three-quarter view shows the confirmed heel structure during a natural step.",
+      action: "The heel settles and lifts once while all product details remain stable.",
+      camera: "Rear low-angle tracking close-up.",
+      selling_point: sellingPoints.at(-1).point,
+      localized_caption_or_vo: captions[3],
+      sound: "Measured footfall over a rising beat.",
+      transition: "Rhythmic cut."
+    },
+    {
+      visual: "Clean outsole reveal isolates the visible tread pattern without adding technical claims.",
+      action: "The shoe rolls upward briefly, then returns to its natural profile.",
+      camera: "Bottom-detail tilt with a controlled pull-back.",
+      selling_point: sellingPoints.at(-1).point,
+      localized_caption_or_vo: captions[2],
+      sound: "Short textured sweep.",
+      transition: "Snap back to hero."
     },
     {
       visual: "Final clean ecommerce hero with the complete shoe visible.",

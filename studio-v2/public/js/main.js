@@ -16,7 +16,11 @@ import {
   saveMarketBrief,
   startProjectBatchDelete,
   cancelProjectBatchDelete,
+  generateVideo,
   toggleProjectSelection,
+  refreshVideoStatus,
+  retryVideo,
+  switchWorkflowMode,
   uploadFiles
 } from "./projects.js";
 import {
@@ -153,6 +157,12 @@ function wireEvents() {
       return;
     }
 
+    const workflowModeButton = event.target.closest("[data-workflow-mode]");
+    if (workflowModeButton) {
+      switchWorkflowMode(workflowModeButton.dataset.workflowMode);
+      return;
+    }
+
     const actionButton = event.target.closest("[data-action]");
     if (!actionButton) return;
 
@@ -171,7 +181,10 @@ function wireEvents() {
       },
       "confirm-and-generate-visual": () => confirmScriptAndGenerateVisual(),
       "generate-script": () => generateScript(),
-      "generate-visual": () => generateVisual()
+      "generate-visual": () => generateVisual(),
+      "generate-video": () => generateVideo(),
+      "refresh-video": () => refreshVideoStatus(),
+      "retry-video": () => retryVideo(actionButton.dataset.videoSegment)
     };
     actions[actionButton.dataset.action]?.();
   });
