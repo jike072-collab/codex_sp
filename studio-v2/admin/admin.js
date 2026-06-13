@@ -91,6 +91,21 @@ function profileCacheKey(valueKey, apiUrl) {
   return `${valueKey}::${apiUrl || ""}`;
 }
 
+function secretToggleSvg(visible) {
+  return visible
+    ? `
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      </svg>`
+    : `
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M3 3l18 18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+        <path d="M2.5 12s3.5-6.5 9.5-6.5c1.8 0 3.4.4 4.8 1.1l1.8-1.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M8.2 8.2A4.2 4.2 0 0 0 6.5 12c0 3.1 2.5 5.5 5.5 5.5 1.3 0 2.5-.4 3.5-1.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+}
+
 function cacheProfilePreview(valueKey, apiUrl, profile) {
   if (!valueKey || !apiUrl || !profile) return;
   profileUiCache.set(profileCacheKey(valueKey, apiUrl), { ...profile });
@@ -127,7 +142,7 @@ function renderSecretInput(input, wrapper) {
   toggle.type = "button";
   toggle.dataset.secretToggleFor = input.name;
   toggle.setAttribute("aria-label", "显示 API 密钥");
-  toggle.textContent = "👁";
+  toggle.innerHTML = secretToggleSvg(false);
   shell.append(input, toggle);
   wrapper.append(shell);
 }
@@ -290,32 +305,39 @@ function syncPresetSelection(presetSelect) {
   const row = presetSelect.closest("tr") || presetSelect.closest(".channel-card") || presetSelect.closest(".provider-table");
   const previousValue = presetSelect.dataset.currentPresetValue || fieldConfig(provider, field)?.apiUrl || "";
   const previousProfile = cachedProfileForSelection(provider, field, previousValue);
+  const keyField = providerFieldByName(provider, "apiKey", field.channelId || "");
+  const modelField = providerFieldByName(provider, "model", field.channelId || "");
+  const keyWrapper = keyField && row
+    ? row.querySelector(`[data-value-key="${CSS.escape(keyField.valueKey)}"]`)
+    : null;
+  const currentKeyInput = keyWrapper?.querySelector('input[type="password"], input[type="text"]');
+  const currentDraftKey = currentKeyInput?.value?.trim() || "";
   const previousKeyHelp = row?.querySelector(".key-preview")?.textContent.trim() || "";
   const previousKeyPreview = previousKeyHelp.startsWith("当前密钥：")
     ? previousKeyHelp.replace(/^当前密钥：/, "")
     : previousProfile?.keyPreview || "";
-  const previousModelField = providerFieldByName(provider, "model", field.channelId || "");
-  const previousModelValue = previousModelField ? form.elements[previousModelField.valueKey]?.value || "" : "";
+  const previousModelValue = modelField ? form.elements[modelField.valueKey]?.value || "" : "";
   cacheProfilePreview(valueKey, previousValue, {
     ...(previousProfile || {}),
     value: previousValue,
     keyPreview: previousKeyPreview,
-    model: previousModelValue || previousProfile?.model || ""
+    model: previousModelValue || previousProfile?.model || "",
+    draftKey: currentDraftKey || previousProfile?.draftKey || ""
   });
   presetSelect.dataset.currentPresetValue = presetSelect.value;
   const profile = cachedProfileForSelection(provider, field, presetSelect.value);
-  const keyField = providerFieldByName(provider, "apiKey", field.channelId || "");
-  const modelField = providerFieldByName(provider, "model", field.channelId || "");
 
   if (keyField && row) {
     const keyWrapper = row.querySelector(`[data-value-key="${CSS.escape(keyField.valueKey)}"]`);
-    const keyInput = keyWrapper?.querySelector('input[type="password"]');
+    const keyInput = keyWrapper?.querySelector('input[type="password"], input[type="text"]');
     const keyHelp = keyWrapper?.querySelector(".key-preview");
     const clearInput = keyWrapper?.querySelector(`[data-clear-for="${CSS.escape(keyField.valueKey)}"]`);
-    if (keyInput) keyInput.value = "";
+    if (keyInput) keyInput.value = profile?.draftKey || "";
     if (clearInput) clearInput.checked = false;
     if (keyHelp) {
-      keyHelp.textContent = previewTextFromKeyPreview(profile?.keyPreview);
+      keyHelp.textContent = profile?.draftKey
+        ? "当前已输入 Key，保存后生效"
+        : previewTextFromKeyPreview(profile?.keyPreview);
     }
   }
 
@@ -551,6 +573,7 @@ function renderProviders() {
 
 function render(data) {
   currentSchema = data;
+  profileUiCache.clear();
   renderProviders();
   setStatus(`已同步 ${data.providers.length} 个供应商配置。`, "ok");
   setSaveState("");
@@ -706,7 +729,7 @@ form.addEventListener("click", (event) => {
   input.type = visible ? "password" : "text";
   toggle.classList.toggle("active", !visible);
   toggle.setAttribute("aria-label", visible ? "显示 API 密钥" : "隐藏 API 密钥");
-  toggle.textContent = visible ? "👁" : "🙈";
+  toggle.innerHTML = secretToggleSvg(!visible);
 });
 window.addEventListener("focus", () => loadProviders());
 setInterval(() => loadProviders(), 30000);
