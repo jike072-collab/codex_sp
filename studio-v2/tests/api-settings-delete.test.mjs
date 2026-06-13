@@ -105,7 +105,7 @@ test("public provider status stays redacted while admin settings persist locally
 
   const schema = await request("/api/admin/providers");
   assert.equal(schema.response.status, 200);
-  assert.equal(schema.body.schemaVersion, 5);
+  assert.equal(schema.body.schemaVersion, 6);
   assert.deepEqual(
     schema.body.providers.map((provider) => provider.id),
     ["vision", "text", "image", "video"]
@@ -130,6 +130,32 @@ test("public provider status stays redacted while admin settings persist locally
     "primary",
     "secondary"
   ]);
+  assert.equal(providerById(schema.body, "image").provider, "CodesOnline");
+  assert.deepEqual(
+    providerById(schema.body, "image").config.channels.map((channel) => channel.apiUrl),
+    [
+      "https://image.codesonline.dev/v1/images/edits",
+      "https://image.codesonline.dev/v1/images/edits"
+    ]
+  );
+  const imageUrlPresets = providerById(schema.body, "image").fields
+    .find((field) => field.valueKey === "imageApiUrl").presets;
+  assert.deepEqual(imageUrlPresets.map((preset) => preset.id), [
+    "codesonline-image-edits",
+    "right-code-draw",
+    "sub2api-local-images"
+  ]);
+  for (const channel of providerById(schema.body, "image").config.channels) {
+    assert.deepEqual(channel.profiles.map((profile) => profile.id), [
+      "codesonline-image-edits",
+      "right-code-draw",
+      "sub2api-local-images"
+    ]);
+    assert.equal(
+      channel.profiles.find((profile) => profile.id === "codesonline-image-edits").configured,
+      false
+    );
+  }
   assert.equal(providerById(schema.body, "image").fields.some(
     (field) => field.valueKey === "imageSecondaryModel" && field.type === "select"
   ), true);
@@ -314,6 +340,69 @@ test("admin provider settings remember keys per interface preset", async () => {
   delete process.env.VISION_API_URL;
   delete process.env.VISION_MODEL;
   delete process.env.VISION_MODEL_API_KEY;
+});
+
+test("CodesOnline image profiles do not inherit legacy provider keys", async () => {
+  const rightCodeUrl = "https://www.right.codes/draw/v1/images/generations";
+  const codesOnlineUrl = "https://image.codesonline.dev/v1/images/edits";
+  await writeFile(envPath, [
+    `IMAGE_API_URL=${rightCodeUrl}`,
+    "IMAGE_MODEL=gpt-image-2",
+    "IMAGE_MODEL_API_KEY=legacy-image-secret"
+  ].join("\n") + "\n");
+  process.env.IMAGE_API_URL = rightCodeUrl;
+  process.env.IMAGE_MODEL = "gpt-image-2";
+  process.env.IMAGE_MODEL_API_KEY = "legacy-image-secret";
+
+  const legacy = await request("/api/admin/providers");
+  const legacyChannel = imageChannel(providerById(legacy.body, "image"), "primary");
+  assert.equal(legacyChannel.keyPreview.endsWith("cret"), true);
+  assert.equal(
+    legacyChannel.profiles.find((profile) => profile.id === "codesonline-image-edits").configured,
+    false
+  );
+
+  const unconfiguredCodesOnline = await request("/api/admin/providers", {
+    method: "PUT",
+    body: JSON.stringify({ imageApiUrl: codesOnlineUrl })
+  });
+  const unconfiguredChannel = imageChannel(
+    providerById(unconfiguredCodesOnline.body, "image"),
+    "primary"
+  );
+  assert.equal(unconfiguredChannel.apiUrl, codesOnlineUrl);
+  assert.equal(unconfiguredChannel.configured, false);
+  assert.equal(unconfiguredChannel.keyPreview, "");
+  assert.equal(process.env.IMAGE_MODEL_API_KEY, "replace_me");
+
+  const configuredCodesOnline = await request("/api/admin/providers", {
+    method: "PUT",
+    body: JSON.stringify({ imageApiKey: "codesonline-image-secret" })
+  });
+  assert.equal(
+    imageChannel(providerById(configuredCodesOnline.body, "image"), "primary")
+      .keyPreview.endsWith("cret"),
+    true
+  );
+  assert.equal(process.env.IMAGE_MODEL_API_KEY, "codesonline-image-secret");
+
+  const restoredLegacy = await request("/api/admin/providers", {
+    method: "PUT",
+    body: JSON.stringify({ imageApiUrl: rightCodeUrl })
+  });
+  assert.equal(process.env.IMAGE_MODEL_API_KEY, "legacy-image-secret");
+  assert.equal(
+    imageChannel(providerById(restoredLegacy.body, "image"), "primary")
+      .profiles.find((profile) => profile.id === "codesonline-image-edits").configured,
+    true
+  );
+
+  const stored = await readFile(envPath, "utf8");
+  assert.match(stored, /IMAGE_MODEL_API_KEY__RIGHT_CODE_DRAW=legacy-image-secret/);
+  assert.match(stored, /IMAGE_MODEL_API_KEY__CODESONLINE_IMAGE_EDITS=codesonline-image-secret/);
+  delete process.env.IMAGE_API_URL;
+  delete process.env.IMAGE_MODEL;
+  delete process.env.IMAGE_MODEL_API_KEY;
 });
 
 test("admin provider settings validate URLs and serve the admin page", async () => {
