@@ -26,6 +26,7 @@ const MODEL_STATUS_TEXT = {
 let currentSchema = null;
 let modelProviders = {};
 let dirty = false;
+const profileUiCache = new Map();
 let modelPreviewRequestId = 0;
 
 function setStatus(message, tone = "") {
@@ -87,6 +88,42 @@ function profileForSelection(provider, field, apiUrl) {
   return profiles.find((item) => item.value === apiUrl) || null;
 }
 
+function profileCacheKey(valueKey, apiUrl) {
+  return `${valueKey}::${apiUrl || ""}`;
+}
+
+function secretToggleSvg(visible) {
+  return visible
+    ? `
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      </svg>`
+    : `
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M3 3l18 18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+        <path d="M2.5 12s3.5-6.5 9.5-6.5c1.8 0 3.4.4 4.8 1.1l1.8-1.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M8.2 8.2A4.2 4.2 0 0 0 6.5 12c0 3.1 2.5 5.5 5.5 5.5 1.3 0 2.5-.4 3.5-1.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+}
+
+function cacheProfilePreview(valueKey, apiUrl, profile) {
+  if (!valueKey || !apiUrl || !profile) return;
+  profileUiCache.set(profileCacheKey(valueKey, apiUrl), { ...profile });
+}
+
+function cachedProfileForSelection(provider, field, apiUrl) {
+  const cached = profileUiCache.get(profileCacheKey(field.valueKey, apiUrl));
+  if (cached) return cached;
+  const profile = profileForSelection(provider, field, apiUrl);
+  cacheProfilePreview(field.valueKey, apiUrl, profile);
+  return profile;
+}
+
+function previewTextFromKeyPreview(keyPreview) {
+  return keyPreview ? `当前密钥：${keyPreview}` : "该方案还没有保存 Key，请填写后保存";
+}
+
 function ensureOption(select, value, label = value) {
   if (!select || !value) return;
   const exists = Array.from(select.options).some((option) => option.value === value);
@@ -96,6 +133,19 @@ function ensureOption(select, value, label = value) {
     option.textContent = label || value;
     select.append(option);
   }
+}
+
+function renderSecretInput(input, wrapper) {
+  const shell = document.createElement("div");
+  shell.className = "secret-input-shell";
+  const toggle = document.createElement("button");
+  toggle.className = "secret-toggle";
+  toggle.type = "button";
+  toggle.dataset.secretToggleFor = input.name;
+  toggle.setAttribute("aria-label", "显示 API 密钥");
+  toggle.innerHTML = secretToggleSvg(false);
+  shell.append(input, toggle);
+  wrapper.append(shell);
 }
 
 function maskedKeyPreview(provider, field) {
@@ -224,6 +274,7 @@ function renderPresetSelect(field, currentValue, wrapper) {
   const preset = document.createElement("select");
   preset.className = "preset-select";
   preset.dataset.presetFor = field.valueKey;
+  preset.dataset.currentPresetValue = currentValue;
   preset.setAttribute("aria-label", `${FIELD_LABELS[field.name] || field.label || field.name}方案`);
 
   const custom = document.createElement("option");
@@ -266,24 +317,8 @@ function renderInputField(provider, field, wrapper) {
   input.dataset.fieldType = field.type;
   input.placeholder = field.type === "secret" ? "留空表示保持当前密钥" : "";
   if (field.type !== "secret") input.required = true;
-  if (field.type === "secret") {
-    const secretControl = document.createElement("div");
-    secretControl.className = "secret-control";
-    const toggle = document.createElement("button");
-    toggle.type = "button";
-    toggle.className = "secret-toggle";
-    toggle.textContent = "显示";
-    toggle.setAttribute("aria-label", "显示或隐藏新密钥输入");
-    toggle.addEventListener("click", () => {
-      const showing = input.type === "text";
-      input.type = showing ? "password" : "text";
-      toggle.textContent = showing ? "显示" : "隐藏";
-    });
-    secretControl.append(input, toggle);
-    wrapper.append(secretControl);
-  } else {
-    wrapper.append(input);
-  }
+  if (field.type === "secret") renderSecretInput(input, wrapper);
+  else wrapper.append(input);
 
   const help = document.createElement("small");
   help.className = field.type === "secret" ? "key-preview" : "";
@@ -334,21 +369,41 @@ function syncPresetSelection(presetSelect) {
 
   const { provider, field } = match;
   const row = presetSelect.closest("tr");
-  const profile = profileForSelection(provider, field, presetSelect.value);
+  const previousValue = presetSelect.dataset.currentPresetValue || fieldConfig(provider, field)?.apiUrl || "";
+  const previousProfile = cachedProfileForSelection(provider, field, previousValue);
   const keyField = providerFieldByName(provider, "apiKey", field.channelId || "");
   const modelField = providerFieldByName(provider, "model", field.channelId || "");
+  const keyWrapper = keyField && row
+    ? row.querySelector(`[data-value-key="${CSS.escape(keyField.valueKey)}"]`)
+    : null;
+  const currentKeyInput = keyWrapper?.querySelector('input[type="password"], input[type="text"]');
+  const currentDraftKey = currentKeyInput?.value?.trim() || "";
+  const previousKeyHelp = row?.querySelector(".key-preview")?.textContent.trim() || "";
+  const previousKeyPreview = previousKeyHelp.startsWith("当前密钥：")
+    ? previousKeyHelp.replace(/^当前密钥：/, "")
+    : previousProfile?.keyPreview || "";
+  const previousModelValue = modelField ? form.elements[modelField.valueKey]?.value || "" : "";
+  cacheProfilePreview(valueKey, previousValue, {
+    ...(previousProfile || {}),
+    value: previousValue,
+    keyPreview: previousKeyPreview,
+    model: previousModelValue || previousProfile?.model || "",
+    draftKey: currentDraftKey || previousProfile?.draftKey || ""
+  });
+  presetSelect.dataset.currentPresetValue = presetSelect.value;
+  const profile = cachedProfileForSelection(provider, field, presetSelect.value);
 
   if (keyField && row) {
     const keyWrapper = row.querySelector(`[data-value-key="${CSS.escape(keyField.valueKey)}"]`);
-    const keyInput = keyWrapper?.querySelector('[data-field-type="secret"]');
+    const keyInput = keyWrapper?.querySelector('input[type="password"], input[type="text"]');
     const keyHelp = keyWrapper?.querySelector(".key-preview");
     const clearInput = keyWrapper?.querySelector(`[data-clear-for="${CSS.escape(keyField.valueKey)}"]`);
-    if (keyInput) keyInput.value = "";
+    if (keyInput) keyInput.value = profile?.draftKey || "";
     if (clearInput) clearInput.checked = false;
     if (keyHelp) {
-      keyHelp.textContent = profile?.keyPreview
-        ? `当前密钥：${profile.keyPreview}`
-        : "该方案还没有保存 Key，请填写后保存";
+      keyHelp.textContent = profile?.draftKey
+        ? "当前已输入 Key，保存后生效"
+        : previewTextFromKeyPreview(profile?.keyPreview);
     }
     const badge = row.querySelector(".provider-status-cell .badge");
     if (badge) {
@@ -504,6 +559,7 @@ function renderProviders() {
 
 function render(data) {
   currentSchema = data;
+  profileUiCache.clear();
   renderProviders();
   setStatus(`已同步 ${data.providers.length} 个供应商配置。`, "ok");
   setSaveState("");
@@ -592,6 +648,18 @@ function payloadFromForm() {
 form.addEventListener("input", () => {
   dirty = true;
   setSaveState("有尚未保存的修改。");
+});
+
+form.addEventListener("click", (event) => {
+  const toggle = event.target.closest("[data-secret-toggle-for]");
+  if (!toggle) return;
+  const input = form.elements[toggle.dataset.secretToggleFor];
+  if (!input) return;
+  const visible = input.type === "text";
+  input.type = visible ? "password" : "text";
+  toggle.classList.toggle("active", !visible);
+  toggle.setAttribute("aria-label", visible ? "显示 API 密钥" : "隐藏 API 密钥");
+  toggle.innerHTML = secretToggleSvg(!visible);
 });
 
 form.addEventListener("change", (event) => {

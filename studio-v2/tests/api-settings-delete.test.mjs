@@ -342,10 +342,10 @@ test("admin provider settings validate URLs and serve the admin page", async () 
   assert.equal(adminPage.headers.get("cache-control"), "no-store, max-age=0");
   const adminHtml = await adminPage.text();
   assert.match(adminHtml, /供应商配置后台/);
-  assert.match(adminHtml, /styles\.css\?v=6/);
-  assert.match(adminHtml, /admin\.js\?v=6/);
+  assert.match(adminHtml, /styles\.css\?v=7/);
+  assert.match(adminHtml, /admin\.js\?v=7/);
 
-  for (const assetPath of ["/admin/styles.css?v=6", "/admin/admin.js?v=6"]) {
+  for (const assetPath of ["/admin/styles.css?v=7", "/admin/admin.js?v=7"]) {
     const asset = await fetch(`${baseUrl}${assetPath}`);
     assert.equal(asset.status, 200);
     assert.equal(asset.headers.get("cache-control"), "no-store, max-age=0");
