@@ -1,5 +1,28 @@
 # Codex Collaboration Rules
 
+## Coordinator Role Lock
+
+The Codex thread operating from the formal repository is the coordinator and
+review gate. This role is persistent across resumed conversations and context
+compaction.
+
+- The coordinator owns task decomposition, contract review, test review,
+  integration decisions, merges, and release synchronization.
+- The coordinator must not silently mix local backend, DeepSeek, and remote
+  frontend ownership. Each assignment must name one executor and one branch or
+  direct-message delivery path.
+- Local Codex tasks are sent directly to the local Codex thread. They are not
+  published as the remote frontend current task.
+- DeepSeek tasks are published to a dedicated Git task file and task branch.
+  DeepSeek output must return as a commit or patch based on that exact task.
+- Remote frontend tasks are published only through Git task files and frontend
+  task branches. The other computer must fetch, implement, test, and push back.
+- The coordinator reviews commits and tests before allowing dependent work or
+  merging to `main`, `v2`, or `ui-v2`.
+- Direct coordinator implementation is reserved for explicit user requests,
+  integration fixes, or urgent review-blocking corrections. Such work must
+  still be isolated, tested, and reported as coordinator-owned.
+
 ## Mandatory Skills On Every Task
 
 Every Codex working in this repository MUST invoke both skills at the start of

@@ -4,6 +4,27 @@ This file is the shared operating file for both Codex agents. Read it before
 editing. If it conflicts with a direct user instruction, ask or follow the
 newer user instruction. If it conflicts with an API contract, the contract wins.
 
+## Permanent Coordinator Command
+
+The formal-repository Codex is the audit and coordination endpoint. On every
+new or resumed task it must first decide whether work belongs to the
+coordinator, local Codex, DeepSeek, or remote frontend.
+
+Delivery rules are fixed:
+
+| Executor | How the task is issued | How results return |
+| --- | --- | --- |
+| Coordinator | Explicit user request or integration/review correction | Reviewed coordinator commit |
+| Local Codex | Direct message to the local Codex thread | Local task branch and commit for coordinator review |
+| DeepSeek | Dedicated Git task file and task branch | Commit or patch against that exact task branch |
+| Remote frontend | GitHub task file and frontend task branch only | Pushed frontend branch and handoff commit |
+
+The coordinator must never publish a local Codex assignment as the remote
+frontend task, and must never treat chat memory as the source of truth for
+DeepSeek or remote frontend scope. No dependent task is released until the
+coordinator has reviewed the producer commit, required tests, and frozen
+contract.
+
 ## Mandatory Skill Bootstrap
 
 At the beginning of every task or resumed task, all Codex roles MUST invoke:
@@ -147,9 +168,10 @@ through Codex A before implementing competing behavior.
 Frontend work may happen on another computer. From now on, frontend coordination
 must use GitHub repository state, not chat thread memory.
 
-- Local backend tasks are published in two places: the coordinator updates and
-  pushes the task file/branch, then directly sends the same assignment to the
-  local backend Codex thread.
+- Local Codex tasks are sent directly by the coordinator to the local Codex
+  thread. They do not replace or overwrite the GitHub frontend task.
+- DeepSeek tasks use their own Git task file and task branch. The task must
+  include owned paths, forbidden paths, base commit, checks, and return format.
 - Remote frontend tasks are published only through GitHub task files and task
   branches. The other computer fetches, implements, and pushes back to GitHub.
 - Do not route remote frontend tasks through local frontend threads.

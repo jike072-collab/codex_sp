@@ -260,6 +260,9 @@ test("admin provider settings remember keys per interface preset", async () => {
     "VISION_MODEL=gemini-2.5-flash",
     "VISION_MODEL_API_KEY=legacy-right-code-secret"
   ].join("\n") + "\n");
+  process.env.VISION_API_URL = "https://right.codes/gemini";
+  process.env.VISION_MODEL = "gemini-2.5-flash";
+  process.env.VISION_MODEL_API_KEY = "legacy-right-code-secret";
 
   const legacy = await request("/api/admin/providers");
   assert.equal(providerById(legacy.body, "vision").config.keyPreview, "•••• cret");
@@ -277,6 +280,8 @@ test("admin provider settings remember keys per interface preset", async () => {
   assert.equal(sub2api.response.status, 200);
   assert.equal(providerById(sub2api.body, "vision").config.apiUrl, "http://127.0.0.1:8080/v1/chat/completions");
   assert.equal(providerById(sub2api.body, "vision").config.keyPreview, "•••• cret");
+  assert.equal(process.env.VISION_API_URL, "http://127.0.0.1:8080/v1/chat/completions");
+  assert.equal(process.env.VISION_MODEL_API_KEY, "sub2api-vision-secret");
 
   let stored = await readFile(envPath, "utf8");
   assert.match(stored, /VISION_MODEL_API_KEY__RIGHT_CODE_GEMINI=legacy-right-code-secret/);
@@ -302,6 +307,11 @@ test("admin provider settings remember keys per interface preset", async () => {
   });
   assert.equal(restored.response.status, 200);
   assert.equal(providerById(restored.body, "vision").config.keyPreview, "•••• cret");
+  assert.equal(process.env.VISION_API_URL, "https://right.codes/gemini");
+  assert.equal(process.env.VISION_MODEL_API_KEY, "legacy-right-code-secret");
+  delete process.env.VISION_API_URL;
+  delete process.env.VISION_MODEL;
+  delete process.env.VISION_MODEL_API_KEY;
 });
 
 test("admin provider settings validate URLs and serve the admin page", async () => {

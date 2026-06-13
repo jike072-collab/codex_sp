@@ -537,6 +537,16 @@ async function writeEnvAtomically(text) {
   }
 }
 
+function syncRuntimeProviderSettings(updates) {
+  if (typeof process === "undefined") return;
+  const activeEnvKeys = new Set(
+    PROVIDER_DEFINITIONS.flatMap((provider) => provider.fields.map((field) => field.envKey))
+  );
+  for (const [envKey, value] of Object.entries(updates)) {
+    if (activeEnvKeys.has(envKey)) process.env[envKey] = value;
+  }
+}
+
 export function readImageDrawChannels(env) {
   return IMAGE_CHANNEL_SPECS.map((channel) => imageChannelConfig(env, channel, {
     includeApiKey: true
@@ -636,6 +646,7 @@ export async function updateAdminProviderSettings(input) {
 
   if (Object.keys(updates).length) {
     await writeEnvAtomically(updateEnvText(currentText, updates));
+    syncRuntimeProviderSettings(updates);
   }
   return readAdminProviderSettings();
 }
