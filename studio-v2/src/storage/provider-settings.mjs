@@ -8,7 +8,7 @@ import {
 } from "../ai-providers/provider-utils.mjs";
 import { DomainError } from "../workflow-domain/domain-error.mjs";
 
-export const PROVIDER_SETTINGS_SCHEMA_VERSION = 4;
+export const PROVIDER_SETTINGS_SCHEMA_VERSION = 5;
 
 const DEFAULT_IMAGE_API_URL = "https://www.right.codes/draw/v1/images/generations";
 const DEFAULT_IMAGE_MODEL = "gpt-image-2";
@@ -283,10 +283,103 @@ function sanitizeField(field) {
   return rest;
 }
 
+function profileIdFromPresetId(id) {
+  return String(id || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function profileEnvKey(envKey, profileId) {
+  const suffix = profileIdFromPresetId(profileId);
+  return suffix ? `${envKey}__${suffix}` : "";
+}
+
+function profileForUrl(field, apiUrl) {
+  return (field.presets || []).find((preset) => preset?.value === apiUrl) || null;
+}
+
+function fieldGroup(provider, channelId = "") {
+  const matchesChannel = (field) => channelId ? field.channelId === channelId : !field.channelId;
+  return {
+    provider,
+    channelId,
+    urlField: provider.fields.find((field) => field.name === "apiUrl" && matchesChannel(field)),
+    modelField: provider.fields.find((field) => field.name === "model" && matchesChannel(field)),
+    keyField: provider.fields.find((field) => field.name === "apiKey" && matchesChannel(field))
+  };
+}
+
+function providerFieldGroups() {
+  return PROVIDER_DEFINITIONS.flatMap((provider) => {
+    if (provider.id === "image") return IMAGE_CHANNEL_SPECS.map((channel) => fieldGroup(provider, channel.id));
+    return [fieldGroup(provider)];
+  });
+}
+
+function parseEnvText(text) {
+  const values = {};
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const separator = line.indexOf("=");
+    if (separator < 1) continue;
+    const key = line.slice(0, separator).trim();
+    let value = line.slice(separator + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    values[key] = value;
+  }
+  return values;
+}
+
+function profileValue(env, field, preset, activeValue = "") {
+  if (!field || !preset?.id) return "";
+  const stored = env[profileEnvKey(field.envKey, preset.id)] || "";
+  return stored || (preset.value === activeValue ? env[field.envKey] || "" : "");
+}
+
+function profilePreviews(env, { urlField, modelField, keyField }) {
+  if (!urlField || !keyField) return [];
+  const activeUrl = fieldValue(env, urlField);
+  return (urlField.presets || []).map((preset) => {
+    const apiKey = profileValue(env, keyField, preset, activeUrl);
+    const model = modelField ? profileValue(env, modelField, preset, activeUrl) : "";
+    return {
+      id: preset.id,
+      value: preset.value,
+      label: preset.label || preset.id || preset.value,
+      configured: hasUsableApiKey(apiKey),
+      keyPreview: maskedApiKeyPreview(apiKey),
+      model
+    };
+  });
+}
+
 function imageChannelConfig(env, spec, { includeApiKey = false } = {}) {
   const apiUrl = env[spec.apiUrlEnvKey] || DEFAULT_IMAGE_API_URL;
   const model = env[spec.modelEnvKey] || DEFAULT_IMAGE_MODEL;
   const apiKey = env[spec.apiKeyEnvKey] || "";
+  const urlField = {
+    envKey: spec.apiUrlEnvKey,
+    presets: urlPresets(
+      {
+        id: "right-code-draw",
+        label: "Right Code Draw",
+        value: DEFAULT_IMAGE_API_URL
+      },
+      {
+        id: "sub2api-local-images",
+        label: "Sub2API 本机图片通道",
+        value: `${SUB2API_BASE_URL}/images/generations`
+      }
+    )
+  };
   const channel = {
     id: spec.id,
     title: spec.title,
@@ -295,7 +388,12 @@ function imageChannelConfig(env, spec, { includeApiKey = false } = {}) {
     apiUrl,
     model,
     configured: hasUsableApiKey(apiKey),
-    keyPreview: maskedApiKeyPreview(apiKey)
+    keyPreview: maskedApiKeyPreview(apiKey),
+    profiles: profilePreviews(env, {
+      urlField,
+      modelField: { envKey: spec.modelEnvKey },
+      keyField: { envKey: spec.apiKeyEnvKey }
+    })
   };
   if (includeApiKey) channel.apiKey = apiKey;
   return channel;
@@ -340,7 +438,8 @@ function sanitizeProviderDefinition(provider, env) {
       model: modelField ? fieldValue(env, modelField) : "",
       apiUrl: urlField ? fieldValue(env, urlField) : "",
       configured: hasUsableApiKey(apiKey),
-      keyPreview: maskedApiKeyPreview(apiKey)
+      keyPreview: maskedApiKeyPreview(apiKey),
+      profiles: profilePreviews(env, { urlField, modelField, keyField })
     }
   };
 }
@@ -471,23 +570,65 @@ export async function updateAdminProviderSettings(input) {
     invalidSettings("Submit a provider settings object.");
   }
 
-  const updates = {};
+  const currentText = await readEnvText();
+  const env = parseEnvText(currentText);
+  const normalizedInput = new Map();
   for (const valueKey of Object.keys(input)) {
     const match = FIELD_BY_VALUE_KEY.get(valueKey);
     if (!match) invalidSettings(`Unsupported provider setting: ${valueKey}`);
 
-    let normalized;
-    if (match.field.name === "apiUrl") normalized = normalizeUrlUpdate(input, valueKey);
-    else if (match.field.name === "model") normalized = normalizeTextUpdate(input, valueKey);
-    else if (match.field.name === "apiKey") normalized = normalizeKeyUpdate(input, valueKey);
+    let normalizedValue;
+    if (match.field.name === "apiUrl") normalizedValue = normalizeUrlUpdate(input, valueKey);
+    else if (match.field.name === "model") normalizedValue = normalizeTextUpdate(input, valueKey);
+    else if (match.field.name === "apiKey") normalizedValue = normalizeKeyUpdate(input, valueKey);
     else invalidSettings(`Unsupported provider setting type: ${valueKey}`);
 
-    if (normalized !== undefined) updates[match.field.envKey] = normalized;
+    if (normalizedValue !== undefined) normalizedInput.set(valueKey, normalizedValue);
+  }
+
+  const updates = {};
+  for (const group of providerFieldGroups()) {
+    if (!group.urlField || !group.modelField || !group.keyField) continue;
+
+    const currentUrl = env[group.urlField.envKey] || group.urlField.defaultValue || "";
+    const nextUrl = normalizedInput.has(group.urlField.valueKey)
+      ? normalizedInput.get(group.urlField.valueKey)
+      : currentUrl;
+    const currentProfile = profileForUrl(group.urlField, currentUrl);
+    const nextProfile = profileForUrl(group.urlField, nextUrl);
+    const currentModel = env[group.modelField.envKey] || group.modelField.defaultValue || "";
+    const currentKey = env[group.keyField.envKey] || "";
+
+    if (currentProfile && currentProfile.id && currentProfile.id !== nextProfile?.id) {
+      updates[profileEnvKey(group.modelField.envKey, currentProfile.id)] = currentModel;
+      updates[profileEnvKey(group.keyField.envKey, currentProfile.id)] = currentKey || "replace_me";
+    }
+
+    if (normalizedInput.has(group.urlField.valueKey)) {
+      updates[group.urlField.envKey] = nextUrl;
+    }
+
+    if (normalizedInput.has(group.modelField.valueKey)) {
+      const model = normalizedInput.get(group.modelField.valueKey);
+      updates[group.modelField.envKey] = model;
+      if (nextProfile?.id) updates[profileEnvKey(group.modelField.envKey, nextProfile.id)] = model;
+    } else if (nextProfile?.id) {
+      const storedModel = env[profileEnvKey(group.modelField.envKey, nextProfile.id)];
+      updates[group.modelField.envKey] = storedModel || currentModel;
+    }
+
+    if (normalizedInput.has(group.keyField.valueKey)) {
+      const key = normalizedInput.get(group.keyField.valueKey);
+      updates[group.keyField.envKey] = key;
+      if (nextProfile?.id) updates[profileEnvKey(group.keyField.envKey, nextProfile.id)] = key;
+    } else if (nextProfile?.id) {
+      const storedKey = env[profileEnvKey(group.keyField.envKey, nextProfile.id)];
+      updates[group.keyField.envKey] = storedKey || (currentProfile?.id !== nextProfile.id ? "replace_me" : currentKey);
+    }
   }
 
   if (Object.keys(updates).length) {
-    const current = await readEnvText();
-    await writeEnvAtomically(updateEnvText(current, updates));
+    await writeEnvAtomically(updateEnvText(currentText, updates));
   }
   return readAdminProviderSettings();
 }

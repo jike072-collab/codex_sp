@@ -94,7 +94,7 @@ Response:
 
 ```json
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "providers": [
     {
       "id": "vision",
@@ -239,6 +239,12 @@ Response:
 `keyPreview` is empty when no usable key is configured. Otherwise it is masked
 as `•••• <last4>` and never contains the full API key.
 
+Schema version 5 also returns admin-only `config.profiles` arrays for preset
+API URL choices. Each profile contains only `{ id, value, label, configured,
+keyPreview, model }`; full keys are never returned. These profiles let the
+Admin page switch between saved preset keys/models, for example Right Code and
+Sub2API, without copying one provider key into another provider profile.
+
 ## Admin Provider Model Discovery
 
 ```http
@@ -361,12 +367,16 @@ Rules:
 - `visionModel`, `textModel`, `imageModel`, `imageSecondaryModel`, and
   `videoModel` must be non-empty strings with no line breaks.
 - API key fields accept a non-empty string to replace the key.
-- API key fields accept `null` to clear the local key.
+- API key fields accept `null` to clear the local key for the currently selected
+  preset profile.
 - Omitted fields keep their current values.
 - Empty API key strings are invalid; Admin UI should omit empty key inputs.
 - Values are stored only in the ignored local `.env` file using atomic writes.
 - `videoApiKey` is persisted to the dedicated `VIDEO_MODEL_API_KEY` setting.
 - System environment variables still take precedence over `.env`.
+- Preset API URL choices keep separate local profile keys/models using
+  `ENV_KEY__PRESET_ID` names, while the existing runtime `ENV_KEY` values remain
+  the source used by generation workflows.
 - Success returns the same shape as `GET /api/admin/providers`.
 
 ## Admin Static Page

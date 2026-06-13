@@ -71,6 +71,32 @@ function fieldConfig(provider, field) {
   return field.channelId ? channelConfig(provider, field.channelId) : provider.config;
 }
 
+function findFieldByValueKey(valueKey) {
+  return currentSchema?.providers
+    .flatMap((provider) => provider.fields.map((field) => ({ provider, field })))
+    .find(({ field }) => field.valueKey === valueKey) || null;
+}
+
+function providerFieldByName(provider, name, channelId = "") {
+  return provider.fields.find((field) => field.name === name && (channelId ? field.channelId === channelId : !field.channelId)) || null;
+}
+
+function profileForSelection(provider, field, apiUrl) {
+  const profiles = fieldConfig(provider, field)?.profiles || [];
+  return profiles.find((item) => item.value === apiUrl) || null;
+}
+
+function ensureOption(select, value, label = value) {
+  if (!select || !value) return;
+  const exists = Array.from(select.options).some((option) => option.value === value);
+  if (!exists) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label || value;
+    select.append(option);
+  }
+}
+
 function maskedKeyPreview(provider, field) {
   const preview = String(fieldConfig(provider, field)?.keyPreview || "").trim();
   if (!preview) return "当前未保存可用密钥";
@@ -177,6 +203,8 @@ function renderInputField(provider, field, wrapper) {
   wrapper.append(input);
 
   const help = document.createElement("small");
+  help.className = field.type === "secret" ? "key-preview" : "";
+  if (field.type === "secret") help.dataset.keyPreviewFor = field.valueKey;
   help.textContent = field.type === "secret"
     ? maskedKeyPreview(provider, field)
     : "保存后将用于此供应商的请求。";
@@ -198,6 +226,9 @@ function renderField(provider, field) {
   const wrapper = document.createElement("div");
   wrapper.className = "field";
   if (field.channelId) wrapper.dataset.channelId = field.channelId;
+  wrapper.dataset.providerId = provider.id;
+  wrapper.dataset.valueKey = field.valueKey;
+  wrapper.dataset.fieldName = field.name;
 
   const label = document.createElement("label");
   label.htmlFor = field.valueKey;
@@ -210,6 +241,42 @@ function renderField(provider, field) {
     renderInputField(provider, field, wrapper);
   }
   return wrapper;
+}
+
+function syncPresetSelection(presetSelect) {
+  const valueKey = presetSelect?.dataset?.presetFor;
+  if (!valueKey) return;
+  const match = findFieldByValueKey(valueKey);
+  if (!match) return;
+
+  const { provider, field } = match;
+  const row = presetSelect.closest("tr") || presetSelect.closest(".channel-card") || presetSelect.closest(".provider-table");
+  const profile = profileForSelection(provider, field, presetSelect.value);
+  const keyField = providerFieldByName(provider, "apiKey", field.channelId || "");
+  const modelField = providerFieldByName(provider, "model", field.channelId || "");
+
+  if (keyField && row) {
+    const keyWrapper = row.querySelector(`[data-value-key="${CSS.escape(keyField.valueKey)}"]`);
+    const keyInput = keyWrapper?.querySelector('input[type="password"]');
+    const keyHelp = keyWrapper?.querySelector(".key-preview");
+    const clearInput = keyWrapper?.querySelector(`[data-clear-for="${CSS.escape(keyField.valueKey)}"]`);
+    if (keyInput) keyInput.value = "";
+    if (clearInput) clearInput.checked = false;
+    if (keyHelp) {
+      keyHelp.textContent = profile?.keyPreview
+        ? `当前密钥：${profile.keyPreview}`
+        : "该方案还没有保存 Key，请填写后保存";
+    }
+  }
+
+  if (modelField && row && profile?.model) {
+    const modelWrapper = row.querySelector(`[data-value-key="${CSS.escape(modelField.valueKey)}"]`);
+    const modelSelect = modelWrapper?.querySelector("select");
+    if (modelSelect) {
+      ensureOption(modelSelect, profile.model);
+      modelSelect.value = profile.model;
+    }
+  }
 }
 
 function renderImageChannel(provider, channel) {
@@ -530,6 +597,7 @@ form.addEventListener("change", (event) => {
     const target = form.elements[preset.dataset.presetFor];
     if (target && preset.value) {
       target.value = preset.value;
+      syncPresetSelection(preset);
       dirty = true;
       setSaveState("已切换接口地址，保存后生效。");
     }
