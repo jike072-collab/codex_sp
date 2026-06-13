@@ -26,6 +26,7 @@ const MODEL_STATUS_TEXT = {
 let currentSchema = null;
 let modelProviders = {};
 let dirty = false;
+const profileUiCache = new Map();
 
 function setStatus(message, tone = "") {
   statusEl.textContent = message;
@@ -84,6 +85,27 @@ function providerFieldByName(provider, name, channelId = "") {
 function profileForSelection(provider, field, apiUrl) {
   const profiles = fieldConfig(provider, field)?.profiles || [];
   return profiles.find((item) => item.value === apiUrl) || null;
+}
+
+function profileCacheKey(valueKey, apiUrl) {
+  return `${valueKey}::${apiUrl || ""}`;
+}
+
+function cacheProfilePreview(valueKey, apiUrl, profile) {
+  if (!valueKey || !apiUrl || !profile) return;
+  profileUiCache.set(profileCacheKey(valueKey, apiUrl), { ...profile });
+}
+
+function cachedProfileForSelection(provider, field, apiUrl) {
+  const cached = profileUiCache.get(profileCacheKey(field.valueKey, apiUrl));
+  if (cached) return cached;
+  const profile = profileForSelection(provider, field, apiUrl);
+  cacheProfilePreview(field.valueKey, apiUrl, profile);
+  return profile;
+}
+
+function previewTextFromKeyPreview(keyPreview) {
+  return keyPreview ? `当前密钥：${keyPreview}` : "该方案还没有保存 Key，请填写后保存";
 }
 
 function ensureOption(select, value, label = value) {
@@ -158,6 +180,7 @@ function renderPresetSelect(field, currentValue, wrapper) {
   const preset = document.createElement("select");
   preset.className = "preset-select";
   preset.dataset.presetFor = field.valueKey;
+  preset.dataset.currentPresetValue = currentValue;
   preset.setAttribute("aria-label", `${FIELD_LABELS[field.name] || field.label || field.name}方案`);
 
   const custom = document.createElement("option");
@@ -251,7 +274,22 @@ function syncPresetSelection(presetSelect) {
 
   const { provider, field } = match;
   const row = presetSelect.closest("tr") || presetSelect.closest(".channel-card") || presetSelect.closest(".provider-table");
-  const profile = profileForSelection(provider, field, presetSelect.value);
+  const previousValue = presetSelect.dataset.currentPresetValue || fieldConfig(provider, field)?.apiUrl || "";
+  const previousProfile = cachedProfileForSelection(provider, field, previousValue);
+  const previousKeyHelp = row?.querySelector(".key-preview")?.textContent.trim() || "";
+  const previousKeyPreview = previousKeyHelp.startsWith("当前密钥：")
+    ? previousKeyHelp.replace(/^当前密钥：/, "")
+    : previousProfile?.keyPreview || "";
+  const previousModelField = providerFieldByName(provider, "model", field.channelId || "");
+  const previousModelValue = previousModelField ? form.elements[previousModelField.valueKey]?.value || "" : "";
+  cacheProfilePreview(valueKey, previousValue, {
+    ...(previousProfile || {}),
+    value: previousValue,
+    keyPreview: previousKeyPreview,
+    model: previousModelValue || previousProfile?.model || ""
+  });
+  presetSelect.dataset.currentPresetValue = presetSelect.value;
+  const profile = cachedProfileForSelection(provider, field, presetSelect.value);
   const keyField = providerFieldByName(provider, "apiKey", field.channelId || "");
   const modelField = providerFieldByName(provider, "model", field.channelId || "");
 
@@ -263,9 +301,7 @@ function syncPresetSelection(presetSelect) {
     if (keyInput) keyInput.value = "";
     if (clearInput) clearInput.checked = false;
     if (keyHelp) {
-      keyHelp.textContent = profile?.keyPreview
-        ? `当前密钥：${profile.keyPreview}`
-        : "该方案还没有保存 Key，请填写后保存";
+      keyHelp.textContent = previewTextFromKeyPreview(profile?.keyPreview);
     }
   }
 
