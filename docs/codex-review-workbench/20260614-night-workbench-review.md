@@ -85,6 +85,28 @@ Verified:
 Issue Found:
 - 手机端完整工作区流程尚未验收；用户已明确手机端优先级低于网页端。
 
+## Module: GPT 参考图桌面端口径吸收
+
+Changed:
+- 新增 `docs/codex-review-workbench/20260614-ui-reference-direction.md`，记录 4 张 GPT 效果图的可复用方向和未照抄项。
+- 新增 `docs/reference/gpt-ui-direction-20260614/`，保存用户提供的 4 张 UI 参考图。
+- `studio-v2/public/index.html`：五步文案统一为“商品素材 / 产品设定 / 生成脚本 / 生成故事板 / 导出计划”。
+- `studio-v2/public/index.html`：Step 01 标题改为“上传商品素材”，上传区文案改为“拖拽图片到此处，或点击上传”。
+- `studio-v2/public/js/render.js`：右侧面板改为“AI 素材检测器 / AI 产品检查器 / AI 脚本检查官 / AI 故事板检查 / 导出计划”。
+- `studio-v2/public/js/core.js`、`studio-v2/public/js/demo-loop.js`：Step 04/05 的状态与标题口径统一为“生成故事板 / 导出计划”。
+
+Verified:
+- `node --check studio-v2/public/js/core.js` 通过。
+- `node --check studio-v2/public/js/render.js` 通过。
+- `node --check studio-v2/public/js/demo-loop.js` 通过。
+- `git diff --check` 通过，仅有工作区 CRLF 提示。
+- 1440x900 内置浏览器实测 Step 05：页面显示“导出计划”，不再出现 `h2=生成视频`，控制台无 error/warning，无文档级横向溢出。
+- 390x844 内置浏览器基础检查：文档级无横向溢出，控制台无 error/warning。
+
+Issue Found:
+- 手机端步骤条仍为横向滚动项，属于现有移动端基础方案；用户本轮优先桌面网页端，后续再 polish。
+- Chrome 扩展浏览器通道不可用，本轮改用 Codex 内置浏览器完成页面验证。
+
 ## 待用户确认
 
 - 是否把“单段/双段”改成更小白的“一个视频 / 两段视频”。
@@ -92,4 +114,4 @@ Issue Found:
 
 ## Suggested Next Step
 
-下一步优先做桌面网页端完整浏览器闭环：新建项目 -> 上传 -> 识别 -> 确认产品 -> 生成脚本 -> 确认脚本 -> 故事板失败/重试或成功 -> Step 05 视频入口。
+下一步优先继续桌面网页端完整闭环和视觉 token 文档：新建项目 -> 上传 -> 识别 -> 确认产品 -> 生成脚本 -> 确认脚本 -> 故事板失败/重试或成功 -> Step 05 导出计划，并补齐字体、间距、圆角、阴影、边框、颜色 tokens。

@@ -520,7 +520,7 @@ export function renderVisualStage(project = state.project) {
       </div>
       <div class="stage-actions compact-stage-actions">
         <p>${singleVideo ? "故事板、脚本和视频时长已准备好。" : "故事板只展示图片与必要信息，避免重复堆叠完整脚本。"}</p>
-        <button class="primary-button" type="button" data-action="view-export">${singleVideo ? "进入生成视频" : "进入最终交付"}</button>
+        <button class="primary-button" type="button" data-action="view-export">${singleVideo ? "进入导出计划" : "进入最终交付"}</button>
       </div>
     `;
     return;
@@ -765,7 +765,7 @@ export function renderExportStage(project = state.project) {
       container.innerHTML = `
         <div class="future-content script-start-panel visual-error-card">
           <p class="section-index">STEP 05</p>
-          <h2>生成视频尚未就绪</h2>
+          <h2>导出计划尚未就绪</h2>
           <p>请先完成 Step 04 的一张完整故事板。</p>
           <button class="primary-button" type="button" data-action="view-visual">返回故事板</button>
         </div>
@@ -779,7 +779,7 @@ export function renderExportStage(project = state.project) {
       <div class="section-heading">
         <div>
           <p class="section-index">STEP 05</p>
-          <h2>生成视频</h2>
+          <h2>导出计划</h2>
           <p>这里只展示一个视频任务。视频时长、脚本和故事板都跟随 Step 02 选择的时长。</p>
         </div>
         <span class="requirement">${escapeHtml(summary.duration)} 秒 · ${videoStatusLabel(status)}</span>
@@ -839,7 +839,7 @@ export function renderExportStage(project = state.project) {
     container.innerHTML = `
       <div class="future-content script-start-panel visual-error-card">
         <p class="section-index">STEP 05</p>
-        <h2>生成视频尚未就绪</h2>
+        <h2>导出计划尚未就绪</h2>
         <p>Step 5 只展示完整交付。请回到 Step 4 完成两张真实故事板图片。</p>
         <button class="primary-button" type="button" data-action="view-visual">返回故事板</button>
       </div>
@@ -852,7 +852,7 @@ export function renderExportStage(project = state.project) {
     <div class="section-heading">
       <div>
         <p class="section-index">STEP 05</p>
-        <h2>生成视频</h2>
+        <h2>导出计划</h2>
         <p>双段模式使用两张故事板作为输入，生成两个 10 秒视频任务；已完成的视频会保留，失败段可单独重试。</p>
       </div>
       <span class="requirement">${escapeHtml(completedVideos)}/2 视频 · ${escapeHtml(imageItems.length)}/2 故事板</span>

@@ -35,21 +35,21 @@ import {
 const STAGE_ORDER = ["assets", "review", "market", "script", "visual", "export"];
 
 const STAGE_PANEL_COPY = {
-  assets: "上传 1 张四视图拼图即可开始识别，补充更多角度会更稳。",
-  review: "确认产品锁定、受众、比例和创意方向。",
+  assets: "上传 1 张图片即可开始识别，4-8 张多角度素材会让后续画面更稳。",
+  review: "检查产品身份、投放设置和创意方向，确认后进入脚本。",
   market: "把已确认的产品信息整理成脚本输入。",
-  script: "按所选时长检查单条脚本、镜头和文案。",
-  visual: "img2img 生成一张完整故事板，作为视频参考。",
-  export: "使用脚本和故事板生成最终广告视频。"
+  script: "检查脚本结构、镜头节奏、字幕和卖点是否完整。",
+  visual: "检查故事板生成数量、画面清晰度和重试状态。",
+  export: "汇总故事板、脚本和视频生成任务，准备最终交付。"
 };
 
 const STAGE_PANEL_TITLE = {
-  assets: "上传进度",
-  review: "产品设定",
+  assets: "AI 素材检测器",
+  review: "AI 产品检查器",
   market: "创意确认",
-  script: "脚本进度",
-  visual: "故事板状态",
-  export: "生成视频"
+  script: "AI 脚本检查官",
+  visual: "AI 故事板检查",
+  export: "导出计划"
 };
 
 const VISIBLE_STAGE_NUMBER = {
@@ -151,7 +151,7 @@ export function renderWorkspace() {
     `${isReviewingPast ? `${statusLabel(project.status)}，回看${statusLabel(activeStatus)}，` : ""}当前模式：${workflowModeLabel(workflowMode(project))}`
   );
   const subtitleByStatus = {
-    assets: "上传 1 张四视图拼图即可进入识别和锁定，更多角度只是建议。",
+    assets: "第一步上传商品素材，1 张即可开始识别，4-8 张多角度素材更稳。",
     analyzing: "正在识别鞋款，稍后会进入产品设定。",
     review: "确认产品信息、受众、比例和创意方向。",
     market: "整理创意 brief，准备生成单条视频脚本。",
@@ -159,11 +159,11 @@ export function renderWorkspace() {
       ? "查看完整中文脚本，按所选时长检查镜头与文案。"
       : "查看 20 秒中文脚本，按两个 10 秒段落检查镜头与文案。",
     visual: isSingleVideoProject(project)
-      ? "img2img 生成一张完整故事板。"
-      : "img2img 生成两张 10 秒分段故事板。",
+      ? "生成一张完整故事板，成功后进入导出计划。"
+      : "生成两张 10 秒分段故事板，成功后进入导出计划。",
     export: isSingleVideoProject(project)
-      ? "生成、播放和下载最终广告视频。"
-      : "生成、播放和下载两个 10 秒视频任务。"
+      ? "检查视频任务，完成后可播放和下载最终广告视频。"
+      : "检查两个 10 秒视频任务，完成后可播放和下载。"
   };
   el("workspaceSubtitle").textContent = subtitleByStatus[activeStatus] || subtitleByStatus.assets;
   const setup = projectSetup(project);
@@ -262,8 +262,8 @@ function renderWorkspacePanel(project, activeStatus) {
   if (panelStageCopy) {
     const singleVideo = isSingleVideoProject(project);
     const dynamicCopy = {
-      script: singleVideo ? "按所选时长检查单条脚本、镜头和文案。" : "按 0-10s 和 10-20s 检查脚本、镜头和文案。",
-      visual: singleVideo ? "img2img 生成一张完整故事板，作为视频参考。" : "img2img 生成两张分段故事板，成功图会保留。",
+      script: singleVideo ? "检查单条脚本的镜头、卖点、字幕和节奏。" : "按 0-10s 和 10-20s 检查脚本、镜头和文案。",
+      visual: singleVideo ? "检查完整故事板是否生成成功，失败时可重试。" : "检查两张分段故事板，成功图会保留。",
       export: singleVideo ? "使用脚本和故事板生成最终广告视频。" : "使用两张故事板生成两个 10 秒视频任务。"
     };
     panelStageCopy.textContent = dynamicCopy[activeStatus] || STAGE_PANEL_COPY[activeStatus] || "";

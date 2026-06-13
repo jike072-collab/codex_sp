@@ -42,7 +42,7 @@
         <div class="empty-story empty-quickstart">
           <p class="kicker">LOCAL STUDIO</p>
           <h1>新建广告项目</h1>
-          <p class="empty-copy">创建项目后直接进入五步工作台：上传商品图、锁定产品、生成脚本、故事板和视频。</p>
+          <p class="empty-copy">创建项目后直接进入五步工作台：上传商品素材、确认产品设定、生成脚本、生成故事板、导出计划。</p>
           <button class="primary-button large" id="emptyCreateButton" type="button">新建广告项目</button>
         </div>
       </section>
@@ -64,8 +64,8 @@
           <li data-step="review"><span class="stepper-badge">02</span><span class="stepper-copy"><strong>产品设定</strong><small>锁定与确认</small></span></li>
           <li class="workflow-skipped-step" data-step="market" aria-hidden="true"><span>创意确认</span></li>
           <li data-step="script"><span class="stepper-badge">03</span><span class="stepper-copy"><strong>生成脚本</strong><small>完整时长脚本</small></span></li>
-          <li data-step="visual"><span class="stepper-badge">04</span><span class="stepper-copy"><strong>故事板</strong><small>img2img 生成</small></span></li>
-          <li data-step="export"><span class="stepper-badge">05</span><span class="stepper-copy"><strong>生成视频</strong><small>最终广告视频</small></span></li>
+          <li data-step="visual"><span class="stepper-badge">04</span><span class="stepper-copy"><strong>生成故事板</strong><small>画面预览</small></span></li>
+          <li data-step="export"><span class="stepper-badge">05</span><span class="stepper-copy"><strong>导出计划</strong><small>视频与交付</small></span></li>
         </ol>
 
         <div class="stage-layout">
@@ -74,8 +74,8 @@
               <div class="section-heading upload-heading">
                 <div>
                   <p class="section-index">STEP 01</p>
-                  <h2>整理商品素材</h2>
-                  <p>上传 1 张四视图拼图即可开始识别，补充更多角度会让后续一致性更稳。</p>
+                  <h2>上传商品素材</h2>
+                  <p>上传一双鞋的多个视角，AI 会先识别产品外观，再锁定后续创意方向。</p>
                 </div>
                 <span class="requirement">1 张即可识别，建议 4-8 张</span>
               </div>
@@ -83,8 +83,8 @@
               <div class="upload-surface">
                 <button class="drop-zone" id="dropZone" type="button">
                   <span class="upload-icon">↥</span>
-                  <strong>拖入鞋子图片，或点击选择</strong>
-                  <small>支持 JPG、PNG、WebP；1 张四视图拼图也可识别，建议包含侧面、正面、后跟、鞋底</small>
+                  <strong>拖拽图片到此处，或点击上传</strong>
+                  <small>支持 JPG、PNG、WebP；单张四视图拼图也可以，建议包含主图、侧面、后跟和鞋底</small>
                 </button>
                 <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
 
@@ -273,7 +273,7 @@
           <aside class="context-panel quality-panel">
             <div class="panel-card panel-overview">
               <p class="panel-kicker" id="panelStageKicker">STEP 01</p>
-              <h3 id="panelStageTitle">上传进度</h3>
+              <h3 id="panelStageTitle">AI 素材检测器</h3>
               <p class="panel-copy" id="panelStageCopy">上传 1 张四视图拼图即可开始识别，补充更多角度会更稳。</p>
               <div class="panel-metric-grid">
                 <div>
