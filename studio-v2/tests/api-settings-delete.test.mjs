@@ -1,7 +1,7 @@
 import test, { after, before } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -103,7 +103,7 @@ test("public provider status stays redacted while admin settings persist locally
 
   const schema = await request("/api/admin/providers");
   assert.equal(schema.response.status, 200);
-  assert.equal(schema.body.schemaVersion, 4);
+  assert.equal(schema.body.schemaVersion, 5);
   assert.deepEqual(
     schema.body.providers.map((provider) => provider.id),
     ["vision", "text", "image", "video"]
@@ -114,6 +114,15 @@ test("public provider status stays redacted while admin settings persist locally
   ), true);
   assert.equal(providerById(schema.body, "vision").fields.some(
     (field) => field.valueKey === "visionModel" && field.type === "select"
+  ), true);
+  assert.equal(providerById(schema.body, "vision").fields.some(
+    (field) => field.valueKey === "visionApiUrl"
+      && field.presets?.some((preset) => preset.value === "http://127.0.0.1:8080/v1/chat/completions")
+  ), true);
+  assert.equal(providerById(schema.body, "vision").config.profiles.some((profile) => profile.id === "right-code-gemini"), true);
+  assert.equal(providerById(schema.body, "text").fields.some(
+    (field) => field.valueKey === "textApiUrl"
+      && field.presets?.some((preset) => preset.value === "http://127.0.0.1:8080/v1/chat/completions")
   ), true);
   assert.deepEqual(providerById(schema.body, "image").channels.map((channel) => channel.id), [
     "primary",
@@ -243,6 +252,56 @@ test("public provider status stays redacted while admin settings persist locally
   assert.equal(providerById(allCleared.body, "text").config.configured, false);
   assert.equal(providerById(allCleared.body, "image").config.configured, false);
   assert.equal(providerById(allCleared.body, "video").config.configured, false);
+});
+
+test("admin provider settings remember keys per interface preset", async () => {
+  await writeFile(envPath, [
+    "VISION_API_URL=https://right.codes/gemini",
+    "VISION_MODEL=gemini-2.5-flash",
+    "VISION_MODEL_API_KEY=legacy-right-code-secret"
+  ].join("\n") + "\n");
+
+  const legacy = await request("/api/admin/providers");
+  assert.equal(providerById(legacy.body, "vision").config.keyPreview, "•••• cret");
+  assert.equal(providerById(legacy.body, "vision").config.profiles.some(
+    (profile) => profile.id === "right-code-gemini" && profile.configured
+  ), true);
+
+  const sub2api = await request("/api/admin/providers", {
+    method: "PUT",
+    body: JSON.stringify({
+      visionApiUrl: "http://127.0.0.1:8080/v1/chat/completions",
+      visionApiKey: "sub2api-vision-secret"
+    })
+  });
+  assert.equal(sub2api.response.status, 200);
+  assert.equal(providerById(sub2api.body, "vision").config.apiUrl, "http://127.0.0.1:8080/v1/chat/completions");
+  assert.equal(providerById(sub2api.body, "vision").config.keyPreview, "•••• cret");
+
+  let stored = await readFile(envPath, "utf8");
+  assert.match(stored, /VISION_MODEL_API_KEY__RIGHT_CODE_GEMINI=legacy-right-code-secret/);
+  assert.match(stored, /VISION_MODEL_API_KEY__SUB2API_LOCAL_CHAT=sub2api-vision-secret/);
+
+  const cleared = await request("/api/admin/providers", {
+    method: "PUT",
+    body: JSON.stringify({
+      visionApiKey: null
+    })
+  });
+  assert.equal(cleared.response.status, 200);
+  assert.equal(providerById(cleared.body, "vision").config.configured, false);
+  stored = await readFile(envPath, "utf8");
+  assert.match(stored, /VISION_MODEL_API_KEY__RIGHT_CODE_GEMINI=legacy-right-code-secret/);
+  assert.match(stored, /VISION_MODEL_API_KEY__SUB2API_LOCAL_CHAT=replace_me/);
+
+  const restored = await request("/api/admin/providers", {
+    method: "PUT",
+    body: JSON.stringify({
+      visionApiUrl: "https://right.codes/gemini"
+    })
+  });
+  assert.equal(restored.response.status, 200);
+  assert.equal(providerById(restored.body, "vision").config.keyPreview, "•••• cret");
 });
 
 test("admin provider settings validate URLs and serve the admin page", async () => {
