@@ -318,6 +318,18 @@ function providerFieldGroups() {
   });
 }
 
+function providerFieldGroup(providerId, channelId = "") {
+  const provider = PROVIDER_DEFINITIONS.find((item) => item.id === providerId);
+  if (!provider) invalidSettings("未知的供应商模型预览请求。");
+  if (provider.id === "image") {
+    const channel = IMAGE_CHANNEL_SPECS.find((item) => item.id === channelId);
+    if (!channel) invalidSettings("图片供应商模型预览必须指定有效通道。");
+    return fieldGroup(provider, channel.id);
+  }
+  if (channelId) invalidSettings("该供应商不支持通道参数。");
+  return fieldGroup(provider);
+}
+
 function parseEnvText(text) {
   const values = {};
   for (const rawLine of text.split(/\r?\n/)) {
@@ -558,6 +570,42 @@ export async function readAdminProviderSettings() {
   return {
     schemaVersion: PROVIDER_SETTINGS_SCHEMA_VERSION,
     providers: PROVIDER_DEFINITIONS.map((provider) => sanitizeProviderDefinition(provider, env))
+  };
+}
+
+export async function readAdminProviderModelTarget({
+  providerId,
+  channelId = "",
+  apiUrl
+}) {
+  const group = providerFieldGroup(String(providerId || "").trim(), String(channelId || "").trim());
+  if (!group.urlField || !group.modelField || !group.keyField) {
+    invalidSettings("供应商模型预览配置不完整。");
+  }
+
+  const normalizedUrl = normalizeUrlUpdate({ apiUrl }, "apiUrl");
+  const env = await loadEnv();
+  const activeUrl = fieldValue(env, group.urlField);
+  const activeModel = fieldValue(env, group.modelField);
+  const selectedProfile = profileForUrl(group.urlField, normalizedUrl);
+  const isActiveCustomUrl = !selectedProfile && normalizedUrl === activeUrl;
+
+  return {
+    providerId: group.provider.id,
+    channelId: group.channelId,
+    apiUrl: normalizedUrl,
+    model: selectedProfile
+      ? profileValue(env, group.modelField, selectedProfile, activeUrl)
+        || group.modelField.defaultValue
+        || activeModel
+      : isActiveCustomUrl
+        ? activeModel
+        : group.modelField.defaultValue || activeModel,
+    apiKey: selectedProfile
+      ? profileValue(env, group.keyField, selectedProfile, activeUrl)
+      : isActiveCustomUrl
+        ? env[group.keyField.envKey] || ""
+        : ""
   };
 }
 

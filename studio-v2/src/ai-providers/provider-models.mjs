@@ -7,6 +7,7 @@ import {
 } from "./provider-utils.mjs";
 import {
   providerSettingDefinitions,
+  readAdminProviderModelTarget,
   readImageDrawChannels
 } from "../storage/provider-settings.mjs";
 
@@ -266,16 +267,68 @@ async function discoverImageProvider(provider, env, { refresh, fetchImpl, timeou
   };
 }
 
+async function discoverSelectedProvider(selection, { refresh, fetchImpl, timeoutMs }) {
+  const target = await readAdminProviderModelTarget(selection);
+  const key = cacheKey([
+    target.providerId,
+    target.channelId,
+    target.apiUrl,
+    target.model,
+    apiKeyFingerprint(target.apiKey)
+  ]);
+  const existing = refresh ? null : cached(key);
+  const discovered = existing || await fetchModelList(target.providerId, {
+    apiUrl: target.apiUrl,
+    apiKey: target.apiKey,
+    currentModel: target.model,
+    fetchImpl,
+    timeoutMs
+  });
+  if (!existing) remember(key, discovered);
+
+  if (target.providerId !== "image") {
+    return { providers: { [target.providerId]: discovered } };
+  }
+
+  const channelDefinition = providerSettingDefinitions()
+    .find((provider) => provider.id === "image")
+    ?.channels.find((channel) => channel.id === target.channelId);
+  const channel = {
+    id: target.channelId,
+    title: channelDefinition?.title || target.channelId,
+    description: channelDefinition?.description || "",
+    segmentId: channelDefinition?.segmentId || "",
+    ...discovered
+  };
+  return {
+    providers: {
+      image: {
+        status: channel.status,
+        source: channel.source,
+        channels: [channel]
+      }
+    }
+  };
+}
+
 export function clearProviderModelDiscoveryCache() {
   discoveryCache.clear();
 }
 
 export async function discoverAdminProviderModels({
   refresh = false,
-  fetchImpl = fetch
+  fetchImpl = fetch,
+  selection = null
 } = {}) {
   const env = await loadEnv();
   const timeoutMs = positiveInteger(env.MODEL_DISCOVERY_TIMEOUT_MS, 15000);
+  if (selection) {
+    return discoverSelectedProvider(selection, {
+      refresh,
+      fetchImpl,
+      timeoutMs
+    });
+  }
   const providers = {};
 
   for (const provider of providerSettingDefinitions()) {

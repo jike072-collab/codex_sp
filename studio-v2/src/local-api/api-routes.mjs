@@ -78,8 +78,17 @@ export async function handleApi(request, response, url) {
 
   if (url.pathname === "/api/admin/providers/models") {
     if (request.method === "GET") {
+      const providerId = url.searchParams.get("providerId")?.trim() || "";
+      const selection = providerId
+        ? {
+            providerId,
+            channelId: url.searchParams.get("channelId")?.trim() || "",
+            apiUrl: url.searchParams.get("apiUrl")?.trim() || ""
+          }
+        : null;
       return sendJson(response, 200, await discoverAdminProviderModels({
-        refresh: url.searchParams.get("refresh") === "1"
+        refresh: url.searchParams.get("refresh") === "1",
+        selection
       }));
     }
     return sendJson(response, 405, { error: "Unsupported operation." });

@@ -8,8 +8,12 @@ import {
 
 const providerEnvKeys = [
   "VISION_MODEL_API_KEY",
+  "VISION_MODEL_API_KEY__RIGHT_CODE_GEMINI",
+  "VISION_MODEL_API_KEY__SUB2API_LOCAL_CHAT",
   "VISION_API_URL",
   "VISION_MODEL",
+  "VISION_MODEL__RIGHT_CODE_GEMINI",
+  "VISION_MODEL__SUB2API_LOCAL_CHAT",
   "TEXT_MODEL_API_KEY",
   "TEXT_API_URL",
   "TEXT_MODEL",
@@ -189,6 +193,60 @@ test("provider model discovery supports Sub2API OpenAI-compatible vision endpoin
 
     assert.equal(result.providers.vision.status, "ok");
     assert.ok(result.providers.vision.models.some((model) => model.id === "gemini-2.5-flash"));
+  });
+});
+
+test("selected profile model preview uses only that profile key", async () => {
+  await withProviderEnv({
+    VISION_MODEL_API_KEY: "right-code-key-9744",
+    VISION_MODEL_API_KEY__RIGHT_CODE_GEMINI: "right-code-key-9744",
+    VISION_MODEL_API_KEY__SUB2API_LOCAL_CHAT: "sub2api-key-ca2e",
+    VISION_API_URL: "https://right.codes/gemini",
+    VISION_MODEL: "gemini-2.5-flash",
+    VISION_MODEL__RIGHT_CODE_GEMINI: "gemini-2.5-flash",
+    VISION_MODEL__SUB2API_LOCAL_CHAT: "sub2api-vision-model"
+  }, async () => {
+    const seenAuth = [];
+    const sub2api = await discoverAdminProviderModels({
+      selection: {
+        providerId: "vision",
+        apiUrl: "http://127.0.0.1:8080/v1/chat/completions"
+      },
+      fetchImpl: async (url, options) => {
+        assert.equal(String(url), "http://127.0.0.1:8080/v1/models");
+        seenAuth.push(options.headers.Authorization);
+        return jsonResponse({ data: [{ id: "sub2api-vision-model" }] });
+      }
+    });
+    assert.deepEqual(seenAuth, ["Bearer sub2api-key-ca2e"]);
+    assert.equal(sub2api.providers.vision.status, "ok");
+    assert.equal(sub2api.providers.vision.currentModel, "sub2api-vision-model");
+
+    process.env.VISION_MODEL_API_KEY__SUB2API_LOCAL_CHAT = "replace_me";
+    const missing = await discoverAdminProviderModels({
+      selection: {
+        providerId: "vision",
+        apiUrl: "http://127.0.0.1:8080/v1/chat/completions"
+      },
+      fetchImpl: async () => {
+        throw new Error("missing profile key must not fall back to the active key");
+      }
+    });
+    assert.equal(missing.providers.vision.status, "error");
+    assert.match(missing.providers.vision.message, /未配置 API Key/);
+
+    const rightCode = await discoverAdminProviderModels({
+      selection: {
+        providerId: "vision",
+        apiUrl: "https://right.codes/gemini"
+      },
+      fetchImpl: async (url, options) => {
+        assert.match(String(url), /right\.codes\/gemini\/v1beta\/models/);
+        assert.equal(options.headers["x-goog-api-key"], "right-code-key-9744");
+        return jsonResponse({ models: [{ name: "models/gemini-2.5-flash" }] });
+      }
+    });
+    assert.equal(rightCode.providers.vision.status, "ok");
   });
 });
 

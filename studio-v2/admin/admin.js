@@ -26,6 +26,7 @@ const MODEL_STATUS_TEXT = {
 let currentSchema = null;
 let modelProviders = {};
 let dirty = false;
+let modelPreviewRequestId = 0;
 
 function setStatus(message, tone = "") {
   statusEl.textContent = message;
@@ -152,6 +153,71 @@ function renderModelField(provider, field, wrapper) {
   wrapper.append(help);
 }
 
+function updateModelField(provider, field, row, discovery) {
+  const wrapper = row?.querySelector(`[data-value-key="${CSS.escape(field.valueKey)}"]`);
+  const select = wrapper?.querySelector("select");
+  const help = wrapper?.querySelector(".model-status");
+  if (!select || !help) return;
+
+  const currentModel = discovery.currentModel || select.value || fieldConfig(provider, field)?.model || "";
+  const options = new Map((discovery.models || [])
+    .filter((option) => option?.id)
+    .map((option) => [option.id, option.label || option.id]));
+  if (currentModel && !options.has(currentModel)) options.set(currentModel, currentModel);
+  select.replaceChildren(...[...options].map(([value, label]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    option.selected = value === currentModel;
+    return option;
+  }));
+  help.dataset.status = discovery.status || "error";
+  help.textContent = discovery.message
+    ? `模型列表：${discovery.message}`
+    : `模型列表：${MODEL_STATUS_TEXT[discovery.status] || "读取失败"}`;
+}
+
+function selectedModelState(data, providerId, channelId = "") {
+  const provider = data.providers?.[providerId];
+  if (!provider) return null;
+  if (providerId !== "image") return provider;
+  return provider.channels?.find((channel) => channel.id === channelId) || null;
+}
+
+async function loadModelPreview(provider, urlField, apiUrl, row) {
+  const modelField = providerFieldByName(provider, "model", urlField.channelId || "");
+  if (!modelField || !row || !apiUrl) return;
+
+  const requestId = String(++modelPreviewRequestId);
+  row.dataset.modelPreviewRequestId = requestId;
+  updateModelField(provider, modelField, row, {
+    status: "loading",
+    currentModel: row.querySelector(`[data-value-key="${CSS.escape(modelField.valueKey)}"] select`)?.value || "",
+    models: []
+  });
+
+  const params = new URLSearchParams({
+    providerId: provider.id,
+    apiUrl
+  });
+  if (urlField.channelId) params.set("channelId", urlField.channelId);
+
+  try {
+    const data = await api(`/api/admin/providers/models?${params}`);
+    if (row.dataset.modelPreviewRequestId !== requestId) return;
+    const discovery = selectedModelState(data, provider.id, urlField.channelId || "");
+    if (discovery) updateModelField(provider, modelField, row, discovery);
+  } catch {
+    if (row.dataset.modelPreviewRequestId !== requestId) return;
+    updateModelField(provider, modelField, row, {
+      status: "error",
+      currentModel: row.querySelector(`[data-value-key="${CSS.escape(modelField.valueKey)}"] select`)?.value || "",
+      models: [],
+      message: "模型同步失败，请检查当前方案配置"
+    });
+  }
+}
+
 function renderPresetSelect(field, currentValue, wrapper) {
   if (!Array.isArray(field.presets) || !field.presets.length) return;
 
@@ -200,7 +266,24 @@ function renderInputField(provider, field, wrapper) {
   input.dataset.fieldType = field.type;
   input.placeholder = field.type === "secret" ? "留空表示保持当前密钥" : "";
   if (field.type !== "secret") input.required = true;
-  wrapper.append(input);
+  if (field.type === "secret") {
+    const secretControl = document.createElement("div");
+    secretControl.className = "secret-control";
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "secret-toggle";
+    toggle.textContent = "显示";
+    toggle.setAttribute("aria-label", "显示或隐藏新密钥输入");
+    toggle.addEventListener("click", () => {
+      const showing = input.type === "text";
+      input.type = showing ? "password" : "text";
+      toggle.textContent = showing ? "显示" : "隐藏";
+    });
+    secretControl.append(input, toggle);
+    wrapper.append(secretControl);
+  } else {
+    wrapper.append(input);
+  }
 
   const help = document.createElement("small");
   help.className = field.type === "secret" ? "key-preview" : "";
@@ -250,14 +333,14 @@ function syncPresetSelection(presetSelect) {
   if (!match) return;
 
   const { provider, field } = match;
-  const row = presetSelect.closest("tr") || presetSelect.closest(".channel-card") || presetSelect.closest(".provider-table");
+  const row = presetSelect.closest("tr");
   const profile = profileForSelection(provider, field, presetSelect.value);
   const keyField = providerFieldByName(provider, "apiKey", field.channelId || "");
   const modelField = providerFieldByName(provider, "model", field.channelId || "");
 
   if (keyField && row) {
     const keyWrapper = row.querySelector(`[data-value-key="${CSS.escape(keyField.valueKey)}"]`);
-    const keyInput = keyWrapper?.querySelector('input[type="password"]');
+    const keyInput = keyWrapper?.querySelector('[data-field-type="secret"]');
     const keyHelp = keyWrapper?.querySelector(".key-preview");
     const clearInput = keyWrapper?.querySelector(`[data-clear-for="${CSS.escape(keyField.valueKey)}"]`);
     if (keyInput) keyInput.value = "";
@@ -266,6 +349,11 @@ function syncPresetSelection(presetSelect) {
       keyHelp.textContent = profile?.keyPreview
         ? `当前密钥：${profile.keyPreview}`
         : "该方案还没有保存 Key，请填写后保存";
+    }
+    const badge = row.querySelector(".provider-status-cell .badge");
+    if (badge) {
+      badge.dataset.configured = String(Boolean(profile?.configured));
+      badge.textContent = profile?.configured ? "已配置" : "缺少密钥";
     }
   }
 
@@ -277,92 +365,7 @@ function syncPresetSelection(presetSelect) {
       modelSelect.value = profile.model;
     }
   }
-}
-
-function renderImageChannel(provider, channel) {
-  const config = channelConfig(provider, channel.id) || {};
-  const section = document.createElement("section");
-  section.className = "channel-card";
-  section.dataset.channelId = channel.id;
-
-  const header = document.createElement("div");
-  header.className = "channel-header";
-  const titleBlock = document.createElement("div");
-  const title = document.createElement("h3");
-  title.textContent = channel.title;
-  const description = document.createElement("p");
-  description.textContent = channel.description;
-  titleBlock.append(title, description);
-
-  const segment = document.createElement("span");
-  segment.className = "channel-segment";
-  segment.textContent = channel.segmentId;
-  header.append(titleBlock, segment);
-
-  const fields = document.createElement("div");
-  fields.className = "field-list channel-fields";
-  for (const field of provider.fields.filter((item) => item.channelId === channel.id)) {
-    fields.append(renderField(provider, field));
-  }
-
-  const state = document.createElement("div");
-  state.className = "channel-state";
-  state.dataset.configured = String(Boolean(config.configured));
-  state.textContent = config.configured ? "通道已配置" : "通道缺少密钥";
-
-  section.append(header, fields, state);
-  return section;
-}
-
-function renderProvider(provider) {
-  const text = providerText(provider);
-  const card = document.createElement("section");
-  card.className = "provider-card";
-
-  const header = document.createElement("div");
-  header.className = "card-header";
-  const titleRow = document.createElement("div");
-  titleRow.className = "card-title-row";
-  const title = document.createElement("h2");
-  title.textContent = text.title;
-  const badge = document.createElement("span");
-  badge.className = "badge";
-  badge.dataset.configured = String(provider.config.configured);
-  if (provider.id === "image" && provider.config.channels?.length) {
-    badge.textContent = `${provider.config.configuredChannels || 0}/${provider.config.requiredChannels || 2} 通道已配置`;
-  } else if (provider.id === "video") {
-    badge.textContent = provider.config.configured ? "视频生成已配置" : "视频生成未配置";
-  } else {
-    badge.textContent = provider.config.configured ? "已配置" : "缺少密钥";
-  }
-  titleRow.append(title, badge);
-
-  const meta = document.createElement("div");
-  meta.className = "meta";
-  for (const line of [
-    `供应商：${provider.provider}`,
-    `用途：${text.role}`,
-    `通道：${text.channel}`
-  ]) {
-    const item = document.createElement("span");
-    item.textContent = line;
-    meta.append(item);
-  }
-  header.append(titleRow, meta);
-
-  if (provider.id === "image" && provider.channels?.length) {
-    card.classList.add("provider-card-wide");
-    const channels = document.createElement("div");
-    channels.className = "channel-list";
-    for (const channel of provider.channels) channels.append(renderImageChannel(provider, channel));
-    card.append(header, channels);
-  } else {
-    const fields = document.createElement("div");
-    fields.className = "field-list";
-    for (const field of provider.fields) fields.append(renderField(provider, field));
-    card.append(header, fields);
-  }
-  return card;
+  loadModelPreview(provider, field, presetSelect.value, row);
 }
 
 function fieldByName(provider, name, channelId = "") {
@@ -422,7 +425,7 @@ function renderStatusCell(provider, channel, modelField) {
   const badge = document.createElement("span");
   badge.className = "badge";
   badge.dataset.configured = String(Boolean(config.configured));
-  badge.textContent = config.configured ? "活跃" : "缺少密钥";
+  badge.textContent = config.configured ? "已配置" : "缺少密钥";
 
   const modelBadge = document.createElement("small");
   modelBadge.className = "model-status";
@@ -600,6 +603,16 @@ form.addEventListener("change", (event) => {
       syncPresetSelection(preset);
       dirty = true;
       setSaveState("已切换接口地址，保存后生效。");
+    }
+    return;
+  }
+
+  const urlInput = event.target.closest('[data-field-type="url"]');
+  if (urlInput) {
+    const match = findFieldByValueKey(urlInput.name);
+    const row = urlInput.closest("tr");
+    if (match && row && urlInput.value.trim()) {
+      loadModelPreview(match.provider, match.field, urlInput.value.trim(), row);
     }
     return;
   }

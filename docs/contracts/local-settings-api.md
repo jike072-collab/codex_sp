@@ -250,11 +250,20 @@ Sub2API, without copying one provider key into another provider profile.
 ```http
 GET /api/admin/providers/models
 GET /api/admin/providers/models?refresh=1
+GET /api/admin/providers/models?providerId=vision&apiUrl=https%3A%2F%2Fright.codes%2Fgemini
+GET /api/admin/providers/models?providerId=image&channelId=primary&apiUrl=https%3A%2F%2Fwww.right.codes%2Fdraw%2Fv1%2Fimages%2Fgenerations
 ```
 
 The backend attempts real provider model-list discovery through configured
 provider endpoints and keys. It never invents models. Successful discoveries
 may be cached briefly; `refresh=1` forces a new discovery attempt.
+
+When `providerId` and `apiUrl` are supplied, the endpoint previews only the
+selected Admin row. `channelId` is required for image channel A/B. Preset URLs
+resolve their own saved profile key and model before discovery; they never
+borrow the active runtime key from another preset. A preset without a saved key
+returns the current-model fallback with `status: "error"` and a missing-key
+message. This allows model synchronization before an API URL switch is saved.
 
 Response:
 
@@ -380,6 +389,12 @@ Rules:
 - Success returns the same shape as `GET /api/admin/providers`.
 
 ## Admin Static Page
+
+`/admin/`, `/admin/admin.js`, and `/admin/styles.css` are served from the formal
+`studio-v2/admin/` directory with `Cache-Control: no-store, max-age=0`. The HTML
+also versions its JS/CSS URLs so a browser cannot keep rendering the retired
+card layout after an update. The active Admin DOM is one dark horizontal
+`provider-table`; image channels A/B are separate rows.
 
 ```http
 GET /admin/

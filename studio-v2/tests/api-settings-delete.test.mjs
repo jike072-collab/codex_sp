@@ -268,26 +268,36 @@ test("admin provider settings remember keys per interface preset", async () => {
     body: JSON.stringify({
       visionApiUrl: "https://right.codes/gemini",
       visionModel: "gemini-2.5-flash",
-      visionApiKey: "right-code-vision-secret"
+      visionApiKey: "right-code-vision-9744"
     })
   });
   assert.equal(rightCode.response.status, 200);
-  assert.equal(providerById(rightCode.body, "vision").config.keyPreview, "•••• cret");
+  assert.equal(providerById(rightCode.body, "vision").config.keyPreview, "•••• 9744");
 
   const sub2api = await request("/api/admin/providers", {
     method: "PUT",
     body: JSON.stringify({
       visionApiUrl: "http://127.0.0.1:8080/v1/chat/completions",
-      visionApiKey: "sub2api-vision-secret"
+      visionApiKey: "sub2api-vision-ca2e"
     })
   });
   assert.equal(sub2api.response.status, 200);
   assert.equal(providerById(sub2api.body, "vision").config.apiUrl, "http://127.0.0.1:8080/v1/chat/completions");
-  assert.equal(providerById(sub2api.body, "vision").config.keyPreview, "•••• cret");
+  assert.equal(providerById(sub2api.body, "vision").config.keyPreview, "•••• ca2e");
+  assert.equal(
+    providerById(sub2api.body, "vision").config.profiles
+      .find((profile) => profile.id === "right-code-gemini").keyPreview,
+    "•••• 9744"
+  );
+  assert.equal(
+    providerById(sub2api.body, "vision").config.profiles
+      .find((profile) => profile.id === "sub2api-local-chat").keyPreview,
+    "•••• ca2e"
+  );
 
   let stored = await readFile(envPath, "utf8");
-  assert.match(stored, /VISION_MODEL_API_KEY__RIGHT_CODE_GEMINI=right-code-vision-secret/);
-  assert.match(stored, /VISION_MODEL_API_KEY__SUB2API_LOCAL_CHAT=sub2api-vision-secret/);
+  assert.match(stored, /VISION_MODEL_API_KEY__RIGHT_CODE_GEMINI=right-code-vision-9744/);
+  assert.match(stored, /VISION_MODEL_API_KEY__SUB2API_LOCAL_CHAT=sub2api-vision-ca2e/);
 
   const cleared = await request("/api/admin/providers", {
     method: "PUT",
@@ -298,7 +308,7 @@ test("admin provider settings remember keys per interface preset", async () => {
   assert.equal(cleared.response.status, 200);
   assert.equal(providerById(cleared.body, "vision").config.configured, false);
   stored = await readFile(envPath, "utf8");
-  assert.match(stored, /VISION_MODEL_API_KEY__RIGHT_CODE_GEMINI=right-code-vision-secret/);
+  assert.match(stored, /VISION_MODEL_API_KEY__RIGHT_CODE_GEMINI=right-code-vision-9744/);
   assert.match(stored, /VISION_MODEL_API_KEY__SUB2API_LOCAL_CHAT=replace_me/);
 
   const restored = await request("/api/admin/providers", {
@@ -308,7 +318,7 @@ test("admin provider settings remember keys per interface preset", async () => {
     })
   });
   assert.equal(restored.response.status, 200);
-  assert.equal(providerById(restored.body, "vision").config.keyPreview, "•••• cret");
+  assert.equal(providerById(restored.body, "vision").config.keyPreview, "•••• 9744");
 });
 
 test("admin provider settings validate URLs and serve the admin page", async () => {
@@ -329,7 +339,23 @@ test("admin provider settings validate URLs and serve the admin page", async () 
   const adminPage = await fetch(`${baseUrl}/admin/`);
   assert.equal(adminPage.status, 200);
   assert.match(adminPage.headers.get("content-type"), /text\/html/);
-  assert.match(await adminPage.text(), /供应商配置后台/);
+  assert.equal(adminPage.headers.get("cache-control"), "no-store, max-age=0");
+  const adminHtml = await adminPage.text();
+  assert.match(adminHtml, /供应商配置后台/);
+  assert.match(adminHtml, /styles\.css\?v=6/);
+  assert.match(adminHtml, /admin\.js\?v=6/);
+
+  for (const assetPath of ["/admin/styles.css?v=6", "/admin/admin.js?v=6"]) {
+    const asset = await fetch(`${baseUrl}${assetPath}`);
+    assert.equal(asset.status, 200);
+    assert.equal(asset.headers.get("cache-control"), "no-store, max-age=0");
+    const source = await asset.text();
+    if (assetPath.includes("admin.js")) {
+      assert.match(source, /renderProviderTable/);
+      assert.doesNotMatch(source, /function renderProvider\(/);
+      assert.doesNotMatch(source, /function renderImageChannel\(/);
+    }
+  }
 });
 
 test("admin provider models API discovers models and honors refresh", async () => {
@@ -442,6 +468,13 @@ test("admin provider models API discovers models and honors refresh", async () =
     assert.equal(refreshed.response.status, 200);
     assert.equal(refreshed.body.providers.vision.status, "ok");
     assert.equal(providerRequests.length > firstRequestCount + 1, true);
+
+    const selected = await request(
+      `/api/admin/providers/models?providerId=vision&apiUrl=${encodeURIComponent(`${providerBase}/vision/gemini`)}&refresh=1`
+    );
+    assert.equal(selected.response.status, 200);
+    assert.deepEqual(Object.keys(selected.body.providers), ["vision"]);
+    assert.equal(selected.body.providers.vision.status, "ok");
   } finally {
     await new Promise((resolveClose) => providerServer.close(resolveClose));
     for (const [key, value] of Object.entries(previous)) {
