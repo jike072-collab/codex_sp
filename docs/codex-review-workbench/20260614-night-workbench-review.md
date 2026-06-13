@@ -107,6 +107,22 @@ Issue Found:
 - 手机端步骤条仍为横向滚动项，属于现有移动端基础方案；用户本轮优先桌面网页端，后续再 polish。
 - Chrome 扩展浏览器通道不可用，本轮改用 Codex 内置浏览器完成页面验证。
 
+## Module: README / PRODUCT / DESIGN 口径统一
+
+Changed:
+- `README.md`：第一版流程改为创建项目、上传素材、选择单段/双段、产品锁定、脚本、故事板、导出计划、预览或下载。
+- `studio-v2/README.md`：补充单段 5-15 秒和双段 20 秒的差异，说明普通前台不显示 API Key、供应商、模型、prompt 或调试信息。
+- `studio-v2/PRODUCT.md`：第一版闭环和页面流程改为当前单段/双段、故事板、导出计划口径。
+- `DESIGN.md`：设计规范更新为当前深色左侧栏、亮色工作区、荧光绿主操作和右侧检查器结构。
+- `docs/产品口径.md`、`docs/验收清单.md`：移除已过期的文档漂移提示。
+
+Verified:
+- 与当前 `studio-v2/public` 文案和 `docs/产品口径.md` 对齐。
+- 未修改后端、契约、schema、运行数据或 provider 配置。
+
+Issue Found:
+- 视觉 token 虽已在 `DESIGN.md` 补到当前主要色值，但完整字体、字号、字重、行高、spacing、radius、shadow、border token 表仍需单独细化。
+
 ## 待用户确认
 
 - 是否把“单段/双段”改成更小白的“一个视频 / 两段视频”。
