@@ -143,8 +143,8 @@ export function renderWorkspace() {
   const isReviewingPast = !needsStoryboardCompletion && activeStatus !== project.status && isStageReached(activeStatus);
 
   const projectTitle = el("projectTitle");
-  projectTitle.textContent = "";
-  projectTitle.hidden = true;
+  projectTitle.textContent = project.name || "未命名项目";
+  projectTitle.hidden = false;
   el("projectState").innerHTML = renderWorkflowModeSwitcher(project);
   el("projectState").setAttribute(
     "aria-label",
