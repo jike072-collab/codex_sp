@@ -15,8 +15,10 @@ const tinyPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1H
 
 const providerEnvKeys = [
   "VISION_MODEL_API_KEY",
+  "VISION_MODEL_API_KEY__SUB2API_LOCAL_CHAT",
   "VISION_API_URL",
   "VISION_MODEL",
+  "VISION_MODEL__SUB2API_LOCAL_CHAT",
   "TEXT_MODEL_API_KEY",
   "TEXT_API_URL",
   "TEXT_MODEL",
@@ -355,6 +357,14 @@ test("admin provider models API discovers models and honors refresh", async () =
       }));
       return;
     }
+    if (req.url.includes("/sub2api/v1/models")) {
+      assert.equal(req.headers.authorization, "Bearer sub2api-secret");
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        data: [{ id: "gemini-2.5-flash" }, { id: "gemini-2.5-pro" }]
+      }));
+      return;
+    }
     if (req.url.includes("/image-a/draw/v1/models")) {
       assert.equal(req.headers.authorization, "Bearer image-primary-secret");
       res.writeHead(200, { "Content-Type": "application/json" });
@@ -406,8 +416,10 @@ test("admin provider models API discovers models and honors refresh", async () =
   };
   Object.assign(process.env, {
     VISION_MODEL_API_KEY: "vision-secret",
+    VISION_MODEL_API_KEY__SUB2API_LOCAL_CHAT: "sub2api-secret",
     VISION_API_URL: `${providerBase}/vision/gemini`,
     VISION_MODEL: "gemini-2.5-flash",
+    VISION_MODEL__SUB2API_LOCAL_CHAT: "gemini-2.5-flash",
     TEXT_MODEL_API_KEY: "text-secret",
     TEXT_API_URL: `${providerBase}/text/chat/completions`,
     TEXT_MODEL: "deepseek-v4-pro",
@@ -445,6 +457,19 @@ test("admin provider models API discovers models and honors refresh", async () =
     assert.equal(refreshed.response.status, 200);
     assert.equal(refreshed.body.providers.vision.status, "ok");
     assert.equal(providerRequests.length > firstRequestCount + 1, true);
+
+    const preview = await request("/api/admin/providers/models/preview", {
+      method: "POST",
+      body: JSON.stringify({
+        providerId: "vision",
+        apiUrl: `${providerBase}/sub2api/v1/chat/completions`,
+        model: "gemini-2.5-flash",
+        apiKey: "sub2api-secret"
+      })
+    });
+    assert.equal(preview.response.status, 200);
+    assert.equal(preview.body.providers.vision.status, "ok");
+    assert.ok(preview.body.providers.vision.models.some((model) => model.id === "gemini-2.5-pro"));
   } finally {
     await new Promise((resolveClose) => providerServer.close(resolveClose));
     for (const [key, value] of Object.entries(previous)) {

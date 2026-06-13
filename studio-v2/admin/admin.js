@@ -26,6 +26,7 @@ let currentSchema = null;
 let modelProviders = {};
 let dirty = false;
 const profileUiCache = new Map();
+const draftModelSyncTokens = new Map();
 
 function setStatus(message, tone = "") {
   statusEl.textContent = message;
@@ -211,6 +212,12 @@ function modelOptions(provider, field) {
   return [...unique.values()];
 }
 
+function modelStatusText(discovery) {
+  return discovery.message
+    ? `模型列表：${discovery.message}`
+    : `模型列表：${MODEL_STATUS_TEXT[discovery.status] || "读取失败"}`;
+}
+
 function renderModelField(provider, field, wrapper) {
   const select = document.createElement("select");
   select.id = field.valueKey;
@@ -231,7 +238,7 @@ function renderModelField(provider, field, wrapper) {
   const help = document.createElement("small");
   help.className = "model-status";
   help.dataset.status = discovery.status || "error";
-  help.textContent = `模型列表：${MODEL_STATUS_TEXT[discovery.status] || "读取失败"}`;
+  help.textContent = modelStatusText(discovery);
   wrapper.append(help);
 }
 
@@ -345,6 +352,101 @@ function syncPresetSelection(presetSelect) {
       ensureOption(modelSelect, profile.model);
       modelSelect.value = profile.model;
     }
+  }
+}
+
+function mergeModelPreview(providerId, channelId, previewProviders) {
+  const preview = previewProviders?.[providerId];
+  if (!preview) return null;
+  if (providerId !== "image" || !channelId) {
+    modelProviders[providerId] = preview;
+    return preview;
+  }
+  const channelPreview = preview.channels?.find((channel) => channel.id === channelId);
+  if (!channelPreview) return null;
+  const current = modelProviders.image || { status: preview.status || "loading", channels: [] };
+  const channels = [...(current.channels || [])];
+  const index = channels.findIndex((channel) => channel.id === channelId);
+  if (index >= 0) channels[index] = channelPreview;
+  else channels.push(channelPreview);
+  modelProviders.image = {
+    ...current,
+    status: preview.status || current.status || channelPreview.status,
+    source: preview.source || current.source || channelPreview.source,
+    channels
+  };
+  return channelPreview;
+}
+
+function updateModelField(row, modelField, discovery) {
+  if (!row || !modelField || !discovery) return;
+  const wrapper = row.querySelector(`[data-value-key="${CSS.escape(modelField.valueKey)}"]`);
+  const select = wrapper?.querySelector("select");
+  const help = wrapper?.querySelector(".model-status");
+  if (select) {
+    const selected = discovery.currentModel || select.value || "";
+    select.replaceChildren();
+    for (const optionData of discovery.models || []) {
+      const option = document.createElement("option");
+      option.value = optionData.id;
+      option.textContent = optionData.label || optionData.id;
+      option.selected = optionData.id === selected;
+      select.append(option);
+    }
+    ensureOption(select, selected);
+    select.value = selected;
+  }
+  if (help) {
+    help.dataset.status = discovery.status || "error";
+    help.textContent = modelStatusText(discovery);
+  }
+}
+
+async function syncDraftModelsForPreset(presetSelect) {
+  const valueKey = presetSelect?.dataset?.presetFor;
+  if (!valueKey) return;
+  const match = findFieldByValueKey(valueKey);
+  if (!match) return;
+  const { provider, field } = match;
+  const channelId = field.channelId || "";
+  const row = presetSelect.closest("tr") || presetSelect.closest(".channel-card") || presetSelect.closest(".provider-card");
+  const modelField = providerFieldByName(provider, "model", channelId);
+  const keyField = providerFieldByName(provider, "apiKey", channelId);
+  const modelSelect = modelField ? form.elements[modelField.valueKey] : null;
+  const keyInput = keyField ? form.elements[keyField.valueKey] : null;
+  const tokenKey = `${provider.id}:${channelId || "default"}`;
+  const token = (draftModelSyncTokens.get(tokenKey) || 0) + 1;
+  draftModelSyncTokens.set(tokenKey, token);
+  if (modelField) {
+    updateModelField(row, modelField, {
+      status: "loading",
+      currentModel: modelSelect?.value || "",
+      models: [],
+      message: "正在同步当前接口方案的模型..."
+    });
+  }
+  try {
+    const data = await api("/api/admin/providers/models/preview", {
+      method: "POST",
+      body: JSON.stringify({
+        providerId: provider.id,
+        channelId,
+        apiUrl: presetSelect.value,
+        model: modelSelect?.value || "",
+        apiKey: keyInput?.value?.trim() || ""
+      })
+    });
+    if (draftModelSyncTokens.get(tokenKey) !== token) return;
+    const discovery = mergeModelPreview(provider.id, channelId, data.providers);
+    updateModelField(row, modelField, discovery);
+  } catch {
+    if (draftModelSyncTokens.get(tokenKey) !== token) return;
+    updateModelField(row, modelField, {
+      status: "error",
+      currentModel: modelSelect?.value || "",
+      models: modelSelect?.value ? [{ id: modelSelect.value, label: modelSelect.value }] : [],
+      message: "模型同步失败，请检查接口地址或 Key。"
+    });
   }
 }
 
@@ -535,6 +637,7 @@ form.addEventListener("change", (event) => {
     if (target && preset.value) {
       target.value = preset.value;
       syncPresetSelection(preset);
+      syncDraftModelsForPreset(preset);
       dirty = true;
       setSaveState("已切换接口地址，保存后生效。");
     }

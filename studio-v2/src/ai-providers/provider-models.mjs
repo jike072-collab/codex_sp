@@ -21,6 +21,23 @@ function valueFor(env, fieldDefinition) {
   return env[fieldDefinition.envKey] || fieldDefinition.defaultValue || "";
 }
 
+function profileIdFromPresetId(id) {
+  return String(id || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function profileEnvKey(envKey, profileId) {
+  const suffix = profileIdFromPresetId(profileId);
+  return suffix ? `${envKey}__${suffix}` : "";
+}
+
+function profileForUrl(fieldDefinition, apiUrl) {
+  return (fieldDefinition.presets || []).find((preset) => preset?.value === apiUrl) || null;
+}
+
 function fallback(currentModel, status, message) {
   return {
     status,
@@ -75,6 +92,9 @@ function replaceEndpointPath(apiUrl, pattern, replacement) {
 function modelListUrl(providerId, apiUrl) {
   if (providerId === "vision") {
     if (/\/draw(?:\/|$)/i.test(apiUrl)) return null;
+    if (/\/models\/?$/i.test(new URL(apiUrl).pathname)) return apiUrl;
+    const chatModelsUrl = replaceEndpointPath(apiUrl, /\/chat\/completions\/?$/i, "/models");
+    if (chatModelsUrl) return chatModelsUrl;
     if (/\/v1beta\/models\/?$/i.test(apiUrl)) return apiUrl;
     return appendPath(apiUrl, "/v1beta/models");
   }
@@ -96,6 +116,18 @@ function modelListUrl(providerId, apiUrl) {
 function authHeaders(providerId, apiKey) {
   if (providerId === "vision") return { "x-goog-api-key": apiKey };
   return { Authorization: `Bearer ${apiKey}` };
+}
+
+function usesOpenAiCompatibleVisionUrl(apiUrl) {
+  const pathname = new URL(apiUrl).pathname;
+  return /\/chat\/completions\/?$/i.test(pathname) || (/\/v1\/models\/?$/i.test(pathname) && !/\/v1beta\//i.test(pathname));
+}
+
+function authHeadersForUrl(providerId, apiUrl, apiKey) {
+  if (providerId === "vision" && usesOpenAiCompatibleVisionUrl(apiUrl)) {
+    return { Authorization: `Bearer ${apiKey}` };
+  }
+  return authHeaders(providerId, apiKey);
 }
 
 function modelId(value) {
@@ -144,7 +176,7 @@ async function fetchModelList(providerId, { apiUrl, apiKey, currentModel, fetchI
   try {
     response = await fetchImpl(url, {
       method: "GET",
-      headers: authHeaders(providerId, apiKey),
+      headers: authHeadersForUrl(providerId, apiUrl, apiKey),
       signal: AbortSignal.timeout(timeoutMs)
     });
   } catch {
@@ -214,6 +246,110 @@ async function discoverStandardProvider(provider, env, { refresh, fetchImpl, tim
   });
   remember(key, discovered);
   return discovered;
+}
+
+function fieldByName(provider, name, channelId = "") {
+  return provider.fields.find((item) => item.name === name && (channelId ? item.channelId === channelId : !item.channelId));
+}
+
+function providerById(providerId) {
+  return providerSettingDefinitions().find((provider) => provider.id === providerId) || null;
+}
+
+function draftValue(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function draftApiKey(env, { apiUrl, apiKey, urlField, keyField }) {
+  const provided = draftValue(apiKey);
+  if (provided) return provided;
+  const preset = profileForUrl(urlField, apiUrl);
+  if (preset?.id) {
+    const stored = env[profileEnvKey(keyField.envKey, preset.id)] || "";
+    if (stored) return stored;
+  }
+  return apiUrl === valueFor(env, urlField) ? env[keyField.envKey] || "" : "";
+}
+
+function draftModel(env, { apiUrl, model, urlField, modelField }) {
+  const provided = draftValue(model);
+  if (provided) return provided;
+  const preset = profileForUrl(urlField, apiUrl);
+  if (preset?.id) {
+    const stored = env[profileEnvKey(modelField.envKey, preset.id)] || "";
+    if (stored) return stored;
+  }
+  return apiUrl === valueFor(env, urlField)
+    ? env[modelField.envKey] || modelField.defaultValue || ""
+    : modelField.defaultValue || "";
+}
+
+export async function discoverAdminProviderModelPreview(input = {}, {
+  fetchImpl = fetch
+} = {}) {
+  const provider = providerById(draftValue(input.providerId));
+  if (!provider) {
+    return {
+      providers: {}
+    };
+  }
+  const channelId = draftValue(input.channelId);
+  const urlField = fieldByName(provider, "apiUrl", channelId);
+  const modelField = fieldByName(provider, "model", channelId);
+  const keyField = fieldByName(provider, "apiKey", channelId);
+  if (!urlField || !modelField || !keyField) {
+    return {
+      providers: {}
+    };
+  }
+
+  const env = await loadEnv();
+  const apiUrl = draftValue(input.apiUrl) || valueFor(env, urlField);
+  const currentModel = draftModel(env, {
+    apiUrl,
+    model: input.model,
+    urlField,
+    modelField
+  });
+  const apiKey = draftApiKey(env, {
+    apiUrl,
+    apiKey: input.apiKey,
+    urlField,
+    keyField
+  });
+  const timeoutMs = positiveInteger(env.MODEL_DISCOVERY_TIMEOUT_MS, 15000);
+  const discovered = await fetchModelList(provider.id === "image" ? "image" : provider.id, {
+    apiUrl,
+    apiKey,
+    currentModel,
+    fetchImpl,
+    timeoutMs
+  });
+
+  if (provider.id === "image") {
+    const channelMeta = provider.channels?.find((channel) => channel.id === channelId) || {};
+    return {
+      providers: {
+        image: {
+          status: discovered.status,
+          source: discovered.source,
+          channels: [{
+            id: channelId,
+            title: channelMeta.title || channelId,
+            description: channelMeta.description || "",
+            segmentId: channelMeta.segmentId || "",
+            ...discovered
+          }]
+        }
+      }
+    };
+  }
+
+  return {
+    providers: {
+      [provider.id]: discovered
+    }
+  };
 }
 
 async function discoverImageProvider(provider, env, { refresh, fetchImpl, timeoutMs }) {

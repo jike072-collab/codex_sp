@@ -3,11 +3,16 @@ import assert from "node:assert/strict";
 
 import {
   clearProviderModelDiscoveryCache,
+  discoverAdminProviderModelPreview,
   discoverAdminProviderModels
 } from "../src/ai-providers/provider-models.mjs";
 
 const providerEnvKeys = [
   "VISION_MODEL_API_KEY",
+  "VISION_MODEL_API_KEY__RIGHT_CODE_GEMINI",
+  "VISION_MODEL_API_KEY__SUB2API_LOCAL_CHAT",
+  "VISION_MODEL__RIGHT_CODE_GEMINI",
+  "VISION_MODEL__SUB2API_LOCAL_CHAT",
   "VISION_API_URL",
   "VISION_MODEL",
   "TEXT_MODEL_API_KEY",
@@ -143,6 +148,58 @@ test("provider model discovery returns real models, caches them, and refreshes o
     assert.equal(refreshed.providers.image.channels[0].models.length, 1);
     assert.equal(refreshed.providers.video.models.length, 1);
     assert.equal(seenUrls.length >= 5, true);
+  });
+});
+
+test("provider model preview uses preset-local keys for unsaved endpoint switches", async () => {
+  await withProviderEnv({
+    VISION_MODEL_API_KEY: "right-code-key",
+    VISION_MODEL_API_KEY__SUB2API_LOCAL_CHAT: "sub2api-chat-key",
+    VISION_MODEL__SUB2API_LOCAL_CHAT: "gemini-2.5-flash",
+    VISION_API_URL: "https://right.codes/gemini",
+    VISION_MODEL: "gemini-2.5-flash"
+  }, async () => {
+    const result = await discoverAdminProviderModelPreview({
+      providerId: "vision",
+      apiUrl: "http://127.0.0.1:8080/v1/chat/completions",
+      model: "gemini-2.5-flash"
+    }, {
+      fetchImpl: async (url, options) => {
+        assert.equal(String(url), "http://127.0.0.1:8080/v1/models");
+        assert.equal(options.headers.Authorization, "Bearer sub2api-chat-key");
+        assert.equal(options.headers["x-goog-api-key"], undefined);
+        return jsonResponse({
+          data: [
+            { id: "gemini-2.5-flash" },
+            { id: "gemini-2.5-pro" }
+          ]
+        });
+      }
+    });
+
+    assert.equal(result.providers.vision.status, "ok");
+    assert.ok(result.providers.vision.models.some((model) => model.id === "gemini-2.5-pro"));
+  });
+});
+
+test("provider model preview does not reuse another preset key", async () => {
+  await withProviderEnv({
+    VISION_MODEL_API_KEY: "right-code-key",
+    VISION_API_URL: "https://right.codes/gemini",
+    VISION_MODEL: "gemini-2.5-flash"
+  }, async () => {
+    const result = await discoverAdminProviderModelPreview({
+      providerId: "vision",
+      apiUrl: "http://127.0.0.1:8080/v1/chat/completions",
+      model: "gemini-2.5-flash"
+    }, {
+      fetchImpl: async () => {
+        throw new Error("missing preset key should not call provider");
+      }
+    });
+
+    assert.equal(result.providers.vision.status, "error");
+    assert.equal(result.providers.vision.models[0].id, "gemini-2.5-flash");
   });
 });
 
