@@ -280,6 +280,8 @@ function renderWorkspacePanel(project, activeStatus) {
   const panelReadyState = el("panelReadyState");
   const panelReadyCard = el("panelReadyCard");
   const panelTipList = el("panelTipList");
+  const panelCard = document.querySelector(".panel-card.panel-overview");
+  if (panelCard) panelCard.dataset.stage = activeStatus;
   if (panelStageKicker) panelStageKicker.textContent = `STEP 0${visibleStep}`;
   if (panelStageTitle) panelStageTitle.textContent = STAGE_PANEL_TITLE[activeStatus] || "工作进度";
   if (panelStageCopy) {
@@ -416,15 +418,20 @@ function renderPanelStageVisual(project, activeStatus) {
     return;
   }
 
-  if (activeStatus === "export" && singleVideo) {
-    const video = (project.videoPackage?.video_generation || [])
-      .find((item) => item.segment_id === "full");
-    const videoStatus = video?.status || "waiting";
-    const videoReady = videoStatus === "done" && video?.generated_video?.url;
+  if (activeStatus === "export") {
+    const expectedSegments = singleVideo ? ["full"] : ["0-10s", "10-20s"];
+    const videoItems = expectedSegments.map((segmentId) =>
+      (project.videoPackage?.video_generation || []).find((item) => item.segment_id === segmentId)
+    );
+    const completedVideos = videoItems.filter((item) => item?.status === "done" && item?.generated_video?.url).length;
+    const failedVideos = videoItems.filter((item) => item?.status === "failed").length;
+    const activeVideo = videoItems.find((item) => item?.status && item.status !== "done") || videoItems[0];
+    const videoStatus = activeVideo?.status || "waiting";
+    const videoReady = completedVideos === expectedSegments.length;
     container.innerHTML = `
       <div class="stage-visual-heading">
         <span>视频任务</span>
-        <strong>${escapeHtml(panelVideoStatusLabel(videoStatus))}</strong>
+        <strong>${escapeHtml(completedVideos)}/${escapeHtml(expectedSegments.length)}</strong>
       </div>
       <div class="video-mini-meter" data-ready="${videoReady ? "true" : "false"}">
         <i></i><i></i><i></i><i></i><i></i>
@@ -432,20 +439,21 @@ function renderPanelStageVisual(project, activeStatus) {
       <div class="asset-readiness-chart video-status-chart">
         <div data-ready="${generated >= 1}">
           <span>故事版</span>
-          <strong>${escapeHtml(generated)}/1</strong>
+          <strong>${escapeHtml(generated)}/${escapeHtml(singleVideo ? 1 : 2)}</strong>
         </div>
         <div data-ready="true">
-          <span>时长</span>
-          <strong>${escapeHtml(project.marketBrief?.videoDurationSeconds || 10)} 秒</strong>
+          <span>视频数量</span>
+          <strong>${escapeHtml(expectedSegments.length)} 个</strong>
         </div>
         <div data-ready="${videoReady ? "true" : "false"}">
           <span>视频</span>
-          <strong>${escapeHtml(videoReady ? "可下载" : panelVideoStatusLabel(videoStatus))}</strong>
+          <strong>${escapeHtml(videoReady ? "可下载" : failedVideos ? "可重试" : panelVideoStatusLabel(videoStatus))}</strong>
         </div>
       </div>
       <div class="stage-visual-stats">
         <div><strong>${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")}</strong><span>比例</span></div>
-        <div><strong>${escapeHtml(videoReady ? 100 : videoStatus === "failed" ? 0 : 50)}%</strong><span>进度</span></div>
+        <div><strong>${escapeHtml(completedVideos)}</strong><span>已完成</span></div>
+        <div><strong>${escapeHtml(expectedSegments.length - completedVideos)}</strong><span>待生成</span></div>
       </div>
     `;
     return;
@@ -474,10 +482,15 @@ function renderPanelStageVisual(project, activeStatus) {
   }
 
   const canIdentify = assets.length >= 1;
+  const materialPercent = Math.min(100, Math.round((Math.min(assets.length, 4) / 4) * 100));
   container.innerHTML = `
     <div class="stage-visual-heading">
       <span>素材状态</span>
       <strong>${escapeHtml(canIdentify ? "可以识别" : "等待上传")}</strong>
+    </div>
+    <div class="panel-readiness-ring" style="--panel-percent:${materialPercent}%">
+      <strong>${escapeHtml(materialPercent)}%</strong>
+      <span>${escapeHtml(canIdentify ? "可识别" : "待上传")}</span>
     </div>
     <div class="asset-readiness-chart">
       <div data-ready="${assets.length >= 1}">
@@ -501,12 +514,13 @@ function renderPanelStageVisual(project, activeStatus) {
 }
 
 export function renderStepper(activeStatus = viewStatus()) {
-  const active = Math.max(0, STAGE_ORDER.indexOf(activeStatus));
+  const activeIndex = Math.max(0, STAGE_ORDER.indexOf(activeStatus));
   document.querySelectorAll("#stepper li").forEach((item, index) => {
     const reached = isStageReached(item.dataset.step);
+    const stepIndex = Math.max(0, STAGE_ORDER.indexOf(item.dataset.step));
     const current = Math.max(0, STAGE_ORDER.indexOf(state.project.status));
-    item.classList.toggle("active", index === active);
-    item.classList.toggle("complete", index < current);
+    item.classList.toggle("active", stepIndex === activeIndex);
+    item.classList.toggle("complete", stepIndex < current);
     item.classList.toggle("available", reached);
     item.classList.toggle("unavailable", !reached);
     item.setAttribute("role", "button");

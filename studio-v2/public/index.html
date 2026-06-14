@@ -25,23 +25,6 @@
       <div class="sidebar-label">最近项目</div>
       <div class="project-bulk-actions" id="projectBulkActions"></div>
       <nav class="project-list" id="projectList"></nav>
-
-      <div class="local-note">
-        <div class="local-note-row">
-          <span class="status-dot"></span>
-          <div>
-            <strong>本地模式</strong>
-            <small>图片与项目数据保存在这台电脑</small>
-          </div>
-        </div>
-        <div class="local-note-row service-note-row">
-          <span class="status-dot service-dot"></span>
-          <div>
-            <strong>生成服务</strong>
-            <small id="panelApiState">检测中</small>
-          </div>
-        </div>
-      </div>
     </aside>
 
     <main class="main">
@@ -65,7 +48,6 @@
             <p class="workspace-subtitle" id="workspaceSubtitle">创建项目后先上传商品素材。</p>
           </div>
           <div class="workspace-header-actions">
-            <span class="save-state" id="saveState">已保存到本地</span>
             <a class="settings-button" href="/admin/" target="_blank" rel="noreferrer" aria-label="打开设置">设置</a>
           </div>
         </header>
@@ -73,7 +55,6 @@
         <ol class="stepper" id="stepper">
           <li data-step="assets"><span class="stepper-badge">01</span><span class="stepper-copy"><strong>商品素材</strong><small>上传与整理</small></span></li>
           <li data-step="review"><span class="stepper-badge">02</span><span class="stepper-copy"><strong>产品设定</strong><small>锁定与确认</small></span></li>
-          <li class="workflow-skipped-step" data-step="market" aria-hidden="true"><span>创意确认</span></li>
           <li data-step="script"><span class="stepper-badge">03</span><span class="stepper-copy"><strong>生成脚本</strong><small>完整时长脚本</small></span></li>
           <li data-step="visual"><span class="stepper-badge">04</span><span class="stepper-copy"><strong>生成故事版</strong><small>画面预览</small></span></li>
           <li data-step="export"><span class="stepper-badge">05</span><span class="stepper-copy"><strong>生成视频</strong><small>预览与下载</small></span></li>
