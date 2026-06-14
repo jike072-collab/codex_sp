@@ -9,7 +9,7 @@ Current default mode for newly created projects is `single_video`:
 - one video task: `videoPackage.video_generation[0]`
 
 Dual 20-second projects persist as `legacy_multi_segment` and keep their two
-10-second segment behavior. User-facing surfaces call this mode “双段 20 秒”.
+10-second segment behavior. User-facing surfaces call this mode “双版 20 秒”.
 
 Mode changes use:
 

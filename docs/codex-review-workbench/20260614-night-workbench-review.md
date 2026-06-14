@@ -28,18 +28,18 @@ Verified:
 Issue Found:
 - 自动化测试覆盖核心 API 和域逻辑，但不覆盖浏览器视觉完整闭环。
 
-## Module: 单段/双段存在性
+## Module: 单版/双版存在性
 
 Changed:
 - 未改模式契约。
 
 Verified:
 - 新项目默认 `single_video`。
-- 自动化测试覆盖单段一张 full 故事版、一个视频任务；双段两张故事版、两个视频任务。
-- 前台显示“单段 5-15 秒 / 双段 20 秒”。
+- 自动化测试覆盖单版一张 full 故事版、一个视频任务；双版两张故事版、两个视频任务。
+- 前台显示“单版 5-15 秒 / 双版 20 秒”。
 
 Issue Found:
-- README、studio-v2 README、PRODUCT、DESIGN 仍有旧双段叙述。
+- README、studio-v2 README、PRODUCT、DESIGN 仍有旧双版叙述。
 
 ## Module: 桌面网页端 P0
 
@@ -110,9 +110,9 @@ Issue Found:
 ## Module: README / PRODUCT / DESIGN 口径统一
 
 Changed:
-- `README.md`：第一版流程改为创建项目、上传素材、选择单段/双段、产品锁定、脚本、故事版、生成视频、预览或下载。
-- `studio-v2/README.md`：补充单段 5-15 秒和双段 20 秒的差异，说明普通前台不显示 API Key、供应商、模型、prompt 或调试信息。
-- `studio-v2/PRODUCT.md`：第一版闭环和页面流程改为当前单段/双段、故事版、生成视频口径。
+- `README.md`：第一版流程改为创建项目、上传素材、选择单版/双版、产品锁定、脚本、故事版、生成视频、预览或下载。
+- `studio-v2/README.md`：补充单版 5-15 秒和双版 20 秒的差异，说明普通前台不显示 API Key、供应商、模型、prompt 或调试信息。
+- `studio-v2/PRODUCT.md`：第一版闭环和页面流程改为当前单版/双版、故事版、生成视频口径。
 - `DESIGN.md`：设计规范更新为当前深色左侧栏、亮色工作区、荧光绿主操作和右侧检查器结构。
 - `docs/产品口径.md`、`docs/验收清单.md`：移除已过期的文档漂移提示。
 
@@ -161,7 +161,7 @@ Changed:
 
 Verified:
 - 1440x900 内置浏览器打开成功态项目 `success-mqcnwruf`。
-- 单段模式 Step 04：页面标题“故事版生成完成”，故事版卡片数量 `1`，下载入口为“下载故事版”，链接 `/uploads/success-mqcnwruf/storyboard-full-smoke.png`。
+- 单版模式 Step 04：页面标题“故事版生成完成”，故事版卡片数量 `1`，下载入口为“下载故事版”，链接 `/uploads/success-mqcnwruf/storyboard-full-smoke.png`。
 - Step 05：页面标题“生成视频”，存在视频播放器 `src=/uploads/success-mqcnwruf/video-full-smoke.mp4`，下载入口为“下载视频”。
 - 成功态正文未出现 `API Key`、供应商、模型、prompt、provider、Right Code、DeepSeek、Gemini、Draw 等技术词；控制台 error/warn 为空；无文档级横向溢出。
 
@@ -175,8 +175,8 @@ Issue Found:
 
 ## 待用户确认
 
-- 是否把“单段/双段”改成更小白的“一个视频 / 两段视频”。
-- 是否允许下一轮把 README、PRODUCT、DESIGN 统一成当前单段默认的新口径。
+- 是否把“单版/双版”改成更小白的“一个视频 / 两个视频”。
+- 是否允许下一轮把 README、PRODUCT、DESIGN 统一成当前单版默认的新口径。
 
 ## Suggested Next Step
 
@@ -194,7 +194,7 @@ Changed:
 - 布局差异：目标图是稳定三栏工作台；当前已有三栏雏形，但右侧此前更像信息展示，项目列表也不够像项目卡。
 - 步骤流差异：目标图步骤完成/当前/未完成状态更精细；本轮保留五步方框并加强完成、当前、高亮、弱化状态。
 - 右侧 AI 面板差异：目标图每一步都是检查官；本轮增加阶段标题、进度、就绪判断、阶段数据和小贴士，辅助用户决定下一步。
-- 上传/生成/预览差异：业务流程不改，单段/双段保留；Step 04 单版保持一张故事版，Step 05 保持生成视频。
+- 上传/生成/预览差异：业务流程不改，单版/双版保留；Step 04 单版保持一张故事版，Step 05 保持生成视频。
 - 字体颜色差异：本轮按 Inter/system/PingFang/Microsoft YaHei、浅灰背景、白卡、柠檬绿主色、细边框和轻阴影追加统一样式。
 
 Verified:

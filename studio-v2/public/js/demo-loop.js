@@ -854,7 +854,7 @@ export function renderExportStage(project = state.project) {
       <div>
         <p class="section-index">STEP 05</p>
         <h2>生成视频</h2>
-        <p>双段模式使用两张故事版作为输入，生成两个 10 秒视频任务；已完成的视频会保留，失败段可单独重试。</p>
+        <p>双版模式使用两张故事版作为输入，生成两个 10 秒视频任务；已完成的视频会保留，失败段可单独重试。</p>
       </div>
       <span class="requirement">${escapeHtml(completedVideos)}/2 视频 · ${escapeHtml(imageItems.length)}/2 故事版</span>
     </div>

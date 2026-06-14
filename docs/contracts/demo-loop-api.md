@@ -24,7 +24,7 @@ Newly created projects default to:
 
 Projects without that field are inferred from their persisted script shape.
 The persisted value `legacy_multi_segment` is presented to users as
-“双段 20 秒”.
+“双版 20 秒”.
 
 ## Switch Workflow Mode
 
@@ -39,7 +39,7 @@ Content-Type: application/json
 ```
 
 Accepted `workflowMode` values are `single_video` and
-`legacy_multi_segment`. The latter is always labeled “双段 20 秒” in
+`legacy_multi_segment`. The latter is always labeled “双版 20 秒” in
 user-facing surfaces.
 
 - With no `planningPackage`, `imagePackage`, or `videoPackage`, the mode is

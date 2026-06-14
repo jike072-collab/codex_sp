@@ -67,12 +67,12 @@ export const videoDurationOptions = Array.from({ length: 11 }, (_, index) => {
 });
 
 export const workflowModeOptions = [
-  ["single_video", "单段 5-15 秒"],
-  ["legacy_multi_segment", "双段 20 秒"]
+  ["single_video", "单版 5-15 秒"],
+  ["legacy_multi_segment", "双版 20 秒"]
 ];
 
 export function workflowModeLabel(mode) {
-  return workflowModeOptions.find(([value]) => value === mode)?.[1] || "双段 20 秒";
+  return workflowModeOptions.find(([value]) => value === mode)?.[1] || "双版 20 秒";
 }
 
 function preferenceKey(projectId) {
