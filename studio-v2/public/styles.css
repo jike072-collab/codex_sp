@@ -5761,3 +5761,283 @@ body.ui-v2 .production-action-dock {
     font-size: 15px;
   }
 }
+
+/* Desktop web priority pass: closer to the supplied target workbench references. */
+@media (min-width: 1181px) {
+  body.ui-v2 .workspace,
+  body.ui-v2 .workspace:has(#reviewStage:not(.hidden)) {
+    padding: 22px 28px 28px;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
+  body.ui-v2 .workspace-header {
+    min-height: 58px;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+  }
+
+  body.ui-v2 .stage-layout {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 20px;
+  }
+
+  body.ui-v2 .stage-card {
+    padding: 28px;
+    border-radius: 18px;
+  }
+
+  body.ui-v2 .context-panel {
+    position: sticky;
+    top: 22px;
+  }
+
+  body.ui-v2 .panel-card {
+    min-height: min(760px, calc(100vh - 44px));
+  }
+}
+
+@media (min-width: 1181px) and (max-width: 1420px) {
+  body.ui-v2 .workspace,
+  body.ui-v2 .workspace:has(#reviewStage:not(.hidden)) {
+    padding: 18px 20px 24px;
+  }
+
+  body.ui-v2 .stage-layout {
+    grid-template-columns: minmax(0, 1fr) 318px;
+    gap: 14px;
+  }
+
+  body.ui-v2 .stage-card {
+    padding: 24px;
+  }
+
+  body.ui-v2 .panel-card {
+    padding: 16px;
+  }
+}
+
+body.ui-v2 .stepper li {
+  isolation: isolate;
+}
+
+body.ui-v2 .stepper li.complete .stepper-badge {
+  position: relative;
+  font-size: 0;
+}
+
+body.ui-v2 .stepper li.complete .stepper-badge::before {
+  content: "";
+  display: block;
+  width: 12px;
+  height: 7px;
+  border-left: 2px solid #11250a;
+  border-bottom: 2px solid #11250a;
+  transform: rotate(-45deg) translateY(-1px);
+}
+
+body.ui-v2 .stepper li:not(.active):not(.complete) {
+  background: rgba(255, 255, 255, 0.62);
+}
+
+body.ui-v2 .section-heading h2,
+body.ui-v2 #scriptStageContent .section-heading h2,
+body.ui-v2 #visualStageContent .section-heading h2,
+body.ui-v2 #exportStageContent .section-heading h2 {
+  color: #141914;
+  font-size: clamp(24px, 2vw, 30px);
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+body.ui-v2 .section-heading p:not(.section-index),
+body.ui-v2 #scriptStageContent .section-heading p:not(.section-index),
+body.ui-v2 #visualStageContent .section-heading p:not(.section-index),
+body.ui-v2 #exportStageContent .section-heading p:not(.section-index) {
+  max-width: 760px;
+  color: #687366;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+body.ui-v2 .requirement,
+body.ui-v2 .storyboard-status {
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+body.ui-v2 .context-panel .panel-card {
+  position: relative;
+  overflow: hidden;
+}
+
+body.ui-v2 .context-panel .panel-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, #d7ff52, rgba(215, 255, 82, 0));
+}
+
+body.ui-v2 .panel-kicker {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 22px;
+  padding: 0 9px;
+  background: #eef8de;
+  border: 1px solid #cfe7a5;
+  border-radius: 999px;
+}
+
+body.ui-v2 .panel-metric-grid {
+  margin-top: 16px;
+}
+
+body.ui-v2 .panel-metric-grid > div,
+body.ui-v2 .panel-ready-card,
+body.ui-v2 .panel-stage-visual,
+body.ui-v2 .panel-tips {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+body.ui-v2 .panel-ready-card {
+  position: relative;
+  padding-left: 18px;
+}
+
+body.ui-v2 .panel-ready-card::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 8px;
+  width: 3px;
+  background: #c5cfc0;
+  border-radius: 999px;
+}
+
+body.ui-v2 .panel-ready-card[data-ready="true"]::before {
+  background: #9ed51f;
+}
+
+body.ui-v2 .panel-tips li::before,
+body.ui-v2 .panel-completion li::before {
+  content: "";
+  top: 0.72em;
+  left: 3px;
+  width: 7px;
+  height: 7px;
+  background: #a8d928;
+  border-radius: 999px;
+}
+
+body.ui-v2 .video-workflow-card {
+  gap: 16px;
+  padding: 16px;
+  background: #ffffff;
+  border-color: #dfe7d8;
+  border-radius: 18px;
+  box-shadow: 0 14px 34px rgba(22, 30, 20, 0.06);
+}
+
+body.ui-v2 .video-workflow-summary {
+  gap: 10px;
+}
+
+body.ui-v2 .video-workflow-summary > div {
+  min-height: 70px;
+  padding: 13px 14px;
+  background: #f7faf4;
+  border-color: #dfe7d9;
+  border-radius: 14px;
+}
+
+body.ui-v2 .video-workflow-summary span,
+body.ui-v2 .video-copy-card strong {
+  color: #6b7665;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+body.ui-v2 .video-workflow-summary strong {
+  color: #121812;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+body.ui-v2 .video-workflow-main {
+  gap: 12px;
+  grid-template-columns: minmax(280px, 0.92fr) minmax(260px, 1.08fr);
+}
+
+body.ui-v2 .video-preview-card,
+body.ui-v2 .video-copy-card {
+  border-color: #dfe6d9;
+  border-radius: 16px;
+}
+
+body.ui-v2 .video-preview-card {
+  min-height: 250px;
+  background: #10140e;
+}
+
+body.ui-v2 .video-preview-card img {
+  background: #10140e;
+}
+
+body.ui-v2 .video-copy-card {
+  padding: 16px;
+  background: #fbfcf8;
+}
+
+body.ui-v2 .video-task-note {
+  border-radius: 12px;
+}
+
+body.ui-v2 .video-workflow-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: end;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid #e2eadb;
+}
+
+body.ui-v2 .video-workflow-actions video {
+  width: 100%;
+  height: 150px;
+  max-height: 150px;
+  border: 1px solid #141b12;
+  border-radius: 16px;
+}
+
+body.ui-v2 .video-workflow-actions .primary-button {
+  min-width: 128px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+body.ui-v2 .video-workflow-actions .primary-button:only-child,
+body.ui-v2 .video-workflow-actions .ghost-button:only-child {
+  grid-column: 2;
+  justify-self: end;
+}
+
+@media (min-width: 1181px) and (max-width: 1368px) {
+  body.ui-v2 .video-workflow-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.ui-v2 .video-workflow-main {
+    grid-template-columns: minmax(240px, 0.9fr) minmax(220px, 1.1fr);
+  }
+
+  body.ui-v2 .video-preview-card {
+    min-height: 220px;
+  }
+
+  body.ui-v2 .video-workflow-actions video {
+    height: 140px;
+    max-height: 140px;
+  }
+}
