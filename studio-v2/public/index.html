@@ -34,6 +34,13 @@
             <small>图片与项目数据保存在这台电脑</small>
           </div>
         </div>
+        <div class="local-note-row service-note-row">
+          <span class="status-dot service-dot"></span>
+          <div>
+            <strong>生成服务</strong>
+            <small id="panelApiState">检测中</small>
+          </div>
+        </div>
       </div>
     </aside>
 
@@ -56,6 +63,10 @@
               <span class="project-state" id="projectState">素材准备</span>
             </div>
             <p class="workspace-subtitle" id="workspaceSubtitle">创建项目后先上传商品素材。</p>
+          </div>
+          <div class="workspace-header-actions">
+            <span class="save-state" id="saveState">已保存到本地</span>
+            <a class="settings-button" href="/admin/" target="_blank" rel="noreferrer" aria-label="打开设置">设置</a>
           </div>
         </header>
 
@@ -289,6 +300,10 @@
                 <div class="panel-progress-track"><i id="panelProgressBar"></i></div>
                 <small id="panelProgressText">等待上传素材</small>
               </div>
+              <div class="panel-ready-card" id="panelReadyCard">
+                <span>是否可进入下一步</span>
+                <strong id="panelReadyState">等待素材</strong>
+              </div>
               <div class="panel-stage-visual" id="panelStageVisual" aria-label="当前步骤数据概览"></div>
               <div class="panel-completion">
                 <h3>这一阶段的完成标准</h3>
@@ -296,6 +311,12 @@
                   <li>图片属于同一款鞋</li>
                   <li>关键角度足够清晰</li>
                   <li>产品外观可以稳定锁定</li>
+                </ul>
+              </div>
+              <div class="panel-tips">
+                <h3>小贴士</h3>
+                <ul id="panelTipList">
+                  <li>优先上传主图、侧面、后跟和鞋底。</li>
                 </ul>
               </div>
             </div>

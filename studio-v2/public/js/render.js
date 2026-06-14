@@ -62,6 +62,16 @@ const VISIBLE_STAGE_NUMBER = {
   export: 5
 };
 
+const PROJECT_STATUS_DOT = {
+  assets: "素材",
+  analyzing: "识别",
+  review: "待确认",
+  market: "已设定",
+  script: "脚本",
+  visual: "故事版",
+  export: "视频"
+};
+
 function publicQualityNotes(analysis) {
   const notes = [
     ...(analysis?.image_quality?.missing_or_unclear || []),
@@ -112,7 +122,12 @@ export function renderProjectList() {
     container.innerHTML = `<div class="project-link"><small>还没有项目</small></div>`;
     return;
   }
-  container.innerHTML = state.projects.map((project) => `
+  container.innerHTML = state.projects.map((project, index) => {
+    const assetCount = (project.assets || []).length;
+    const projectNo = project.name || `项目 ${String(index + 1).padStart(2, "0")}`;
+    const stateText = statusLabel(project.status);
+    const metaText = `${workflowModeLabel(workflowMode(project))} · ${assetCount} 张素材`;
+    return `
     <div class="project-item ${project.id === state.project?.id ? "active" : ""}">
       ${state.projectSelectionMode ? `
         <label class="project-select">
@@ -123,8 +138,12 @@ export function renderProjectList() {
       ` : ""}
       <button class="project-link"
         data-project-id="${escapeHtml(project.id)}" type="button">
-        <strong>${escapeHtml(project.name)}</strong>
-        <small>${statusLabel(project.status)} · ${formatTime(project.updatedAt)}</small>
+        <span class="project-link-head">
+          <strong>${escapeHtml(projectNo)}</strong>
+          <em>${escapeHtml(PROJECT_STATUS_DOT[project.status] || stateText)}</em>
+        </span>
+        <small>${escapeHtml(metaText)}</small>
+        <time>${escapeHtml(formatTime(project.updatedAt))}</time>
       </button>
       <button class="project-delete" data-delete-project-id="${escapeHtml(project.id)}"
         type="button" ${state.deletingProjectIds.has(project.id) ? "disabled" : ""}
@@ -132,7 +151,8 @@ export function renderProjectList() {
         ${state.deletingProjectIds.has(project.id) ? "…" : "×"}
       </button>
     </div>
-  `).join("");
+  `;
+  }).join("");
 }
 
 export function renderWorkspace() {
@@ -162,7 +182,7 @@ export function renderWorkspace() {
       ? "生成一张完整故事版，成功后进入视频页。"
       : "生成两张 10 秒分段故事版，成功后进入视频页。",
     export: isSingleVideoProject(project)
-      ? "检查视频任务，完成后可播放和下载最终广告视频。"
+      ? "检查视频任务，完成后可播放和下载广告视频。"
       : "检查两个 10 秒视频任务，完成后可播放和下载。"
   };
   el("workspaceSubtitle").textContent = subtitleByStatus[activeStatus] || subtitleByStatus.assets;
@@ -257,6 +277,9 @@ function renderWorkspacePanel(project, activeStatus) {
   const panelWorkflowState = el("panelWorkflowState");
   const panelProgressBar = el("panelProgressBar");
   const panelProgressText = el("panelProgressText");
+  const panelReadyState = el("panelReadyState");
+  const panelReadyCard = el("panelReadyCard");
+  const panelTipList = el("panelTipList");
   if (panelStageKicker) panelStageKicker.textContent = `STEP 0${visibleStep}`;
   if (panelStageTitle) panelStageTitle.textContent = STAGE_PANEL_TITLE[activeStatus] || "工作进度";
   if (panelStageCopy) {
@@ -274,7 +297,55 @@ function renderWorkspacePanel(project, activeStatus) {
   if (panelProgressText) panelProgressText.textContent = workflowProgress?.active && workflowProgress.stage === activeStatus
     ? workflowProgress.message
     : readinessText;
+  const readiness = panelReadiness(project, activeStatus);
+  if (panelReadyState) panelReadyState.textContent = readiness.label;
+  if (panelReadyCard) panelReadyCard.dataset.ready = readiness.ready ? "true" : "false";
+  if (panelTipList) {
+    panelTipList.innerHTML = panelTips(project, activeStatus)
+      .map((item) => `<li>${escapeHtml(item)}</li>`)
+      .join("");
+  }
   renderPanelStageVisual(project, activeStatus);
+}
+
+function panelReadiness(project, activeStatus) {
+  const assets = project.assets || [];
+  const singleVideo = isSingleVideoProject(project);
+  const storyboardTotal = singleVideo ? 1 : 2;
+  const storyboardDone = (project.imagePackage?.image_generation || [])
+    .filter((item) => item?.status === "done" && item?.generated_image?.url && (
+      singleVideo ? item.segment_id === "full" : ["0-10s", "10-20s"].includes(item.segment_id)
+    )).length;
+  const videoDone = (project.videoPackage?.video_generation || [])
+    .filter((item) => item?.status === "done" && item?.generated_video?.url).length;
+  const checks = {
+    assets: { ready: assets.length >= 1, label: assets.length >= 1 ? "可以识别产品" : "先上传素材" },
+    analyzing: { ready: false, label: "正在识别" },
+    review: { ready: Boolean(project.visionAnalysis) && assets.length >= 1, label: project.visionAnalysis ? "可以确认产品" : "等待识别结果" },
+    market: { ready: Boolean(project.reviewConfirmedAt), label: project.reviewConfirmedAt ? "可以整理脚本方向" : "先确认产品设定" },
+    script: { ready: Boolean(project.planningPackage), label: project.planningPackage ? "可以确认脚本" : "等待脚本生成" },
+    visual: { ready: storyboardDone >= storyboardTotal, label: storyboardDone >= storyboardTotal ? "可以进入生成视频" : `故事版 ${storyboardDone}/${storyboardTotal}` },
+    export: { ready: videoDone >= (singleVideo ? 1 : 2), label: videoDone ? `视频完成 ${videoDone}/${singleVideo ? 1 : 2}` : "可以开始生成视频" }
+  };
+  return checks[activeStatus] || checks.assets;
+}
+
+function panelTips(project, activeStatus) {
+  const singleVideo = isSingleVideoProject(project);
+  const tips = {
+    assets: ["推荐 4-8 张不同角度清晰图。", "主图、侧面、后跟、鞋底越完整，后续越稳。", "图片背景干净会提升识别效果。"],
+    analyzing: ["识别期间不用离开页面。", "识别完成后先检查颜色、鞋型和鞋底。"],
+    review: ["先确认产品不被改色、不换鞋型。", "一句话主张可以留空，系统会自动补齐。", "比例和时长会影响后续故事版。"],
+    market: ["保持目标人群、主题和主张一致。", "不确定时优先使用默认建议。"],
+    script: singleVideo
+      ? ["检查每个镜头是否有明确画面和动作。", "确认后会生成一张完整故事版。"]
+      : ["检查两个 10 秒段落是否连贯。", "确认后会生成两张分段故事版。"],
+    visual: singleVideo
+      ? ["单版模式这里只显示一张故事版。", "失败时可以重试，不会覆盖已成功内容。"]
+      : ["两张故事版都完成后再进入生成视频。", "可单独重试失败段落。"],
+    export: ["生成中保持页面打开更稳。", "成功后可直接预览、下载或重新生成。"]
+  };
+  return tips[activeStatus] || tips.assets;
 }
 
 function panelVideoStatusLabel(status) {
