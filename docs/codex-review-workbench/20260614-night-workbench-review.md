@@ -202,3 +202,21 @@ Verified:
 
 Issue Found:
 - 内置浏览器句柄短暂失效，后续需要重新连接后补截图或 DOM 复验。
+
+## Module: 补齐桌面/移动验收与截图留档
+
+Changed:
+- 新增桌面与移动截图留档：
+  - `docs/codex-review-workbench/20260614-ui-1366x768.png`
+  - `docs/codex-review-workbench/20260614-ui-1280x800.png`
+  - `docs/codex-review-workbench/20260614-ui-390x844.png`
+- 更新 `docs/验收清单.md`，把目标图 UI、右侧就绪判断、项目卡、顶部状态、Step 04/05 口径、桌面截图留档和移动端基础检查标记为完成。
+
+Verified:
+- 1366x768：`scrollWidth=1351`，`clientWidth=1366`，无横向溢出，控制台无 error/warn，旧词未出现。
+- 1280x800：`scrollWidth=1265`，`clientWidth=1280`，无横向溢出，控制台无 error/warn，旧词未出现。
+- 390x844：`scrollWidth=375`，`clientWidth=390`，无文档级横向溢出，控制台无 error/warn。
+- 截图文件已保存在审查目录中，没有写入根目录。
+
+Issue Found:
+- 手机端步骤条仍保持横向滚动，属于已接受的基础方案，后续可再做触控优化。
