@@ -1,8 +1,5 @@
-import { readFile } from "node:fs/promises";
-
 const baseUrl = process.env.STUDIO_URL || "http://127.0.0.1:8810";
-const sampleImagePath = process.env.SAMPLE_IMAGE ||
-  "E:/codex工作台/P001-codex_sp仓库/studio-v2/data/uploads/success-mqcnwruf/3899d01a-4cfc-44b9-be21-9659efcb5a31.png";
+const tinyPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
 
 async function jsonRequest(path, options = {}) {
   const response = await fetch(`${baseUrl}${path}`, {
@@ -16,9 +13,6 @@ async function jsonRequest(path, options = {}) {
 }
 
 async function main() {
-  const image = await readFile(sampleImagePath);
-  const dataUrl = `data:image/png;base64,${image.toString("base64")}`;
-
   const created = await jsonRequest("/api/projects", {
     method: "POST",
     body: JSON.stringify({ name: `P0 flow smoke ${Date.now()}` })
@@ -28,7 +22,7 @@ async function main() {
   const uploaded = await jsonRequest(`/api/projects/${projectId}/assets`, {
     method: "POST",
     body: JSON.stringify({
-      files: [{ name: "shoe-smoke.png", dataUrl }]
+      files: [{ name: "shoe-smoke.png", dataUrl: tinyPng }]
     })
   });
 

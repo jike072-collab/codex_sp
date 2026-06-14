@@ -14,7 +14,7 @@ The local machine currently has no real image generation key configured, so Step
 - Branch: `codex/night-workbench-review`
 - URL: `http://127.0.0.1:8810`
 - Smoke script: `docs/codex-review-workbench/p0-flow-smoke.mjs`
-- Sample image: local smoke image under `studio-v2/data/uploads/`
+- Sample image: embedded 1x1 PNG inside `p0-flow-smoke.mjs`, so the smoke does not depend on local runtime data.
 
 ## API Evidence
 
@@ -48,6 +48,11 @@ Observed result:
 }
 ```
 
+Follow-up verification:
+
+- `p0-flow-smoke.mjs` now embeds its own 1x1 PNG and no longer reads `studio-v2/data/uploads/`.
+- Re-ran the command after this change; the API path still reached Step 04 with `visual=502`, `finalProjectStatus=visual`, `workflowMode=single_video`, `assetCount=1`, and `visualFailureCode=IMAGE_PROVIDER_NOT_CONFIGURED`.
+
 ## Browser Evidence
 
 Opened the smoke project in the 1440x900 browser viewport.
@@ -69,3 +74,16 @@ Verified:
 P0 path is confirmed through Step 04 failure recovery for the no-key local environment. The user can retry storyboard generation without seeing technical provider details.
 
 Step 05 success preview/download remains covered by the existing local success smoke project, not by a live external provider run.
+
+Latest Step 05 browser recheck:
+
+- Project: `成功态预览下载烟测`
+- Active stage: `exportStage`
+- Title: `生成视频`
+- Right panel readiness: `视频完成 1/1`
+- Main copy includes `视频生成完成后可播放和下载。`
+- Download entry: `下载视频`
+- No visible API/provider/model/prompt/debug wording.
+- No `导出计划`, `最终导出`, or `最终交付` wording.
+- Console error/warning list is empty.
+- `scrollWidth=1425`, `clientWidth=1440`.
