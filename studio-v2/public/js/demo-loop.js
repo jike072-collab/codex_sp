@@ -5,6 +5,7 @@ import {
   formatTime,
   isSingleVideoProject,
   projectSetup,
+  publicErrorMessage,
   state,
   videoDurationSeconds
 } from "./core.js";
@@ -493,11 +494,11 @@ export function renderVisualStage(project = state.project) {
         ${segmentIds.map((segmentId) => renderStoryboardStateCard(project, segmentId, entries.find((item) => item.segment_id === segmentId))).join("")}
       </div>
       <div class="visual-error-card">
-        <p class="error-message">${escapeHtml(failure?.message || state.visualGenerationError || (needsRealImages
+        <p class="error-message">${escapeHtml(publicErrorMessage(failure?.message || state.visualGenerationError || (needsRealImages
           ? singleVideo
             ? "当前项目还没有可交付的真实故事版。请确认生成通道已就绪后继续生成。"
             : "当前项目还没有两张可交付的真实故事版。请确认生成通道已就绪后继续生成。"
-          : "故事版生成失败。"))}</p>
+          : "故事版生成失败。"), "故事版暂时没有生成成功，请稍后重试。"))}</p>
         <button class="primary-button" id="generateVisualButton" type="button" data-action="generate-visual">
           ${singleVideo ? "重新生成故事版" : "继续生成缺失故事版"}
         </button>
@@ -620,7 +621,7 @@ function renderStoryboardStateCard(project, segmentId, item, generating = false)
       </div>
       <div class="storyboard-skeleton ${generating ? "active" : ""}"><i></i><span>${failed ? "该故事版尚未完成，重试只会补这一项。" : "正在准备故事版画面"}</span></div>
       <div class="storyboard-meta"><span>时长 ${escapeHtml(duration)}s</span><span>分镜比例 ${escapeHtml(project.marketBrief?.outputAspectRatio || "9:16")}</span><span>镜头 ${escapeHtml(segment.shots?.length || 0)} 个</span></div>
-      ${failed && item.error?.message ? `<p class="storyboard-item-error">${escapeHtml(item.error.message)}</p>` : ""}
+      ${failed && item.error?.message ? `<p class="storyboard-item-error">${escapeHtml(publicErrorMessage(item.error.message, "这一项暂时没有生成成功，请稍后重试。"))}</p>` : ""}
     </article>
   `;
 }
@@ -729,7 +730,7 @@ function renderVideoTaskCard(project, storyboard, index) {
           <strong>对应脚本</strong>
           <pre id="segmentVideoScript${index}">${escapeHtml(scriptText)}</pre>
           <button class="ghost-button small" type="button" data-copy-target="segmentVideoScript${index}">复制脚本</button>
-          <p class="video-task-note">${escapeHtml(item?.error?.message || "完成后可播放和下载这一段视频。")}</p>
+          <p class="video-task-note">${escapeHtml(publicErrorMessage(item?.error?.message, "完成后可播放和下载这一段视频。"))}</p>
         </div>
       </div>
       <div class="video-workflow-actions">
@@ -814,7 +815,7 @@ export function renderExportStage(project = state.project) {
             <p>${escapeHtml((script.shots || []).map((shot, index) =>
               `${shot.start_sec}-${shot.end_sec}s 镜头 ${index + 1}`
             ).slice(0, 4).join("；") || "脚本已生成。")}</p>
-            <p class="video-task-note">${escapeHtml(item?.error?.message || project.videoGenerationFailure?.message || "视频生成完成后可播放和下载。")}</p>
+            <p class="video-task-note">${escapeHtml(publicErrorMessage(item?.error?.message || project.videoGenerationFailure?.message, "视频生成完成后可播放和下载。"))}</p>
           </div>
         </div>
         <div class="video-workflow-actions">

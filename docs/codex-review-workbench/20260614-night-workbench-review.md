@@ -151,6 +151,22 @@ Verified:
 
 Issue Found:
 - `docs/contracts/local-settings-api.md` 仍保留“故事板图片模型”等后台契约描述，属于技术配置/接口文档，不作为普通前台口径展示。
+
+## Module: P0 成功态预览下载与公开错误文案
+
+Changed:
+- `studio-v2/public/js/core.js` 新增普通前台公开错误文案净化，屏蔽 API Key、供应商、模型、prompt、provider 等技术原文。
+- `studio-v2/public/js/demo-loop.js`、`projects.js`、`main.js` 接入净化文案，Step 04/05 失败提示保留可理解的人话。
+- `studio-v2/public/js/render.js` 把“供应商未就绪”改成“当前使用演示识别；如需真实识别，可请管理员完成后台配置”。
+
+Verified:
+- 1440x900 内置浏览器打开成功态项目 `success-mqcnwruf`。
+- 单段模式 Step 04：页面标题“故事版生成完成”，故事版卡片数量 `1`，下载入口为“下载故事版”，链接 `/uploads/success-mqcnwruf/storyboard-full-smoke.png`。
+- Step 05：页面标题“生成视频”，存在视频播放器 `src=/uploads/success-mqcnwruf/video-full-smoke.mp4`，下载入口为“下载视频”。
+- 成功态正文未出现 `API Key`、供应商、模型、prompt、provider、Right Code、DeepSeek、Gemini、Draw 等技术词；控制台 error/warn 为空；无文档级横向溢出。
+
+Issue Found:
+- 真实外部生成成功态仍取决于本地后台配置；本轮验证使用本机已有成功烟测项目，不写入或提交 `studio-v2/data/`。
 - 8810 本地页面返回 HTTP 200。
 
 Issue Found:

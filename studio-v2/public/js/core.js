@@ -160,10 +160,20 @@ export async function api(url, options = {}) {
 
 export function showToast(message) {
   const toast = el("toast");
-  toast.textContent = message;
+  toast.textContent = publicErrorMessage(message);
   toast.classList.add("show");
   window.clearTimeout(showToast.timer);
   showToast.timer = window.setTimeout(() => toast.classList.remove("show"), 2800);
+}
+
+export function publicErrorMessage(errorOrMessage, fallback = "操作没有完成，请稍后重试。") {
+  const message = typeof errorOrMessage === "string"
+    ? errorOrMessage
+    : errorOrMessage?.message || "";
+  if (!message) return fallback;
+  const sensitivePattern = /API\s*Key|API\s*URL|Bearer|token|provider|供应商|模型|prompt|base64|Right\s*Code|DeepSeek|Gemini|Draw|IMAGE_PROVIDER|VIDEO_PROVIDER|绘图通道|视频通道|未配置/i;
+  if (sensitivePattern.test(message)) return fallback;
+  return message;
 }
 
 export function setBusy(value, message = "处理中...") {

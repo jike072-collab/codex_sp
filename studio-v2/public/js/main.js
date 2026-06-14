@@ -1,4 +1,4 @@
-import { el, readProjectPreferences, saveProjectPreferences, showToast, state } from "./core.js";
+import { el, publicErrorMessage, readProjectPreferences, saveProjectPreferences, showToast, state } from "./core.js";
 import { copyBlockText } from "./demo-loop.js";
 import {
   analyze,
@@ -137,7 +137,7 @@ function wireEvents() {
 
     const deleteAssetButton = event.target.closest("[data-delete-asset-id]");
     if (deleteAssetButton) {
-      deleteAsset(deleteAssetButton.dataset.deleteAssetId).catch((error) => showToast(error.message));
+      deleteAsset(deleteAssetButton.dataset.deleteAssetId).catch((error) => showToast(publicErrorMessage(error)));
       return;
     }
 
@@ -153,7 +153,7 @@ function wireEvents() {
     if (copyButton) {
       copyBlockText(copyButton.dataset.copyTarget)
         .then(() => showToast("已复制。"))
-        .catch((error) => showToast(error.message));
+        .catch((error) => showToast(publicErrorMessage(error)));
       return;
     }
 
@@ -204,7 +204,7 @@ function wireEvents() {
 
     const button = event.target.closest("[data-project-id]");
     if (button) {
-      openProject(button.dataset.projectId).catch((error) => showToast(error.message));
+      openProject(button.dataset.projectId).catch((error) => showToast(publicErrorMessage(error)));
     }
   });
 
@@ -270,7 +270,7 @@ async function boot() {
       }
     }
   } catch (error) {
-    showToast(`本地服务连接失败：${error.message}`);
+    showToast(publicErrorMessage(error, "本地服务连接失败，请确认 8810 服务正在运行。"));
   }
 }
 

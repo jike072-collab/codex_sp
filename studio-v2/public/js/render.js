@@ -69,7 +69,7 @@ function publicQualityNotes(analysis) {
   ];
   const publicNotes = notes.filter((note) => !/API\s*Key|API\s*URL|模型名|视觉模型/i.test(note));
   if (publicNotes.length !== notes.length) {
-    publicNotes.push("供应商未就绪时使用演示识别；可在管理后台查看就绪状态。");
+    publicNotes.push("当前使用演示识别；如需真实识别，可请管理员完成后台配置。");
   }
   return publicNotes;
 }

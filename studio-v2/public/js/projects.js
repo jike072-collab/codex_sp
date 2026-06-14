@@ -6,6 +6,7 @@ import {
   escapeHtml,
   isSingleVideoProject,
   projectSetup,
+  publicErrorMessage,
   setBusy,
   showToast,
   state,
@@ -652,11 +653,11 @@ export async function confirmScriptAndGenerateVisual() {
       stopVisualProgress();
       await restoreVisualProject();
       state.viewStatus = "visual";
-      state.visualGenerationError = error.message;
+      state.visualGenerationError = publicErrorMessage(error, "故事版暂时没有生成成功，请稍后重试。");
       renderWorkspace();
-      showToast(`脚本已确认，故事版生成失败：${error.message}`);
+      showToast(`脚本已确认，${state.visualGenerationError}`);
     } else {
-      showToast(error.message);
+      showToast(publicErrorMessage(error));
     }
   } finally {
     setWorkflowBusy(
@@ -695,10 +696,10 @@ export async function generateVisual() {
   } catch (error) {
     stopVisualProgress();
     await restoreVisualProject();
-    state.visualGenerationError = error.message;
+    state.visualGenerationError = publicErrorMessage(error, "故事版暂时没有生成成功，请稍后重试。");
     state.viewStatus = "visual";
     renderWorkspace();
-    showToast(error.message);
+    showToast(state.visualGenerationError);
   } finally {
     setWorkflowBusy(false, "generateVisualButton", "正在生成故事版...", "生成故事版");
     renderWorkspace();
@@ -727,7 +728,7 @@ export async function generateVideo() {
     await loadProjects();
     showToast("视频任务已提交。");
   } catch (error) {
-    showToast(error.message);
+    showToast(publicErrorMessage(error, "视频暂时没有提交成功，请稍后重试。"));
   } finally {
     setBusy(false);
     renderWorkspace();
@@ -744,7 +745,7 @@ export async function refreshVideoStatus() {
     renderWorkspace();
     await loadProjects();
   } catch (error) {
-    showToast(error.message);
+    showToast(publicErrorMessage(error, "视频状态暂时没有刷新成功，请稍后重试。"));
   } finally {
     setBusy(false);
     renderWorkspace();
@@ -765,7 +766,7 @@ export async function retryVideo(segmentIdOverride = "") {
     await loadProjects();
     showToast("已重新提交视频任务。");
   } catch (error) {
-    showToast(error.message);
+    showToast(publicErrorMessage(error, "视频暂时没有重新提交成功，请稍后重试。"));
   } finally {
     setBusy(false);
     renderWorkspace();
