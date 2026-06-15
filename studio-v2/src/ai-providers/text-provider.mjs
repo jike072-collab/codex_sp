@@ -22,7 +22,7 @@ import {
 
 const SCRIPT_PROVIDER_LABEL = "脚本模型";
 
-function scriptSchemaInstruction({ singleMode, durationSeconds }) {
+function scriptSchemaInstruction({ singleMode, durationSeconds, shotCount }) {
   if (singleMode) {
     return [
       "Return exactly one script field named script_video.",
@@ -30,6 +30,7 @@ function scriptSchemaInstruction({ singleMode, durationSeconds }) {
       `script_video.total_duration_sec must be ${durationSeconds}.`,
       "script_video.segment_full.segment_id must be \"full\".",
       `script_video.segment_full.duration_sec must be ${durationSeconds}.`,
+      `script_video.segment_full.shots must contain exactly ${shotCount} shots.`,
       `segment_full.shots must cover exactly 0 through ${durationSeconds} seconds with no gaps or overlaps.`
     ].join(" ");
   }
@@ -168,6 +169,11 @@ export async function generateProjectScript(
   const model = env.TEXT_MODEL || "deepseek-v4-pro";
   const singleMode = isSingleVideoMode(project);
   const durationSeconds = selectedVideoDurationSeconds(project);
+  const requestedShotCount = Number.isInteger(Number(options.shotsPerSegment))
+    && Number(options.shotsPerSegment) >= 2
+    && Number(options.shotsPerSegment) <= 20
+    ? Number(options.shotsPerSegment)
+    : 5;
   const confirmedProductLockManifest = structuredClone(
     project.visionAnalysis?.product_lock_manifest || {}
   );
@@ -175,7 +181,11 @@ export async function generateProjectScript(
     join(projectRoot, "prompts", "01_planning_and_script.system.md"),
     "utf8"
   );
-  const modeInstruction = scriptSchemaInstruction({ singleMode, durationSeconds });
+  const modeInstruction = scriptSchemaInstruction({
+    singleMode,
+    durationSeconds,
+    shotCount: requestedShotCount
+  });
   const outputSchema = scriptOutputSchema({
     singleMode,
     durationSeconds,
@@ -221,7 +231,8 @@ export async function generateProjectScript(
               : ["locale_profile", "product_lock_manifest", "selling_points", "creative_direction", "hooks", "script_20s", "localized_copy", "confirmation_summary"],
             forbidden_top_level_keys: singleMode ? ["script_20s"] : ["script_video"],
             output_schema: outputSchema,
-            shots_per_10s_segment: options.shotsPerSegment || 5,
+            requested_shot_count: singleMode ? requestedShotCount : undefined,
+            shots_per_10s_segment: singleMode ? undefined : requestedShotCount,
             shot_diversity_requirements: [
               "Every shot must advance a distinct narrative stage: hook, product identity, visible proof, movement or use context, and closing CTA.",
               "Do not reuse the same visual, action, and camera sentence while only changing timestamps.",
@@ -247,6 +258,13 @@ export async function generateProjectScript(
     });
   }
   const generated = extractJsonObject(content, SCRIPT_PROVIDER_LABEL);
+  if (singleMode && Array.isArray(generated?.script_video?.segment_full?.shots)
+      && generated.script_video.segment_full.shots.length !== requestedShotCount) {
+    throw new ProviderError(
+      `脚本模型返回了 ${generated.script_video.segment_full.shots.length} 个镜头，应为 ${requestedShotCount} 个。`,
+      { code: "TEXT_PROVIDER_INVALID_OUTPUT" }
+    );
+  }
   let planningPackage;
   try {
     planningPackage = normalizeConfirmedPlanningPackage(

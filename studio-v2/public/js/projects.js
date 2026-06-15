@@ -400,7 +400,10 @@ export async function generateScript() {
   setScriptProgress(true);
   try {
     const body = isSingleVideoProject(state.project)
-      ? { videoDurationSeconds: setup.videoDurationSeconds }
+      ? {
+          videoDurationSeconds: setup.videoDurationSeconds,
+          shotsPerSegment: setup.shotsPerSegment
+        }
       : { shotsPerSegment: setup.shotsPerSegment };
     const data = await api(`/api/projects/${encodeURIComponent(state.project.id)}/script/generate`, {
       method: "POST",

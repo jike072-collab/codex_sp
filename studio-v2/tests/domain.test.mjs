@@ -192,7 +192,7 @@ test("script confirmation rejects majority template reuse across major shot fiel
   );
 });
 
-test("15-second demo mode creates eight distinct shots instead of repeating the final template", () => {
+test("single demo mode creates the selected custom shot count without repeating templates", () => {
   const project = {
     status: "script",
     workflowMode: "single_video",
@@ -211,14 +211,14 @@ test("15-second demo mode creates eight distinct shots instead of repeating the 
     }
   };
 
-  const planning = generateDemoPlanningPackage(project);
+  const planning = generateDemoPlanningPackage(project, { shotsPerSegment: 12 });
   const shots = planning.script_video.segment_full.shots;
   const signatures = shots.map((entry) => (
     `${entry.visual}|${entry.action}|${entry.camera}`
   ));
 
-  assert.equal(shots.length, 8);
-  assert.equal(new Set(signatures).size, 8);
+  assert.equal(shots.length, 12);
+  assert.equal(new Set(signatures).size, 12);
   assert.equal(shots[0].start_sec, 0);
   assert.equal(shots.at(-1).end_sec, 15);
   assert.doesNotThrow(() => normalizeConfirmedPlanningPackage(

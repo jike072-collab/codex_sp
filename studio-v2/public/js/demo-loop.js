@@ -303,7 +303,7 @@ function renderGenerateScript(project) {
       <p class="section-index">STEP 03</p>
       <h2>市场创意已确认</h2>
       <p>${singleVideo
-        ? `将生成一条完整 ${escapeHtml(setup.videoDurationSeconds)} 秒广告脚本，镜头数量由时长自动决定。`
+        ? `将生成一条完整 ${escapeHtml(setup.videoDurationSeconds)} 秒广告脚本，共 ${escapeHtml(setup.shotsPerSegment)} 个镜头。`
         : `将使用第二步选择的每段 ${escapeHtml(setup.shotsPerSegment)} 个镜头生成 20 秒脚本。后续会按两个 10 秒段落分别生成故事板。`}</p>
       <div class="confirmed-card">
         <span>✓</span>

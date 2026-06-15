@@ -413,6 +413,7 @@ test("script adapter requests single-video JSON without forcing the 20-second du
     const userPayload = JSON.parse(requestBody.messages[1].content);
     assert.equal(userPayload.workflow_mode, "single_video");
     assert.equal(userPayload.total_duration_seconds, 10);
+    assert.equal(userPayload.requested_shot_count, 5);
     assert.equal(userPayload.required_top_level_keys.includes("script_video"), true);
     assert.deepEqual(userPayload.forbidden_top_level_keys, ["script_20s"]);
     assert.deepEqual(userPayload.confirmed_product_lock_manifest, confirmedLock);

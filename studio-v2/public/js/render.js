@@ -18,7 +18,6 @@ import {
   valueAt,
   videoDurationOptions,
   workflowMode,
-  workflowModeOptions,
   workflowModeLabel
 } from "./core.js";
 import {
@@ -203,17 +202,9 @@ export function renderWorkspace() {
 }
 
 function renderWorkflowModeSwitcher(project) {
-  const currentMode = workflowMode(project);
   return `
     <span class="workflow-mode-switch" role="group" aria-label="项目模式">
-      ${workflowModeOptions.map(([mode, label]) => `
-        <button class="workflow-mode-option ${mode === currentMode ? "active" : ""}" type="button"
-          data-workflow-mode="${escapeHtml(mode)}"
-          aria-pressed="${mode === currentMode ? "true" : "false"}"
-          ${state.busy ? "disabled" : ""}>
-          ${escapeHtml(label)}
-        </button>
-      `).join("")}
+      <span class="workflow-mode-option active" aria-current="true">单版 5-15 秒</span>
     </span>
   `;
 }
@@ -647,6 +638,19 @@ function renderReviewControls(setup) {
       value: `${setup.videoDurationSeconds} 秒`,
       options: compactOptionsHtml("videoDurationSeconds", videoDurationOptions, setup.videoDurationSeconds)
     });
+    groups.push({
+      name: "shotsPerSegment",
+      icon: "镜",
+      label: "镜头",
+      value: `${setup.shotsPerSegment} 个`,
+      options: compactOptionsHtml("shotsPerSegment", [
+        [2, "2 个", "精简"],
+        [3, "3 个", "简洁"],
+        [4, "4 个", "标准"],
+        [5, "5 个", "丰富"],
+        ["custom", "自定义", "2-20 个"]
+      ], setup.shotsPerSegment)
+    });
   } else {
     groups.push({
       name: "fixedDuration",
@@ -862,7 +866,9 @@ export function analysisFromForm() {
     outputAspectRatio,
     creativeTheme,
     tone,
-    shotsPerSegment: [3, 4, 5].includes(shotsPerSegment) ? shotsPerSegment : 5,
+    shotsPerSegment: Number.isInteger(shotsPerSegment) && shotsPerSegment >= 2 && shotsPerSegment <= 20
+      ? shotsPerSegment
+      : 5,
     videoDurationSeconds: Number.isInteger(videoDuration) && videoDuration >= 5 && videoDuration <= 15 ? videoDuration : 10
   };
   if (rawCoreMessage) preferences.coreMessage = rawCoreMessage;
@@ -929,7 +935,9 @@ export function marketBriefFromReviewForm() {
     outputAspectRatio: form.elements.output_aspect_ratio?.value || setup.outputAspectRatio,
     creativeTheme,
     tone,
-    shotsPerSegment: [3, 4, 5].includes(shotsPerSegment) ? shotsPerSegment : 5,
+    shotsPerSegment: Number.isInteger(shotsPerSegment) && shotsPerSegment >= 2 && shotsPerSegment <= 20
+      ? shotsPerSegment
+      : 5,
     videoDurationSeconds: Number.isInteger(videoDuration) && videoDuration >= 5 && videoDuration <= 15 ? videoDuration : 10
   };
   if (rawCoreMessage) preferences.coreMessage = rawCoreMessage;

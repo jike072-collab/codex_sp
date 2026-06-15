@@ -119,7 +119,7 @@ test("no-key mode keeps storyboard generation in Step 4 and blocks export", asyn
   assert.equal(firstGeneration.body.project.planningPackage.script_video.total_duration_sec, 10);
   assert.equal(
     firstGeneration.body.project.planningPackage.script_video.segment_full.shots.length,
-    5
+    4
   );
 
   const secondGeneration = await jsonRequest(`/api/projects/${projectId}/script/generate`, {

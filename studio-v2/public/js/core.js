@@ -67,12 +67,11 @@ export const videoDurationOptions = Array.from({ length: 11 }, (_, index) => {
 });
 
 export const workflowModeOptions = [
-  ["single_video", "单段 5-15 秒"],
-  ["legacy_multi_segment", "双段 20 秒"]
+  ["single_video", "单版 5-15 秒"]
 ];
 
 export function workflowModeLabel(mode) {
-  return workflowModeOptions.find(([value]) => value === mode)?.[1] || "双段 20 秒";
+  return workflowModeOptions.find(([value]) => value === mode)?.[1] || "单版 5-15 秒";
 }
 
 function preferenceKey(projectId) {
@@ -121,7 +120,9 @@ export function projectSetup(project = state.project) {
       ? creativeTheme
       : "city-motion",
     tone: toneOptions.some(([value]) => value === tone) ? tone : "energetic",
-    shotsPerSegment: [3, 4, 5].includes(shotsPerSegment) ? shotsPerSegment : 5,
+    shotsPerSegment: Number.isInteger(shotsPerSegment) && shotsPerSegment >= 2 && shotsPerSegment <= 20
+      ? shotsPerSegment
+      : 5,
     videoDurationSeconds: Number.isInteger(duration) && duration >= 5 && duration <= 15 ? duration : 10
   };
 }

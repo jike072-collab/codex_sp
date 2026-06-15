@@ -107,10 +107,22 @@ function wireEvents() {
       const form = el("reviewForm");
       const name = reviewOption.dataset.reviewSelect;
       if (form.elements[name]) {
-        form.elements[name].value = reviewOption.dataset.value || "";
+        let selectedValue = reviewOption.dataset.value || "";
+        let selectedLabel = reviewOption.dataset.label || selectedValue;
+        if (name === "shotsPerSegment" && selectedValue === "custom") {
+          const currentValue = Number(form.elements[name].value || 5);
+          const customValue = Number(window.prompt("请输入镜头数量（2-20）", String(currentValue)));
+          if (!Number.isInteger(customValue) || customValue < 2 || customValue > 20) {
+            showToast("镜头数量必须是 2-20 的整数。");
+            return;
+          }
+          selectedValue = String(customValue);
+          selectedLabel = `${customValue} 个`;
+        }
+        form.elements[name].value = selectedValue;
         const root = reviewOption.closest("[data-review-menu-root]");
         const chip = root?.querySelector(".review-chip strong");
-        if (chip) chip.textContent = reviewOption.dataset.label || reviewOption.dataset.value || "";
+        if (chip) chip.textContent = selectedLabel;
         root?.querySelectorAll(".review-option").forEach((item) => item.classList.remove("selected"));
         reviewOption.classList.add("selected");
         const preferences = readProjectPreferences(state.project);

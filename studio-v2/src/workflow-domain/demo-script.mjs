@@ -122,7 +122,7 @@ function shot(start_sec, end_sec, values) {
 
 function normalizeShotCount(value) {
   const count = Number(value);
-  return [3, 4, 5].includes(count) ? count : 5;
+  return Number.isInteger(count) && count >= 2 && count <= 20 ? count : 5;
 }
 
 function fitTemplatesToCount(templates, count) {
@@ -130,7 +130,18 @@ function fitTemplatesToCount(templates, count) {
   if (count <= templates.length) return count === templates.length
     ? templates
     : [...templates.slice(0, Math.max(1, count - 1)), templates.at(-1)];
-  throw new Error(`Need ${count} distinct shot templates, but only ${templates.length} are defined.`);
+  return Array.from({ length: count }, (_, index) => {
+    const template = templates[index % templates.length];
+    const pass = Math.floor(index / templates.length) + 1;
+    if (pass === 1) return template;
+    const variation = `Variation ${pass}-${index + 1}.`;
+    return {
+      ...template,
+      visual: `${template.visual} ${variation}`,
+      action: `${template.action} ${variation}`,
+      camera: `${template.camera} ${variation}`
+    };
+  });
 }
 
 function timedShots(start, end, templates, count) {
@@ -303,9 +314,8 @@ function buildLegacyPlanningPackage(project, locale, theme, captions, lock, sell
   };
 }
 
-function buildSingleVideoPlanningPackage(project, locale, theme, captions, lock, sellingPoints) {
+function buildSingleVideoPlanningPackage(project, locale, theme, captions, lock, sellingPoints, shotCount) {
   const duration = selectedVideoDurationSeconds(project);
-  const shotCount = autoShotCountForDuration(duration);
   const templates = [
     {
       visual: "Immediate product-first hero landing with the full shoe identity readable.",
@@ -453,7 +463,15 @@ export function generateDemoPlanningPackage(project, options = {}) {
   const sellingPoints = sellingPointsFromAnalysis(project.visionAnalysis);
   const shotsPerSegment = normalizeShotCount(options.shotsPerSegment);
   if (isSingleVideoMode(project)) {
-    return buildSingleVideoPlanningPackage(project, locale, theme, captions, lock, sellingPoints);
+    return buildSingleVideoPlanningPackage(
+      project,
+      locale,
+      theme,
+      captions,
+      lock,
+      sellingPoints,
+      shotsPerSegment
+    );
   }
   return buildLegacyPlanningPackage(project, locale, theme, captions, lock, sellingPoints, shotsPerSegment);
   const segmentATemplates = [
