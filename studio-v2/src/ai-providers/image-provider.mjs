@@ -24,6 +24,7 @@ const IMAGE_EXTENSION_BY_MIME = Object.freeze({
   "image/jpeg": ".jpg",
   "image/webp": ".webp"
 });
+const CODESONLINE_PROVIDER_MODEL = "gpt-image-2";
 
 function safeReferenceFilename(asset, index, mimeType) {
   const source = String(asset.name || asset.storedName || `reference-${index + 1}`);
@@ -108,6 +109,13 @@ function generatedImageProvider(apiUrl) {
   return usesMultipartImageEdits(apiUrl) ? "codesonline" : "image_provider";
 }
 
+function codesOnlineImageTier(model) {
+  const normalized = String(model || "").trim().toLowerCase();
+  if (normalized === "img2-2k") return { model: CODESONLINE_PROVIDER_MODEL, upscale: "2k" };
+  if (normalized === "img2-4k") return { model: CODESONLINE_PROVIDER_MODEL, upscale: "4k" };
+  return { model: CODESONLINE_PROVIDER_MODEL, upscale: "" };
+}
+
 async function requestGeneratedImage({
   channel,
   timeoutMs,
@@ -136,8 +144,9 @@ async function requestGeneratedImage({
     });
   }
 
+  const imageTier = codesOnlineImageTier(channel.model);
   const form = new FormData();
-  form.append("model", channel.model);
+  form.append("model", imageTier.model);
   form.append("prompt", prompt);
   images.forEach((image, index) => {
     form.append(
@@ -149,6 +158,7 @@ async function requestGeneratedImage({
   form.append("n", "1");
   form.append("size", sizeFor(item, env));
   form.append("quality", "high");
+  if (imageTier.upscale) form.append("upscale", imageTier.upscale);
   form.append("response_format", "url");
 
   return postProviderFormData({

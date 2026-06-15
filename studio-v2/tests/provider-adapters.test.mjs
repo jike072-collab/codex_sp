@@ -123,10 +123,10 @@ function dualImageEnv(overrides = {}) {
   return {
     IMAGE_MODEL_API_KEY: "test-codesonline-key-1111",
     IMAGE_API_URL: "https://image-a.example.test/v1/images/edits",
-    IMAGE_MODEL: "gpt-image-2",
+    IMAGE_MODEL: "img2",
     IMAGE_SECONDARY_API_KEY: "test-codesonline-key-2222",
     IMAGE_SECONDARY_API_URL: "https://image-b.example.test/v1/images/edits",
-    IMAGE_SECONDARY_MODEL: "gpt-image-2",
+    IMAGE_SECONDARY_MODEL: "img2",
     IMAGE_MODEL_PROVIDER: "codesonline",
     ...overrides
   };
@@ -147,6 +147,7 @@ async function inspectImageFormRequest(url, options) {
       n: form.get("n"),
       size: form.get("size"),
       quality: form.get("quality"),
+      upscale: form.get("upscale"),
       response_format: form.get("response_format"),
       primaryReferenceCount: form.getAll("image").length,
       additionalReferenceCount: form.getAll("image[]").length,
@@ -381,18 +382,20 @@ test("provider errors preserve string error details", async () => {
   );
 });
 
-test("DeepSeek adapter requests JSON and validates the generated 20-second script", async () => {
+test("script adapter requests single-video JSON without forcing the 20-second dual shape", async () => {
   await withProviderEnv({
-    TEXT_MODEL_API_KEY: "test-deepseek-key",
-    TEXT_API_URL: "https://api.deepseek.test/chat/completions",
-    TEXT_MODEL: "deepseek-v4-pro"
+    TEXT_MODEL_API_KEY: "test-script-key",
+    TEXT_API_URL: "https://script.example.test/chat/completions",
+    TEXT_MODEL: "gemini-2.5-pro"
   }, async () => {
     const project = reviewedProject();
+    project.workflowMode = "single_video";
+    project.marketBrief.videoDurationSeconds = 10;
     const modelOutput = generateDemoPlanningPackage(structuredClone(project));
     let requestBody;
     await generateProjectScript(project, "2026-06-06T01:00:00.000Z", {
       fetchImpl: async (url, options) => {
-        assert.equal(url, "https://api.deepseek.test/chat/completions");
+        assert.equal(url, "https://script.example.test/chat/completions");
         requestBody = JSON.parse(options.body);
         return new Response(JSON.stringify({
           choices: [{ message: { content: JSON.stringify(modelOutput) } }]
@@ -400,14 +403,111 @@ test("DeepSeek adapter requests JSON and validates the generated 20-second scrip
       }
     });
 
-    assert.equal(requestBody.model, "deepseek-v4-pro");
+    assert.equal(requestBody.model, "gemini-2.5-pro");
+    assert.match(requestBody.messages[0].content, /script_video/);
+    assert.match(requestBody.messages[0].content, /segment_full/);
+    assert.doesNotMatch(requestBody.messages[0].content, /视频总时长固定 20 秒/);
     const userPayload = JSON.parse(requestBody.messages[1].content);
-    assert.equal(userPayload.shots_per_10s_segment, 5);
+    assert.equal(userPayload.workflow_mode, "single_video");
+    assert.equal(userPayload.total_duration_seconds, 10);
+    assert.equal(userPayload.required_top_level_keys.includes("script_video"), true);
+    assert.deepEqual(userPayload.forbidden_top_level_keys, ["script_20s"]);
+    assert.equal(userPayload.output_schema.script_video.segment_full.segment_id, "full");
+    assert.equal(userPayload.output_schema.script_20s, undefined);
     assert.deepEqual(requestBody.response_format, { type: "json_object" });
     assert.deepEqual(requestBody.thinking, { type: "enabled" });
     assert.equal(project.planningPackage.mode, "api");
-    assert.equal(project.planningPackage.script_20s.total_duration_sec, 20);
+    assert.equal(project.planningPackage.workflow_mode, "single_video");
+    assert.equal(project.planningPackage.script_video.total_duration_sec, 10);
     assert.equal(project.scriptGeneratedAt, "2026-06-06T01:00:00.000Z");
+  });
+});
+
+test("script adapter rejects dual-script output in single-video mode with neutral wording", async () => {
+  await withProviderEnv({
+    TEXT_MODEL_API_KEY: "test-script-key",
+    TEXT_API_URL: "https://script.example.test/chat/completions",
+    TEXT_MODEL: "gemini-2.5-pro"
+  }, async () => {
+    const project = reviewedProject();
+    project.workflowMode = "single_video";
+    project.marketBrief.videoDurationSeconds = 10;
+    const legacyOutput = generateDemoPlanningPackage(structuredClone(reviewedProject()));
+
+    await assert.rejects(
+      generateProjectScript(project, "2026-06-06T01:00:00.000Z", {
+        fetchImpl: async () => new Response(JSON.stringify({
+          choices: [{ message: { content: JSON.stringify(legacyOutput) } }]
+        }), { status: 200 })
+      }),
+      (error) => {
+        assert.equal(error.code, "TEXT_PROVIDER_INVALID_OUTPUT");
+        assert.match(error.message, /脚本模型/);
+        assert.doesNotMatch(error.message, /DeepSeek/);
+        return true;
+      }
+    );
+  });
+});
+
+test("script adapter keeps the dual-segment schema for 20-second mode", async () => {
+  await withProviderEnv({
+    TEXT_MODEL_API_KEY: "test-script-key",
+    TEXT_API_URL: "https://script.example.test/chat/completions",
+    TEXT_MODEL: "gemini-2.5-pro"
+  }, async () => {
+    const project = reviewedProject();
+    project.workflowMode = "legacy_multi_segment";
+    const modelOutput = generateDemoPlanningPackage(structuredClone(project));
+    let requestBody;
+    await generateProjectScript(project, "2026-06-06T01:00:00.000Z", {
+      fetchImpl: async (_url, options) => {
+        requestBody = JSON.parse(options.body);
+        return new Response(JSON.stringify({
+          choices: [{ message: { content: JSON.stringify(modelOutput) } }]
+        }), { status: 200 });
+      }
+    });
+
+    assert.match(requestBody.messages[0].content, /script_20s/);
+    assert.doesNotMatch(requestBody.messages[0].content, /script_video\.segment_full covering/);
+    const userPayload = JSON.parse(requestBody.messages[1].content);
+    assert.equal(userPayload.workflow_mode, "legacy_multi_segment");
+    assert.equal(userPayload.required_top_level_keys.includes("script_20s"), true);
+    assert.deepEqual(userPayload.forbidden_top_level_keys, ["script_video"]);
+    assert.equal(userPayload.output_schema.script_20s.total_duration_sec, 20);
+    assert.equal(userPayload.output_schema.script_video, undefined);
+    assert.equal(project.planningPackage.workflow_mode, "legacy_multi_segment");
+    assert.equal(project.planningPackage.script_20s.total_duration_sec, 20);
+  });
+});
+
+test("script adapter rejects single-video output in dual-segment mode", async () => {
+  await withProviderEnv({
+    TEXT_MODEL_API_KEY: "test-script-key",
+    TEXT_API_URL: "https://script.example.test/chat/completions",
+    TEXT_MODEL: "gemini-2.5-pro"
+  }, async () => {
+    const project = reviewedProject();
+    project.workflowMode = "legacy_multi_segment";
+    const singleProject = reviewedProject();
+    singleProject.workflowMode = "single_video";
+    singleProject.marketBrief.videoDurationSeconds = 10;
+    const singleOutput = generateDemoPlanningPackage(structuredClone(singleProject));
+
+    await assert.rejects(
+      generateProjectScript(project, "2026-06-06T01:00:00.000Z", {
+        fetchImpl: async () => new Response(JSON.stringify({
+          choices: [{ message: { content: JSON.stringify(singleOutput) } }]
+        }), { status: 200 })
+      }),
+      (error) => {
+        assert.equal(error.code, "TEXT_PROVIDER_INVALID_OUTPUT");
+        assert.match(error.message, /脚本模型/);
+        assert.doesNotMatch(error.message, /DeepSeek/);
+        return true;
+      }
+    );
   });
 });
 
@@ -478,6 +578,8 @@ test("CodesOnline image adapter sends two concurrent multipart storyboard reques
     assert.equal(secondSegmentRequest.authorization, "Bearer test-codesonline-key-2222");
     assert.equal(firstSegmentRequest.body.model, "gpt-image-2");
     assert.equal(secondSegmentRequest.body.model, "gpt-image-2");
+    assert.equal(firstSegmentRequest.body.upscale, null);
+    assert.equal(secondSegmentRequest.body.upscale, null);
     assert.equal(typeof firstSegmentRequest.body.prompt, "string");
     assert.deepEqual(
       firstSegmentRequest.body.references.map(({ name, type }) => ({ name, type })),
@@ -513,8 +615,48 @@ test("CodesOnline image adapter sends two concurrent multipart storyboard reques
   });
 });
 
+test("CodesOnline image tiers add only their matching upscale form field", async () => {
+  await withProviderEnv(dualImageEnv({
+    IMAGE_MODEL: "img2-2k",
+    IMAGE_SECONDARY_MODEL: "img2-4k"
+  }), async () => {
+    const project = reviewedProject();
+    project.assets = [{ storedName: "shoe.png", mimeType: "image/png" }];
+    generateProjectDemoScript(project, "2026-06-06T01:00:00.000Z");
+    confirmPlanningPackage(
+      project,
+      structuredClone(project.planningPackage),
+      "2026-06-06T01:10:00.000Z"
+    );
+
+    const requests = [];
+    await generateProjectVisuals(project, "2026-06-06T01:20:00.000Z", {
+      readFileImpl: async () => Buffer.from("synthetic-shoe-reference"),
+      fetchImpl: async (url, options) => {
+        requests.push(await inspectImageFormRequest(url, options));
+        return new Response(JSON.stringify({
+          data: [{ b64_json: tinyPngBytes.toString("base64") }]
+        }), { status: 200 });
+      },
+      storeGeneratedImageImpl: async (projectId, bytes, mimeType) => ({
+        url: `/uploads/${projectId}/tier-${requests.length}.png`,
+        storedName: `tier-${requests.length}.png`,
+        mimeType,
+        size: bytes.length
+      })
+    });
+
+    const primary = requests.find((request) => request.authorization === "Bearer test-codesonline-key-1111");
+    const secondary = requests.find((request) => request.authorization === "Bearer test-codesonline-key-2222");
+    assert.equal(primary.body.model, "gpt-image-2");
+    assert.equal(primary.body.upscale, "2k");
+    assert.equal(secondary.body.model, "gpt-image-2");
+    assert.equal(secondary.body.upscale, "4k");
+  });
+});
+
 test("single-video CodesOnline generation uses channel A once and ignores extra data results", async () => {
-  await withProviderEnv(dualImageEnv(), async () => {
+  await withProviderEnv(dualImageEnv({ IMAGE_MODEL: "gpt-image-2" }), async () => {
     const project = reviewedProject();
     project.workflowMode = "single_video";
     project.marketBrief.videoDurationSeconds = 10;
@@ -557,6 +699,8 @@ test("single-video CodesOnline generation uses channel A once and ignores extra 
     assert.equal(providerRequests.length, 1);
     assert.equal(providerRequests[0].url, "https://image-a.example.test/v1/images/edits");
     assert.equal(providerRequests[0].authorization, "Bearer test-codesonline-key-1111");
+    assert.equal(providerRequests[0].body.model, "gpt-image-2");
+    assert.equal(providerRequests[0].body.upscale, null);
     assert.equal(providerRequests[0].body.n, "1");
     assert.deepEqual(downloadedUrls, ["https://images.test/full-first.png"]);
     assert.equal(project.imagePackage.image_generation.length, 1);

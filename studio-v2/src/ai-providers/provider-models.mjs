@@ -11,6 +11,11 @@ import {
 } from "../storage/provider-settings.mjs";
 
 const MODEL_DISCOVERY_CACHE_MS = 5 * 60 * 1000;
+const CODESONLINE_IMAGE_TIERS = Object.freeze([
+  { id: "img2", label: "Img2 标准" },
+  { id: "img2-2k", label: "Img2 2K" },
+  { id: "img2-4k", label: "Img2 4K" }
+]);
 const SUB2API_UNAVAILABLE_MODELS = new Set([
   "gemini-2.0-flash",
   "gemini-3.5-flash",
@@ -51,6 +56,34 @@ function fallback(currentModel, status, message) {
     models: [{ id: currentModel, label: currentModel }],
     source: "current",
     message
+  };
+}
+
+function normalizeCodesOnlineTier(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized || normalized === "gpt-image-2") return "img2";
+  if (normalized === "img2-2k") return "img2-2k";
+  if (normalized === "img2-4k") return "img2-4k";
+  return "img2";
+}
+
+function isCodesOnlineImageEditsUrl(apiUrl) {
+  try {
+    const parsed = new URL(apiUrl);
+    return parsed.hostname === "image.codesonline.dev"
+      && /\/v1\/images\/edits\/?$/i.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
+
+function codesOnlineTierList(currentModel) {
+  return {
+    status: "ok",
+    currentModel: normalizeCodesOnlineTier(currentModel),
+    models: CODESONLINE_IMAGE_TIERS.map((model) => ({ ...model })),
+    source: "local_tiers",
+    message: "CodesOnline 图片通道使用本地固定档位，不请求远程 /models。"
   };
 }
 
@@ -175,6 +208,10 @@ function parseModels(payload) {
 }
 
 async function fetchModelList(providerId, { apiUrl, apiKey, currentModel, fetchImpl, timeoutMs }) {
+  if (providerId === "image" && isCodesOnlineImageEditsUrl(apiUrl)) {
+    return codesOnlineTierList(currentModel);
+  }
+
   if (!hasUsableApiKey(apiKey)) {
     return fallback(currentModel, "error", "未配置 API Key，无法从供应商发现模型。");
   }
@@ -240,6 +277,7 @@ function aggregateImageChannelStatus(channels) {
 }
 
 function aggregateImageChannelSource(channels) {
+  if (channels.every((channel) => channel.source === "local_tiers")) return "local_tiers";
   if (channels.every((channel) => channel.source === "provider")) return "provider";
   if (channels.every((channel) => channel.source === "current")) return "current";
   return "mixed";
