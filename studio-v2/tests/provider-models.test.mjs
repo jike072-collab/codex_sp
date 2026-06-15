@@ -216,7 +216,7 @@ test("provider model preview does not reuse another preset key", async () => {
   });
 });
 
-test("CodesOnline image model preview derives the v1 models endpoint", async () => {
+test("CodesOnline image model preview returns fixed local tiers without remote discovery", async () => {
   await withProviderEnv({
     IMAGE_MODEL_API_KEY: "codesonline-key",
     IMAGE_API_URL: "https://image.codesonline.dev/v1/images/edits",
@@ -229,19 +229,47 @@ test("CodesOnline image model preview derives the v1 models endpoint", async () 
       model: "gpt-image-2",
       apiKey: "codesonline-key"
     }, {
-      fetchImpl: async (url, options) => {
-        assert.equal(String(url), "https://image.codesonline.dev/v1/models");
-        assert.equal(options.headers.Authorization, "Bearer codesonline-key");
-        return jsonResponse({
-          data: [{ id: "gpt-image-2" }, { id: "gpt-image-3" }]
-        });
+      fetchImpl: async () => {
+        throw new Error("CodesOnline tiers must not request remote /models");
       }
     });
 
     assert.equal(result.providers.image.status, "ok");
+    assert.equal(result.providers.image.source, "local_tiers");
+    assert.equal(result.providers.image.channels[0].currentModel, "img2");
     assert.deepEqual(
-      result.providers.image.channels[0].models.map((model) => model.id),
-      ["gpt-image-2", "gpt-image-3"]
+      result.providers.image.channels[0].models,
+      [
+        { id: "img2", label: "Img2 标准" },
+        { id: "img2-2k", label: "Img2 2K" },
+        { id: "img2-4k", label: "Img2 4K" }
+      ]
+    );
+  });
+});
+
+test("CodesOnline image model discovery stays healthy without a key or remote models access", async () => {
+  await withProviderEnv({
+    IMAGE_MODEL_API_KEY: "replace_me",
+    IMAGE_API_URL: "https://image.codesonline.dev/v1/images/edits",
+    IMAGE_MODEL: "img2-2k",
+    IMAGE_SECONDARY_API_KEY: "replace_me",
+    IMAGE_SECONDARY_API_URL: "https://image.codesonline.dev/v1/images/edits",
+    IMAGE_SECONDARY_MODEL: "img2-4k"
+  }, async () => {
+    const result = await discoverAdminProviderModels({
+      fetchImpl: async () => new Response("", { status: 401 })
+    });
+
+    assert.equal(result.providers.image.status, "ok");
+    assert.equal(result.providers.image.source, "local_tiers");
+    assert.deepEqual(
+      result.providers.image.channels.map((channel) => channel.currentModel),
+      ["img2-2k", "img2-4k"]
+    );
+    assert.equal(
+      result.providers.image.channels.every((channel) => channel.status === "ok"),
+      true
     );
   });
 });

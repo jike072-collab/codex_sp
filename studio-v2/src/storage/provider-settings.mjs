@@ -280,6 +280,35 @@ function fieldValue(env, field) {
   return env[field.envKey] || field.defaultValue || "";
 }
 
+function normalizeImageModel(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized || normalized === "gpt-image-2") return "img2";
+  if (normalized === "img2-2k") return "img2-2k";
+  if (normalized === "img2-4k") return "img2-4k";
+  return String(value || "").trim();
+}
+
+function isCodesOnlineImageUrl(apiUrl) {
+  try {
+    const parsed = new URL(apiUrl);
+    return parsed.hostname === "image.codesonline.dev"
+      && /\/v1\/images\/edits\/?$/i.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
+
+function displayModelForUrl(value, apiUrl) {
+  return isCodesOnlineImageUrl(apiUrl)
+    ? normalizeImageModel(value)
+    : String(value || "").trim();
+}
+
+function defaultModelForProfile(group, profile, currentModel) {
+  if (group.provider.id !== "image") return currentModel;
+  return profile?.id === "codesonline-image-edits" ? "img2" : DEFAULT_IMAGE_MODEL;
+}
+
 function sanitizeField(field) {
   const { envKey, defaultValue, ...rest } = field;
   void envKey;
@@ -353,7 +382,9 @@ function profilePreviews(env, { urlField, modelField, keyField }) {
   const activeUrl = fieldValue(env, urlField);
   return (urlField.presets || []).map((preset) => {
     const apiKey = profileValue(env, keyField, preset, activeUrl);
-    const model = modelField ? profileValue(env, modelField, preset, activeUrl) : "";
+    const model = modelField
+      ? displayModelForUrl(profileValue(env, modelField, preset, activeUrl), preset.value)
+      : "";
     return {
       id: preset.id,
       value: preset.value,
@@ -367,7 +398,7 @@ function profilePreviews(env, { urlField, modelField, keyField }) {
 
 function imageChannelConfig(env, spec, { includeApiKey = false } = {}) {
   const apiUrl = env[spec.apiUrlEnvKey] || DEFAULT_IMAGE_API_URL;
-  const model = env[spec.modelEnvKey] || DEFAULT_IMAGE_MODEL;
+  const model = displayModelForUrl(env[spec.modelEnvKey] || DEFAULT_IMAGE_MODEL, apiUrl);
   const apiKey = env[spec.apiKeyEnvKey] || "";
   const urlField = {
     envKey: spec.apiUrlEnvKey,
@@ -635,12 +666,16 @@ export async function updateAdminProviderSettings(input) {
     }
 
     if (normalizedInput.has(group.modelField.valueKey)) {
-      const model = normalizedInput.get(group.modelField.valueKey);
+      const submittedModel = normalizedInput.get(group.modelField.valueKey);
+      const model = group.provider.id === "image" && nextProfile?.id === "codesonline-image-edits"
+        ? normalizeImageModel(submittedModel)
+        : submittedModel;
       updates[group.modelField.envKey] = model;
       if (nextProfile?.id) updates[profileEnvKey(group.modelField.envKey, nextProfile.id)] = model;
     } else if (nextProfile?.id) {
       const storedModel = env[profileEnvKey(group.modelField.envKey, nextProfile.id)];
-      updates[group.modelField.envKey] = storedModel || currentModel;
+      updates[group.modelField.envKey] = storedModel
+        || defaultModelForProfile(group, nextProfile, currentModel);
     }
 
     if (normalizedInput.has(group.keyField.valueKey)) {

@@ -36,7 +36,9 @@ image intact and does not require splitting it into multiple files.
 ## Script
 
 - Workflow route: `POST /api/projects/:projectId/script/generate`
-- Provider: official DeepSeek OpenAI-compatible chat endpoint
+- Default provider: official DeepSeek OpenAI-compatible chat endpoint
+- Configured provider may be any compatible current script channel, including
+  local Sub2API.
 - Default endpoint: `https://api.deepseek.com/chat/completions`
 - Default model: `deepseek-v4-pro`
 - Authentication: `Authorization: Bearer <TEXT_MODEL_API_KEY>`
@@ -52,11 +54,15 @@ Single mode (`single_video`):
 - one full timeline from `0` to the selected duration
 
 Dual 20-second mode (`legacy_multi_segment`) keeps two 10-second segments.
-The model request explicitly includes the selected mode, total duration,
-required script shape, and shot-diversity rules. Generated or edited scripts
-are rejected when `visual + action + camera` repeats exactly or when a
-majority of shots reuse the same two-field template. Invalid provider output
-is returned to the user without a paid silent retry.
+The shared system prompt does not hard-code either script shape. Each model
+request appends a mode-specific output contract and includes the selected mode,
+total duration, required and forbidden top-level keys, a complete
+mode-specific `output_schema`, and shot-diversity rules. Single mode accepts
+only `script_video.segment_full`; dual mode accepts only `script_20s`.
+Generated or edited scripts are rejected when `visual + action + camera`
+repeats exactly or when a majority of shots reuse the same two-field template.
+Invalid provider output is returned with neutral script-channel wording and
+without a paid silent retry.
 
 ## Images
 
@@ -67,7 +73,8 @@ is returned to the user without a paid silent retry.
 - Draw channel B authentication: `Authorization: Bearer <IMAGE_SECONDARY_API_KEY>`
 - Request format: `multipart/form-data`; the HTTP client supplies the boundary
 - Request fields: `model`, `prompt`, `image`, optional repeated `image[]`,
-  `n: 1`, `size`, `quality: "high"`, `response_format: "url"`
+  `n: 1`, `size`, `quality: "high"`, optional `upscale`,
+  `response_format: "url"`
 - No usable key or manual provider mode: local demo package only
 - Failure code: `IMAGE_PROVIDER_ERROR`
 
@@ -96,6 +103,14 @@ Rules:
 - CodesOnline is the default image profile. Legacy Right Code Draw and local
   Sub2API profiles remain selectable, with independent profile keys/models and
   their existing JSON transport.
+- CodesOnline Admin model choices are local image tiers, not remote provider
+  models:
+  - `img2` -> provider `model=gpt-image-2`, no `upscale`
+  - `img2-2k` -> provider `model=gpt-image-2`, `upscale=2k`
+  - `img2-4k` -> provider `model=gpt-image-2`, `upscale=4k`
+- Existing CodesOnline `gpt-image-2` settings are displayed and executed as
+  the `img2` standard tier. CodesOnline model discovery never calls
+  `/v1/models`; legacy image profiles keep their existing model discovery.
 - Safe diagnostics may include segment id, attempt id, channel id/title,
   masked key preview, model, request size, provider host/path, reference image
   counts/bytes, and safe request-id headers.

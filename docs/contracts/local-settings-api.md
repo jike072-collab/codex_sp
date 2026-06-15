@@ -179,7 +179,7 @@ Response:
             "id": "primary",
             "title": "绘图通道 A",
             "segmentId": "0-10s",
-            "model": "gpt-image-2",
+            "model": "img2",
             "apiUrl": "https://image.codesonline.dev/v1/images/edits",
             "configured": true,
             "keyPreview": "•••• 1111"
@@ -188,7 +188,7 @@ Response:
             "id": "secondary",
             "title": "绘图通道 B",
             "segmentId": "10-20s",
-            "model": "gpt-image-2",
+            "model": "img2",
             "apiUrl": "https://image.codesonline.dev/v1/images/edits",
             "configured": false,
             "keyPreview": ""
@@ -254,8 +254,10 @@ GET /api/admin/providers/models?refresh=1
 ```
 
 The backend attempts real provider model-list discovery through configured
-provider endpoints and keys. It never invents models. Successful discoveries
-may be cached briefly; `refresh=1` forces a new discovery attempt.
+provider endpoints and keys, except for CodesOnline image edit channels.
+CodesOnline exposes three backend-defined image tiers and never calls remote
+`/v1/models`. Other successful discoveries may be cached briefly;
+`refresh=1` forces a new discovery attempt where discovery is supported.
 
 Response:
 
@@ -271,31 +273,34 @@ Response:
       "source": "provider"
     },
     "image": {
-      "status": "partial",
-      "source": "mixed",
+      "status": "ok",
+      "source": "local_tiers",
       "channels": [
         {
           "id": "primary",
           "title": "绘图通道 A",
           "segmentId": "0-10s",
           "status": "ok",
-          "currentModel": "gpt-image-2",
+          "currentModel": "img2",
           "models": [
-            { "id": "gpt-image-2", "label": "gpt-image-2" }
+            { "id": "img2", "label": "Img2 标准" },
+            { "id": "img2-2k", "label": "Img2 2K" },
+            { "id": "img2-4k", "label": "Img2 4K" }
           ],
-          "source": "provider"
+          "source": "local_tiers"
         },
         {
           "id": "secondary",
           "title": "绘图通道 B",
           "segmentId": "10-20s",
-          "status": "unsupported",
-          "currentModel": "gpt-image-2",
+          "status": "ok",
+          "currentModel": "img2-4k",
           "models": [
-            { "id": "gpt-image-2", "label": "gpt-image-2" }
+            { "id": "img2", "label": "Img2 标准" },
+            { "id": "img2-2k", "label": "Img2 2K" },
+            { "id": "img2-4k", "label": "Img2 4K" }
           ],
-          "source": "current",
-          "message": "供应商未提供可用的模型列表端点。"
+          "source": "local_tiers"
         }
       ]
     },
@@ -311,9 +316,13 @@ Response:
 }
 ```
 
-For `image`, model discovery is channel-specific because each storyboard draw
-channel uses its own explicit key and endpoint. The backend never invents
-channel models and never returns full API keys.
+For `image`, model selection is channel-specific because each storyboard draw
+channel uses its own explicit key, endpoint, and saved tier. CodesOnline
+returns the fixed `img2`, `img2-2k`, and `img2-4k` tiers with
+`source: "local_tiers"` even if remote `/models` would return `401`. Existing
+`gpt-image-2` CodesOnline settings normalize to `img2`. Right Code Draw and
+Sub2API retain their provider model discovery behavior. Full API keys are
+never returned.
 
 Statuses:
 
@@ -349,10 +358,10 @@ Request fields are optional and independent:
   "textModel": "deepseek-v4-pro",
   "deepSeekApiKey": "official-deepseek-key",
   "imageApiUrl": "https://image.codesonline.dev/v1/images/edits",
-  "imageModel": "gpt-image-2",
+  "imageModel": "img2-2k",
   "imageApiKey": "right-code-image-key-a",
   "imageSecondaryApiUrl": "https://image.codesonline.dev/v1/images/edits",
-  "imageSecondaryModel": "gpt-image-2",
+  "imageSecondaryModel": "img2-4k",
   "imageSecondaryApiKey": "right-code-image-key-b",
   "videoApiUrl": "https://clmm-mall.top/v1/videos/generations",
   "videoModel": "seedance2.0 720p-fast",

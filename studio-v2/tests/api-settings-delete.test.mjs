@@ -138,6 +138,10 @@ test("public provider status stays redacted while admin settings persist locally
       "https://image.codesonline.dev/v1/images/edits"
     ]
   );
+  assert.deepEqual(
+    providerById(schema.body, "image").config.channels.map((channel) => channel.model),
+    ["img2", "img2"]
+  );
   const imageUrlPresets = providerById(schema.body, "image").fields
     .find((field) => field.valueKey === "imageApiUrl").presets;
   assert.deepEqual(imageUrlPresets.map((preset) => preset.id), [
@@ -356,6 +360,7 @@ test("CodesOnline image profiles do not inherit legacy provider keys", async () 
 
   const legacy = await request("/api/admin/providers");
   const legacyChannel = imageChannel(providerById(legacy.body, "image"), "primary");
+  assert.equal(legacyChannel.model, "gpt-image-2");
   assert.equal(legacyChannel.keyPreview.endsWith("cret"), true);
   assert.equal(
     legacyChannel.profiles.find((profile) => profile.id === "codesonline-image-edits").configured,
@@ -403,6 +408,49 @@ test("CodesOnline image profiles do not inherit legacy provider keys", async () 
   delete process.env.IMAGE_API_URL;
   delete process.env.IMAGE_MODEL;
   delete process.env.IMAGE_MODEL_API_KEY;
+});
+
+test("CodesOnline image tiers persist independently for channels A and B", async () => {
+  await writeFile(envPath, [
+    "IMAGE_API_URL=https://image.codesonline.dev/v1/images/edits",
+    "IMAGE_MODEL=gpt-image-2",
+    "IMAGE_MODEL_API_KEY=test-image-a",
+    "IMAGE_SECONDARY_API_URL=https://image.codesonline.dev/v1/images/edits",
+    "IMAGE_SECONDARY_MODEL=img2-4k",
+    "IMAGE_SECONDARY_API_KEY=test-image-b"
+  ].join("\n") + "\n");
+  Object.assign(process.env, {
+    IMAGE_API_URL: "https://image.codesonline.dev/v1/images/edits",
+    IMAGE_MODEL: "gpt-image-2",
+    IMAGE_MODEL_API_KEY: "test-image-a",
+    IMAGE_SECONDARY_API_URL: "https://image.codesonline.dev/v1/images/edits",
+    IMAGE_SECONDARY_MODEL: "img2-4k",
+    IMAGE_SECONDARY_API_KEY: "test-image-b"
+  });
+
+  const compatible = await request("/api/admin/providers");
+  assert.equal(imageChannel(providerById(compatible.body, "image"), "primary").model, "img2");
+  assert.equal(imageChannel(providerById(compatible.body, "image"), "secondary").model, "img2-4k");
+
+  const updated = await request("/api/admin/providers", {
+    method: "PUT",
+    body: JSON.stringify({
+      imageModel: "img2-2k",
+      imageSecondaryModel: "img2"
+    })
+  });
+  assert.equal(imageChannel(providerById(updated.body, "image"), "primary").model, "img2-2k");
+  assert.equal(imageChannel(providerById(updated.body, "image"), "secondary").model, "img2");
+  const stored = await readFile(envPath, "utf8");
+  assert.match(stored, /IMAGE_MODEL=img2-2k/);
+  assert.match(stored, /IMAGE_SECONDARY_MODEL=img2/);
+
+  delete process.env.IMAGE_API_URL;
+  delete process.env.IMAGE_MODEL;
+  delete process.env.IMAGE_MODEL_API_KEY;
+  delete process.env.IMAGE_SECONDARY_API_URL;
+  delete process.env.IMAGE_SECONDARY_MODEL;
+  delete process.env.IMAGE_SECONDARY_API_KEY;
 });
 
 test("admin provider settings validate URLs and serve the admin page", async () => {
