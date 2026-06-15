@@ -43,7 +43,28 @@ function scriptSchemaInstruction({ singleMode, durationSeconds }) {
   ].join(" ");
 }
 
-function scriptOutputSchema({ singleMode, durationSeconds }) {
+function productLockSchema(confirmedLock) {
+  const lock = confirmedLock && typeof confirmedLock === "object"
+    ? confirmedLock
+    : {};
+  const base = structuredClone(lock);
+  return {
+    ...base,
+    shoe_type: base.shoe_type || "",
+    main_colors: Array.isArray(base.main_colors) ? [...base.main_colors] : [],
+    supporting_colors: Array.isArray(base.supporting_colors) ? [...base.supporting_colors] : [],
+    upper_material_visible: base.upper_material_visible || "",
+    midsole_shape: base.midsole_shape || "",
+    outsole_color: base.outsole_color || "",
+    outsole_pattern: base.outsole_pattern || "",
+    side_pattern_or_logo: base.side_pattern_or_logo || "",
+    heel_structure: base.heel_structure || "",
+    must_keep: Array.isArray(base.must_keep) ? [...base.must_keep] : [],
+    must_not_change: Array.isArray(base.must_not_change) ? [...base.must_not_change] : []
+  };
+}
+
+function scriptOutputSchema({ singleMode, durationSeconds, confirmedLock }) {
   const shotShape = {
     start_sec: 0,
     end_sec: 0,
@@ -64,19 +85,7 @@ function scriptOutputSchema({ singleMode, durationSeconds }) {
       cta_style: "",
       copy_notes: []
     },
-    product_lock_manifest: {
-      shoe_type: "",
-      main_colors: [],
-      supporting_colors: [],
-      upper_material_visible: "",
-      midsole_shape: "",
-      outsole_color: "",
-      outsole_pattern: "",
-      side_pattern_or_logo: "",
-      heel_structure: "",
-      must_keep: [],
-      must_not_change: []
-    },
+    product_lock_manifest: productLockSchema(confirmedLock),
     selling_points: [{
       point: "",
       evidence: "visible | inferred | user_provided",
@@ -159,12 +168,24 @@ export async function generateProjectScript(
   const model = env.TEXT_MODEL || "deepseek-v4-pro";
   const singleMode = isSingleVideoMode(project);
   const durationSeconds = selectedVideoDurationSeconds(project);
+  const confirmedProductLockManifest = structuredClone(
+    project.visionAnalysis?.product_lock_manifest || {}
+  );
   const systemPrompt = await readFile(
     join(projectRoot, "prompts", "01_planning_and_script.system.md"),
     "utf8"
   );
   const modeInstruction = scriptSchemaInstruction({ singleMode, durationSeconds });
-  const outputSchema = scriptOutputSchema({ singleMode, durationSeconds });
+  const outputSchema = scriptOutputSchema({
+    singleMode,
+    durationSeconds,
+    confirmedLock: confirmedProductLockManifest
+  });
+  const productLockInstruction = [
+    "product_lock_manifest must exactly copy confirmed_product_lock_manifest.",
+    "Do not summarize, translate, remove, rewrite, or reorder must_keep or must_not_change.",
+    "If there is any conflict, confirmed_product_lock_manifest wins."
+  ].join(" ");
   const payload = await postProviderJson({
     url: apiUrl,
     apiKey,
@@ -182,7 +203,8 @@ export async function generateProjectScript(
             "",
             "# Mode-Specific Output Contract",
             modeInstruction,
-            "Return only one JSON object matching the current mode. Do not include alternate-mode script fields."
+            "Return only one JSON object matching the current mode. Do not include alternate-mode script fields.",
+            productLockInstruction
           ].join("\n")
         },
         {
@@ -192,6 +214,8 @@ export async function generateProjectScript(
             workflow_mode: singleMode ? "single_video" : "legacy_multi_segment",
             total_duration_seconds: durationSeconds,
             required_script_shape: modeInstruction,
+            product_lock_requirements: productLockInstruction,
+            confirmed_product_lock_manifest: confirmedProductLockManifest,
             required_top_level_keys: singleMode
               ? ["locale_profile", "product_lock_manifest", "selling_points", "creative_direction", "hooks", "script_video", "localized_copy", "confirmation_summary"]
               : ["locale_profile", "product_lock_manifest", "selling_points", "creative_direction", "hooks", "script_20s", "localized_copy", "confirmation_summary"],
@@ -226,8 +250,12 @@ export async function generateProjectScript(
   let planningPackage;
   try {
     planningPackage = normalizeConfirmedPlanningPackage(
-      { ...generated, mode: "api" },
-      project.visionAnalysis.product_lock_manifest,
+      {
+        ...generated,
+        mode: "api",
+        product_lock_manifest: confirmedProductLockManifest
+      },
+      confirmedProductLockManifest,
       {
         workflowMode: project.workflowMode,
         videoDurationSeconds: project.marketBrief?.videoDurationSeconds

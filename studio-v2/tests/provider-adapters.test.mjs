@@ -391,7 +391,10 @@ test("script adapter requests single-video JSON without forcing the 20-second du
     const project = reviewedProject();
     project.workflowMode = "single_video";
     project.marketBrief.videoDurationSeconds = 10;
+    const confirmedLock = structuredClone(project.visionAnalysis.product_lock_manifest);
     const modelOutput = generateDemoPlanningPackage(structuredClone(project));
+    modelOutput.product_lock_manifest.must_keep = [];
+    modelOutput.product_lock_manifest.must_not_change = [];
     let requestBody;
     await generateProjectScript(project, "2026-06-06T01:00:00.000Z", {
       fetchImpl: async (url, options) => {
@@ -412,12 +415,22 @@ test("script adapter requests single-video JSON without forcing the 20-second du
     assert.equal(userPayload.total_duration_seconds, 10);
     assert.equal(userPayload.required_top_level_keys.includes("script_video"), true);
     assert.deepEqual(userPayload.forbidden_top_level_keys, ["script_20s"]);
+    assert.deepEqual(userPayload.confirmed_product_lock_manifest, confirmedLock);
+    assert.deepEqual(
+      userPayload.output_schema.product_lock_manifest.must_keep,
+      confirmedLock.must_keep
+    );
+    assert.deepEqual(
+      userPayload.output_schema.product_lock_manifest.must_not_change,
+      confirmedLock.must_not_change
+    );
     assert.equal(userPayload.output_schema.script_video.segment_full.segment_id, "full");
     assert.equal(userPayload.output_schema.script_20s, undefined);
     assert.deepEqual(requestBody.response_format, { type: "json_object" });
     assert.deepEqual(requestBody.thinking, { type: "enabled" });
     assert.equal(project.planningPackage.mode, "api");
     assert.equal(project.planningPackage.workflow_mode, "single_video");
+    assert.deepEqual(project.planningPackage.product_lock_manifest, confirmedLock);
     assert.equal(project.planningPackage.script_video.total_duration_sec, 10);
     assert.equal(project.scriptGeneratedAt, "2026-06-06T01:00:00.000Z");
   });

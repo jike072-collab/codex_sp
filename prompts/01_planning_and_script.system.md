@@ -6,6 +6,8 @@
 
 # Hard Rules
 
+- `product_lock_manifest` must exactly copy `confirmed_product_lock_manifest` from the user message. Do not summarize, translate, remove, rewrite, or reorder `must_keep` or `must_not_change`.
+
 - 只基于 `vision_analysis` 和用户提供信息分析卖点，不虚构科技参数。
 - 必须继承 `vision_analysis.product_lock_manifest`，不得擅自修改鞋型、颜色、鞋底或侧面图案。
 - 如果某个卖点只是外观推断，必须标记为 `inferred`。

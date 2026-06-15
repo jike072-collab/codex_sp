@@ -109,6 +109,17 @@ test("script confirmation cannot drop confirmed product lock rules", () => {
     ),
     (error) => error.code === "INVALID_SCRIPT"
   );
+
+  const planningWithoutMustNotChange = generateDemoPlanningPackage(project);
+  planningWithoutMustNotChange.product_lock_manifest.must_not_change = [];
+
+  assert.throws(
+    () => normalizeConfirmedPlanningPackage(
+      planningWithoutMustNotChange,
+      project.visionAnalysis.product_lock_manifest
+    ),
+    (error) => error.code === "INVALID_SCRIPT"
+  );
 });
 
 test("script confirmation rejects exact duplicate shot content across legacy segments", () => {
