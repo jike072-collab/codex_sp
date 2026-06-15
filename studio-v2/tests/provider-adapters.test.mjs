@@ -437,6 +437,37 @@ test("script adapter requests single-video JSON without forcing the 20-second du
   });
 });
 
+test("script adapter fills an omitted generated transition without weakening script validation", async () => {
+  await withProviderEnv({
+    TEXT_MODEL_API_KEY: "test-script-key",
+    TEXT_API_URL: "https://script.example.test/chat/completions",
+    TEXT_MODEL: "gemini-2.5-pro"
+  }, async () => {
+    const project = reviewedProject();
+    project.workflowMode = "single_video";
+    project.marketBrief.videoDurationSeconds = 10;
+    const modelOutput = generateDemoPlanningPackage(structuredClone(project));
+    const shots = modelOutput.script_video.segment_full.shots;
+    shots[0].transition = "";
+    delete shots.at(-1).transition;
+
+    await generateProjectScript(project, "2026-06-06T01:00:00.000Z", {
+      fetchImpl: async () => new Response(JSON.stringify({
+        choices: [{ message: { content: JSON.stringify(modelOutput) } }]
+      }), { status: 200 })
+    });
+
+    assert.equal(
+      project.planningPackage.script_video.segment_full.shots[0].transition,
+      "Clean cut."
+    );
+    assert.equal(
+      project.planningPackage.script_video.segment_full.shots.at(-1).transition,
+      "End hold."
+    );
+  });
+});
+
 test("script adapter rejects dual-script output in single-video mode with neutral wording", async () => {
   await withProviderEnv({
     TEXT_MODEL_API_KEY: "test-script-key",

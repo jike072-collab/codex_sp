@@ -150,6 +150,26 @@ function scriptOutputSchema({ singleMode, durationSeconds, confirmedLock }) {
   };
 }
 
+function fillGeneratedShotTransitions(generated, singleMode) {
+  const segments = singleMode
+    ? [generated?.script_video?.segment_full]
+    : [
+        generated?.script_20s?.segment_a_0_10s,
+        generated?.script_20s?.segment_b_10_20s
+      ];
+
+  for (const segment of segments) {
+    if (!Array.isArray(segment?.shots)) continue;
+    segment.shots.forEach((shot, index) => {
+      if (!shot || String(shot.transition || "").trim()) return;
+      shot.transition = index === segment.shots.length - 1
+        ? "End hold."
+        : "Clean cut.";
+    });
+  }
+  return generated;
+}
+
 export async function generateProjectScript(
   project,
   generatedAt = new Date().toISOString(),
@@ -257,7 +277,10 @@ export async function generateProjectScript(
       code: "TEXT_PROVIDER_ERROR"
     });
   }
-  const generated = extractJsonObject(content, SCRIPT_PROVIDER_LABEL);
+  const generated = fillGeneratedShotTransitions(
+    extractJsonObject(content, SCRIPT_PROVIDER_LABEL),
+    singleMode
+  );
   if (singleMode && Array.isArray(generated?.script_video?.segment_full?.shots)
       && generated.script_video.segment_full.shots.length !== requestedShotCount) {
     throw new ProviderError(
